@@ -1,85 +1,179 @@
-# 题匣 · QuizChest
+# QuizChest
 
-本地优先的题库应用：导入自有题库，离线完成练习、限时模拟考试、错题复习与学习统计。项目采用 React 19 + TypeScript + Vite，无账号、无后端，学习数据与导入题库保存在本机；同一份前端源码可构建为 Web/PWA、Windows 桌面端（Tauri）和 Android 应用（Capacitor）。
+**A local-first question bank you actually own.**
 
-## 核心能力
+Import your own question sets, then practise offline, run timed mock exams, drill your
+mistakes and watch your accuracy climb — no account, no server, no telemetry.
 
-- **导入自有题库**：支持 JSON、CSV 和 `tiyu-bank` v1/v2 题库包；导入前逐题校验、预览和确认，题库可在「我的题库」中练习、导出或删除。
-- **三条找题路径**：6 条目标路线、领域 → 学段 → 题库的目录浏览、4 种练习策略（每日一练、薄弱项突破、随机组卷、错题复习）。
-- **完整练习闭环**：单选、多选、判断三种题型；顺序练习即时批改，模拟考试倒计时并在到点后自动交卷，错题重练支持答对后移出错题本。
-- **学习数据管理**：错题本、收藏、练习记录、学习统计、自定义组卷、组卷历史；成绩和错题可导出为 CSV，题库可导出为 `tiyu-bank` 包。
-- **本地优先**：内置 Service Worker 支持离线访问；状态通过 Zustand 持久化到 `localStorage`（`tiyu-store-v1`），不上传、不需要注册。
-- **可定制与可访问**：浅色/深色主题、大字号、键盘作答、跳过导航链接、语义化控件；支持通过 `VITE_BRAND_*` 或 `window.__TIYU_BRAND__` 注入品牌配置。
+[English](README.md) · [简体中文](README.zh-CN.md)
 
-## 内置内容与边界
+<p align="center">
+  <img src="docs/screenshots/home.webp" alt="QuizChest home screen" width="900">
+</p>
 
-内置内容是用于演示产品结构的示例题库：7 个领域、20 个学段、32 个题库、195 道题，每个题库仅 6–7 题，全站标注「示例」并可在设置中隐藏。它不替代正式教材或考试题库；正式内容请通过导入功能提供。
+## What it does
 
-当前版本不包含账号体系、云端同步、后台管理和在线题库服务。所有导入数据、练习记录、收藏与设置只保存在当前浏览器或原生 WebView 中。
+QuizChest is built around one idea: **your question bank should not be trapped in
+someone else's platform.** You bring a JSON or CSV file, QuizChest turns it into a
+fully functional practice bank in under a second, and everything stays on your machine.
 
-## 快速开始
+| | |
+| --- | --- |
+| **Import anything reasonable** | Excel (`.xlsx`), JSON, CSV, or a portable `.tiyu.json` bank package — all validated by the same row pipeline, with a preview before anything is saved. |
+| **Three ways to find what to study** | Follow a goal track, drill down domain → stage → bank, or let a strategy pick for you. |
+| **A complete practice loop** | Single choice, multiple choice and true/false. Instant feedback in practice mode, countdown and auto-submit in exam mode. |
+| **Nothing you get wrong is lost** | Mistakes auto-collect into a wrong-book; answering correctly in review mode removes them. |
+| **Edit what you imported** | Fix a typo without re-importing: stems, options, answers and explanations are editable in place; question IDs stay stable so wrong-book references never break. |
+| **Undo a bad edit** | Every save archives the previous version first. Roll back to any of the last 20 revisions; a rollback itself is reversible. |
+| **Pick up where you stopped** | Progress is written to the database as you answer. Close the app mid-session and the home screen offers to resume exactly where you left off. |
+| **Questions can have images** | Diagram, geometry and reading-comprehension questions work: import a stem image or per-option images (URL or embedded data URI). |
+| **Numbers that mean something** | Streaks, accuracy trend, per-domain distribution and a 7-day volume chart. |
+| **Print a real paper** | Build a custom paper, then print it: A4 layout with name and score lines, optional answer key, navigation hidden automatically. |
+| **Runs everywhere you do** | Web/PWA, Windows/macOS/Linux desktop (Tauri 2), Android (Capacitor 8). Same codebase, same data model. |
+
+## Screenshots
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/catalog.webp" alt="Question bank catalogue"><br><sub><b>Catalogue</b> — domain tree, stage filters, bank cards</sub></td>
+<td width="50%"><img src="docs/screenshots/practice.webp" alt="Practice screen"><br><sub><b>Practice</b> — instant marking with explanations</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/screenshots/stats.webp" alt="Learning statistics"><br><sub><b>Statistics</b> — volume, accuracy trend, domain split</sub></td>
+<td width="50%"><img src="docs/screenshots/settings.webp" alt="Settings and backup"><br><sub><b>Settings</b> — backup, restore and preferences</sub></td>
+</tr>
+</table>
+
+## Quick start
+
+Requires **Node 20.19+ or 22.12+** and **pnpm**.
 
 ```bash
 pnpm install
 pnpm dev          # http://localhost:5173
-pnpm build        # 生产构建，包含 PWA manifest 与 Service Worker
-pnpm preview      # 预览 dist，默认 http://localhost:4173
+pnpm build        # production build with PWA manifest and service worker
+pnpm preview      # serve dist/ at http://localhost:4173
 ```
 
-要求 Node 20.19+ 或 22.12+，包管理器使用 pnpm。
-
-## 常用命令
-
-| 命令 | 说明 |
-| --- | --- |
-| `pnpm dev` | 启动开发服务器 |
-| `pnpm build` | 类型检查并构建 Web/PWA 产物 |
-| `pnpm preview` | 预览 `dist/` |
-| `pnpm typecheck` | 执行 `tsc -b` |
-| `pnpm lint` | 执行 ESLint |
-| `pnpm test` | 执行 Vitest 单元测试 |
-| `pnpm check` | 依次执行类型检查、Lint、测试和生产构建 |
-| `pnpm build:native` | 以 `native` 模式构建，使用 HashRouter 并关闭 PWA |
-| `pnpm desktop:build` | 构建 Tauri 桌面端，需 Rust、MSVC 与打包工具 |
-
-## 关键入口
-
-- `/`：学习台与最近练习
-- `/goals`：目标路线
-- `/catalog`：题库总览
-- `/strategy/daily`：练习策略
-- `/library`、`/import`：我的题库与导入向导
-- `/compose`：自定义组卷
-- `/wrong`、`/favorites`、`/history`、`/stats`：复习、收藏、记录与统计
-- `/settings`：主题、字号、示例题库和数据导出设置
-
-## 跨端构建
-
-- **Web/PWA**：执行 `pnpm build`，将 `dist/` 部署到静态服务器；服务器需把未知路径回退到 `index.html`。
-- **Windows 桌面**：执行 `pnpm desktop:build`，或使用 `scripts/build-desktop.cmd` 自动注入 MSVC 环境；详细前置条件见 [docs/CROSS_PLATFORM.md](docs/CROSS_PLATFORM.md)。
-- **Android**：执行 `pnpm build:native && npx cap sync android`，再在 `android/` 中运行 Gradle 构建；详见 [docs/CROSS_PLATFORM.md](docs/CROSS_PLATFORM.md)。
-
-原生壳使用 `native` 构建模式和 HashRouter，Web 构建默认使用 BrowserRouter。原生端的状态同样保存在 WebView 的 `localStorage` 中。
-
-## 目录结构
-
-```text
-src/
-├─ data/       内置领域、学段、题库和示例题目
-├─ lib/        判分、统计、搜索、导入导出、策略和组卷
-├─ store/      Zustand + persist 本地状态
-├─ hooks/      计时器、品牌和 Service Worker 逻辑
-├─ components/ 布局、搜索、题目、图表和基础 UI
-├─ pages/      路由页面
-└─ styles/     设计变量、布局、页面和练习样式
-```
-
-题库导入字段与 `tiyu-bank` 包格式见 [docs/IMPORT_FORMAT.md](docs/IMPORT_FORMAT.md)，导航设计见 [docs/INFORMATION_ARCHITECTURE.md](docs/INFORMATION_ARCHITECTURE.md)。
-
-## 质量门禁
+### Build for every platform
 
 ```bash
-pnpm check
+pnpm build                  # Web / PWA — deploy dist/ to any static host
+pnpm desktop:build          # Windows desktop installer (needs Rust + MSVC)
+pnpm build:native && npx cap sync android   # then build in android/ with Gradle
 ```
 
-该命令必须完整通过类型检查、ESLint、Vitest 和生产构建。新增题库时，`src/lib/quiz.test.ts` 会校验题库数量、题目完整性、答案下标和题目 ID 唯一性。
+Native shells use hash routing and disable the service worker; the web build uses
+browser history routing. All three share one data-layer interface
+(`src/services/repository.ts`), so the engine underneath can change without
+touching the callers.
+
+## Import formats
+
+The fastest path is a CSV with five required columns:
+
+```csv
+title,stem,optionA,optionB,optionC,optionD,answer,explanation,type
+小学数学,一个数的 3 倍减去 12 等于 18，这个数是多少,8,10,12,14,B,设该数为 x，则 3x - 12 = 18,single
+小学数学,下列哪些是偶数,1,2,3,4,B;D,能被 2 整除的整数是偶数,multiple
+```
+
+Accepted answer syntax: `B`, `BC`, `B;D`, `B,D`, `B、D`, `B/D`, or 1-based indexes
+like `1,3`. Only `stem`, `optionA`, `optionB`, `answer` and `explanation` are mandatory.
+
+Full field reference: [docs/IMPORT_FORMAT.md](docs/IMPORT_FORMAT.md).
+
+## Your data
+
+QuizChest ships its own on-device database. There is no server, and no data ever
+leaves the machine:
+
+| Runtime | Engine | Location |
+| --- | --- | --- |
+| Desktop (Tauri 2) | SQLite via Rust `rusqlite` | app data dir, `com.tiyu.questionbank/quizchest.db` |
+| Web / PWA / Android (Capacitor) | IndexedDB | site storage, database `quizchest` |
+
+The desktop database is a plain SQLite file — open it with any SQLite tool. Settings
+→ *Local database* shows the live driver and the exact path.
+
+**Back up before you clean.** Settings → *Full backup and restore* exports a single
+JSON file containing every bank, mistake, favourite, session, paper and preference.
+Restore it on any device to pick up exactly where you left off.
+
+If the database is unavailable (private mode, restricted permissions), QuizChest keeps
+working from memory for the session and says so explicitly rather than silently losing
+writes. Legacy `localStorage` data is migrated into the database on first launch and the
+old key is removed.
+
+## Built-in sample content
+
+Seven domains, 20 stages, 32 banks and 195 questions ship with the app **to demonstrate
+the product structure**. Every sample bank is labelled and holds only 6–7 questions.
+They are not study material. Hide them in Settings and import your own.
+
+The current release deliberately has no accounts, no cloud sync, no admin backend and
+no hosted question service.
+
+## Architecture
+
+```
+src/
+├─ data/        taxonomy, sample banks, question seeds, record types
+├─ services/    data layer: SQLite / IndexedDB / memory drivers and selection
+├─ lib/         grading, stats, import/export, strategy, paper building
+├─ hooks/       session state, timers, brand, service worker, data-layer status
+├─ store/       Zustand state with startup hydrate and async persistence
+├─ components/  layout, question runner, charts, UI primitives
+├─ pages/       route-level screens
+└─ styles/      design tokens, layout, page and practice styles
+```
+
+Design decisions worth knowing:
+
+- **Logic is separated from rendering.** All session rules live in
+  `usePracticeSession`; `PracticeRunner` only maps state to markup. That is why the
+  practice flow can be unit-tested without a browser.
+- **The data layer is swappable.** Pages depend only on `src/services/repository.ts`;
+  desktop runs SQLite, web runs IndexedDB, and changing engines does not touch screens.
+- **Failed writes are visible.** A write updates memory first so the UI stays
+  responsive, then persists; a failure lands in `persistenceError` and is shown in
+  Settings instead of pretending the save succeeded.
+- **Failures are contained.** A route-level `ErrorBoundary` keeps a broken page from
+  taking down the shell.
+- **Charts are lazy.** ECharts loads only on `/stats`, keeping the initial bundle at
+  roughly 138 kB gzipped.
+
+## Quality gates
+
+```bash
+pnpm check        # version → typecheck → lint → unit tests → build → cargo test → audit
+pnpm test:e2e     # Playwright, real browser, critical paths
+pnpm test:e2e:apk # Playwright against the real APK assets, Pixel 5 viewport
+```
+
+`pnpm check` covers question-bank integrity, grading, session summaries, strategies,
+import/export round-trips, CSV export, both data-layer drivers, store-to-database
+persistence, dialog focus management and the practice component. It also runs
+`cargo test` for the Rust data layer (skipped with an explicit notice if cargo is
+absent) and `scripts/audit-deps.mjs`, which fails on high/critical vulnerabilities in
+runtime dependencies. Build-only toolchain advisories are reported separately, since
+they never reach the shipped artifact.
+
+`pnpm test:e2e` drives a real Chromium against a dev server and proves the paths unit
+tests cannot: imported banks survive a reload from IndexedDB, wrong answers reach the
+wrong book while correct ones do not, submitting a session records history, and a
+backup survives reset-and-restore. Kept out of `pnpm check` because it starts a server
+and takes ~25 s; CI runs both.
+
+## Project management
+
+- Versioning: [SemVer](https://semver.org/), single source in `package.json`,
+  propagated by `scripts/sync-version.mjs`.
+- History: [CHANGELOG.md](CHANGELOG.md).
+- Release procedure: [docs/RELEASING.md](docs/RELEASING.md).
+- Contribution guide: [CONTRIBUTING.md](CONTRIBUTING.md).
+- Security policy: [SECURITY.md](SECURITY.md).
+
+## License
+
+[MIT](LICENSE)

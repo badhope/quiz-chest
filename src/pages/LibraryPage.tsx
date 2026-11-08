@@ -34,7 +34,7 @@ export function LibraryPage() {
           <h1 className="page-title serif">导入的题库都住在这里</h1>
           <p className="page-sub">
             {banks.length > 0
-              ? `${banks.length} 个题库 · 共 ${importedQuestionCount} 题，保存在本机浏览器。`
+              ? `${banks.length} 个题库 · 共 ${importedQuestionCount} 题，保存在本机数据库。`
               : '导入一份 JSON 或 CSV，就能离线练习、模拟考试并进入错题本。'}
           </p>
         </div>

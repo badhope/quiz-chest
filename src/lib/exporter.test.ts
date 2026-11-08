@@ -54,6 +54,15 @@ describe('buildExportPackage', () => {
     expect(name.startsWith('abcd-')).toBe(true)
     expect(name.endsWith('.tiyu.json')).toBe(true)
   })
+
+  it('uses the local calendar date, not UTC', () => {
+    // 东八区 23:30 的本地时间，在 UTC 里已经是第二天。
+    // 文件名必须跟用户看到的日期一致，否则晚上导出的包日期会差一天。
+    const localLateNight = new Date(2025, 0, 1, 23, 30, 0).getTime()
+    const name = exportFileName({ ...bank, importedAt: localLateNight })
+    expect(name).toContain('2025-01-01')
+    expect(name).not.toContain('2025-01-02')
+  })
 })
 
 describe('parseExportPackage', () => {

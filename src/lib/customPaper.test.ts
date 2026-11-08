@@ -21,7 +21,9 @@ function seed(count: number, prefix: string): QuestionSeed[] {
 }
 
 beforeAll(() => {
-  useAppStore.getState().addBank({
+  // 这两个用例只测组卷纯逻辑，不关心落库。addBank 在无 repo 时会 reject，
+  // 必须吞掉，否则 Vitest 会把未处理的 rejection 记成错误。
+  void useAppStore.getState().addBank({
     id: 'paper-a',
     title: '组卷甲库',
     subtitle: '测试',
@@ -34,8 +36,8 @@ beforeAll(() => {
     tags: [],
     importedAt: 1,
     questions: seed(12, '甲库'),
-  })
-  useAppStore.getState().addBank({
+  }).catch(() => {})
+  void useAppStore.getState().addBank({
     id: 'paper-b',
     title: '组卷乙库',
     subtitle: '测试',
@@ -48,7 +50,7 @@ beforeAll(() => {
     tags: [],
     importedAt: 2,
     questions: seed(8, '乙库'),
-  })
+  }).catch(() => {})
 })
 
 afterAll(() => {

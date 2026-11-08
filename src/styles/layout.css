@@ -449,7 +449,9 @@
     bottom: 0;
     z-index: 40;
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    /* 列数跟随条目数，避免新增导航项时溢出到第二行。 */
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
     padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
     border-top: 1px solid var(--line);
     background: color-mix(in srgb, var(--paper) 92%, transparent);
@@ -482,4 +484,70 @@
   .topbar-page {
     font-size: 15px;
   }
+}
+
+/* 本地存储降级提示：置顶横幅，不遮挡导航与内容操作。 */
+.storage-banner {
+  position: sticky;
+  top: 0;
+  z-index: 45;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px clamp(16px, 4vw, 32px);
+  border-bottom: 1px solid color-mix(in srgb, var(--gold) 40%, var(--line));
+  background: color-mix(in srgb, var(--gold) 12%, var(--paper));
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.storage-banner p {
+  margin: 0;
+}
+
+.storage-banner-icon {
+  flex: none;
+  width: 17px;
+  height: 17px;
+  margin-top: 2px;
+  color: var(--gold);
+}
+
+/* 局部错误边界兜底样式：保持可读、可恢复，不遮挡全局导航。 */
+.error-fallback {
+  max-width: 620px;
+  margin: clamp(24px, 6vw, 72px) auto;
+  padding: clamp(20px, 4vw, 32px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--paper-raised);
+}
+
+.error-fallback h2 {
+  margin: 0 0 8px;
+  font-size: 22px;
+}
+
+.error-fallback p {
+  margin: 0 0 14px;
+  color: var(--ink-muted);
+  line-height: 1.7;
+}
+
+.error-fallback-detail {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+  color: var(--danger);
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.error-fallback-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
 }

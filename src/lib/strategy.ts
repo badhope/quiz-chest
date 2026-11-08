@@ -32,7 +32,7 @@ export const strategyCatalog: StrategyMeta[] = [
     kind: 'daily',
     title: '每日一练',
     subtitle: '10 题 · 跨领域',
-    description: '系统按你的薄弱领域与遗忘曲线配比，每天一组固定题量。',
+    description: '按各领域正确率加权配题：越薄弱的领域分到越多题，每天一组固定题量。',
     action: '开始今日练习',
     tone: 'accent',
   },

@@ -125,6 +125,19 @@ export function dateKey(timestamp: number): string {
   ).padStart(2, '0')}`
 }
 
+/**
+ * 紧凑日期戳（`20261107`），用于导出文件名。
+ *
+ * 与 `dateKey` 同为本地时区语义。不要用 `toISOString().slice(0, 10)`：
+ * 它是 UTC 日期，东八区晚上 8 点后就会落到第二天，文件名里的日期
+ * 和用户以为的不一致。
+ */
+export function dateStamp(timestamp: number = Date.now()): string {
+  const date = new Date(timestamp)
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}`
+}
+
 export function lastNDays(count: number, now: number = Date.now()): string[] {
   const keys: string[] = []
   const base = new Date(now)

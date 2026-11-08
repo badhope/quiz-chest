@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react'
+import { useRef, type ReactNode } from 'react'
+import { useDialogFocus } from '../../hooks/useDialogFocus'
 
 type Tone = 'neutral' | 'accent' | 'moss' | 'gold' | 'danger' | 'success'
 
@@ -99,6 +100,9 @@ export function Modal({
   children?: ReactNode
   onClose: () => void
 }) {
+  const modalRef = useRef<HTMLDivElement>(null)
+  useDialogFocus(modalRef, { open, onClose })
+
   if (!open) return null
   return (
     <div className="modal-layer" role="presentation" onClick={onClose}>
@@ -107,6 +111,7 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
+        ref={modalRef}
         onClick={(event) => event.stopPropagation()}
       >
         <div className="modal-head">

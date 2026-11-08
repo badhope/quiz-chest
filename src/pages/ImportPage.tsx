@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAppStore, type ImportedBank } from '../store/useAppStore'
 import {
   detectFormat,
+  detectFormatFromContent,
   normalizeId,
   parseImportCsv,
   parseImportJson,
@@ -10,10 +11,25 @@ import {
   type ParseResult,
 } from '../lib/importer'
 import { looksLikeExportPackage, parseExportPackage } from '../lib/exporter'
+import { parseWorkbookFile } from '../services/xlsxImport'
 import { Badge, EmptyState } from '../components/ui/primitives'
 import { ArrowRight, BookOpen, CircleCheck, CircleX, Library, Upload } from '../components/ui/icons'
 
 type Step = 'input' | 'review' | 'done'
+
+/**
+ * 单文件体积上限。
+ *
+ * 为什么必须有：`FileReader.readAsText` 会把整个文件读成字符串并同步解析，
+ * 没有上限时用户选中一个大文件会直接卡死主线程。2000 题按每题 1KB 估算约 2MB，
+ * 20MB 已留足余量，同时远低于会让浏览器无响应的量级。
+ */
+const MAX_IMPORT_BYTES = 20 * 1024 * 1024
+
+function formatBytes(bytes: number): string {
+  if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`
+}
 
 function issueKey(issue: ImportIssue, index: number): string {
   return `${issue.line}-${issue.field}-${index}`
@@ -21,17 +37,20 @@ function issueKey(issue: ImportIssue, index: number): string {
 
 export function ImportPage() {
   const addBank = useAppStore((state) => state.addBank)
-  const existingCount = useAppStore((state) => state.banks.length)
+  const existingBanks = useAppStore((state) => state.banks)
+  const existingCount = existingBanks.length
   const [step, setStep] = useState<Step>('input')
   const [rawText, setRawText] = useState('')
   const [result, setResult] = useState<ParseResult | null>(null)
   const [error, setError] = useState('')
   const [savedId, setSavedId] = useState('')
+  const [overwriteBankId, setOverwriteBankId] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const runParse = (text: string, name: string) => {
     setError('')
     setResult(null)
+    setOverwriteBankId(null)
     if (looksLikeExportPackage(text)) {
       const pkg = parseExportPackage(text)
       if (pkg.bank) {
@@ -65,7 +84,7 @@ export function ImportPage() {
     }
     const format = detectFormat(name)
     if (!format) {
-      setError('仅支持 .json / .csv 文件或题匣题库包（.tiyu.json）')
+      setError('仅支持 .xlsx / .csv / .json 文件或题匣题库包（.tiyu.json）')
       return
     }
     if (text.trim().length === 0) {
@@ -81,6 +100,27 @@ export function ImportPage() {
 
   const onFile = (file: File | undefined) => {
     if (!file) return
+    if (file.size > MAX_IMPORT_BYTES) {
+      setError(`文件过大（${formatBytes(file.size)}），单次导入上限 ${formatBytes(MAX_IMPORT_BYTES)}。请拆分后分批导入。`)
+      return
+    }
+    // Excel 与文本走不同的读取路径：xlsx 是 zip 容器，必须按 ArrayBuffer 解。
+    if (detectFormat(file.name) === 'xlsx') {
+      const reader = new FileReader()
+      reader.onload = async () => {
+        try {
+          const parsed = await parseWorkbookFile(reader.result as ArrayBuffer)
+          setRawText(`（Excel 文件：${file.name}）`)
+          setResult(parsed)
+          if (parsed.bank) setStep('review')
+        } catch (error) {
+          setError(`Excel 解析失败：${error instanceof Error ? error.message : String(error)}`)
+        }
+      }
+      reader.onerror = () => setError('读取文件失败，请重试')
+      reader.readAsArrayBuffer(file)
+      return
+    }
     const reader = new FileReader()
     reader.onload = () => {
       const text = String(reader.result ?? '')
@@ -92,14 +132,22 @@ export function ImportPage() {
   }
 
   const onPaste = () => {
-    runParse(rawText, '粘贴内容.json')
+    // 粘贴内容没有文件名，按内容嗅探格式，避免 CSV 被当作 JSON 解析。
+    const format = detectFormatFromContent(rawText)
+    runParse(rawText, `粘贴内容.${format}`)
   }
 
   const commit = () => {
     if (!result?.bank) return
     const now = Date.now()
+    const sameTitle = existingBanks.find((bank) => bank.title === result.bank!.title)
+    // 同标题时：沿用旧 ID 覆盖（错题与记录仍指向同一题库），或显式新建副本。
+    const id =
+      sameTitle && overwriteBankId !== 'new'
+        ? sameTitle.id
+        : normalizeId(result.bank.title, now)
     const bank: ImportedBank = {
-      id: normalizeId(result.bank.title, now),
+      id,
       title: result.bank.title,
       subtitle: result.bank.subtitle,
       description: result.bank.description,
@@ -127,7 +175,7 @@ export function ImportPage() {
         <EmptyState
           icon={<CircleCheck />}
           title={`已导入 ${result?.questionCount ?? 0} 题`}
-          description="题库已保存到本机浏览器，可随时在「我的题库」中练习或删除。"
+          description="题库已保存到本机数据库，可随时在「我的题库」中练习或删除。"
           action={
             <div className="empty-action-row">
               <Link to={`/collection/${savedId}`} className="button button-primary">
@@ -173,6 +221,30 @@ export function ImportPage() {
           </div>
         </section>
 
+        {existingBanks.some((bank) => bank.title === result.bank!.title) ? (
+          <section className="import-conflict">
+            <h2 className="serif">已有同名题库</h2>
+            <p>
+              你已导入过标题为「{result.bank.title}」的题库。覆盖会保留原题库 ID，
+              错题与练习记录仍指向它；新建副本则会得到一份独立的题库。
+            </p>
+            <div className="import-conflict-options">
+              <button
+                className={`button button-sm ${overwriteBankId !== 'new' ? 'button-primary' : 'button-ghost'}`}
+                onClick={() => setOverwriteBankId(null)}
+              >
+                覆盖原题库
+              </button>
+              <button
+                className={`button button-sm ${overwriteBankId === 'new' ? 'button-primary' : 'button-ghost'}`}
+                onClick={() => setOverwriteBankId('new')}
+              >
+                新建副本
+              </button>
+            </div>
+          </section>
+        ) : null}
+
         {result.issues.length > 0 ? (
           <section className="import-issues">
             <h2 className="serif">校验提示（这些行未导入或已自动修正）</h2>
@@ -212,7 +284,7 @@ export function ImportPage() {
         <span className="eyebrow">导入题库</span>
         <h1 className="page-title serif">把你自己的题目带进来</h1>
         <p className="page-sub">
-          支持 JSON 与 CSV 两种格式，逐行校验后才会入库。数据只保存在本机浏览器。
+          支持 JSON 与 CSV 两种格式，逐行校验后才会入库。数据只保存在本机数据库。
           {existingCount > 0 ? ` 已有 ${existingCount} 个导入题库。` : ''}
         </p>
       </header>
@@ -234,13 +306,13 @@ export function ImportPage() {
           }}
         >
           <Upload />
-          <strong>点击选择，或把 .json / .csv 文件拖到这里</strong>
-          <span>单次最多 2000 题，超过 2 个选项请用 JSON 格式</span>
+          <strong>点击选择，或把 .xlsx / .csv / .json 文件拖到这里</strong>
+          <span>Excel 与 CSV 用同一套列名；单次最多 2000 题，超过 6 个选项请用 JSON 格式</span>
         </div>
         <input
           ref={fileRef}
           type="file"
-          accept=".json,.csv,.tiyu.json,text/csv,application/json"
+          accept=".json,.csv,.xlsx,.xls,.tiyu.json,text/csv,application/json"
           className="visually-hidden"
           onChange={(event) => onFile(event.target.files?.[0] ?? undefined)}
         />

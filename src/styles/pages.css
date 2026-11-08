@@ -2267,7 +2267,9 @@
 
 .settings-data {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  /* 列数跟随指标数量，避免指标增减时出现空白格或换行错位。 */
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   gap: 1px;
   background: var(--line);
   border-bottom: 1px solid var(--line);
@@ -2709,6 +2711,8 @@
   }
 
   .settings-data {
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
@@ -2791,6 +2795,8 @@
   }
 
   .settings-data {
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -2814,6 +2820,50 @@
   text-align: center;
   font-size: 12px;
   color: var(--ink-muted);
+}
+
+.boot-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 100vh;
+  padding: 32px;
+  text-align: center;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.boot-screen h1 {
+  margin: 0;
+  font-size: 28px;
+}
+
+.boot-screen p {
+  margin: 0;
+  max-width: 420px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--ink-muted);
+}
+
+.boot-screen .button {
+  margin-top: 8px;
+}
+
+.boot-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.boot-note {
+  max-width: 460px;
+  font-size: 12.5px;
+  color: var(--accent);
+  word-break: break-word;
 }
 
 /* ===== 导入与我的题库 ===== */
@@ -2898,6 +2948,32 @@
   justify-content: flex-end;
   gap: 10px;
   margin-top: 14px;
+}
+
+.import-conflict {
+  margin-bottom: 18px;
+  padding: 16px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md, 10px);
+  background: var(--accent-soft);
+}
+
+.import-conflict h2 {
+  margin: 0 0 6px;
+  font-size: 15px;
+}
+
+.import-conflict p {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--ink-muted);
+}
+
+.import-conflict-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .import-summary {
@@ -3447,4 +3523,296 @@
   .compose-history-main {
     flex-basis: 100%;
   }
+}
+
+/* 设置页内联反馈：用于备份导出/恢复的结果提示，不打断布局。 */
+.settings-inline-note {
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: var(--accent);
+}
+
+.settings-driver {
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+/* ===== 题库编辑器 ===== */
+
+.edit-page {
+  max-width: 860px;
+}
+
+.edit-meta {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md, 10px);
+  background: var(--paper-raised);
+}
+
+.edit-meta label {
+  display: grid;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+
+.edit-meta input {
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.edit-question {
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md, 10px);
+  background: var(--paper-raised);
+}
+
+.edit-question.has-error {
+  border-color: var(--danger, #b3261e);
+}
+
+.edit-question-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.edit-question-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.edit-question-tools select {
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 12.5px;
+}
+
+.edit-stem,
+.edit-explanation textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.7;
+  resize: vertical;
+}
+
+.edit-options {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.edit-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.edit-option > span {
+  flex: 0 0 20px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.edit-option input[type='checkbox'],
+.edit-option input[type='radio'] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+
+.edit-option input[type='text'],
+.edit-option input:not([type]) {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.edit-explanation {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+
+.edit-issues {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--danger, #b3261e);
+}
+
+.edit-issues li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.edit-issues svg {
+  width: 14px;
+  height: 14px;
+}
+
+.edit-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 20px 0 8px;
+}
+
+.edit-warn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--danger, #b3261e);
+  font-size: 13px;
+}
+
+.edit-ok {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--moss, #1f7a5c);
+  font-size: 13px;
+}
+
+.edit-saved {
+  margin: 0;
+}
+
+.edit-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--danger, #b3261e);
+}
+
+.edit-error svg {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  margin-top: 3px;
+}
+
+.edit-batch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border: 1px dashed var(--line-strong, var(--line));
+  border-radius: var(--radius-md, 10px);
+}
+
+.edit-batch p {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--ink-muted);
+}
+
+/* ===== 题库历史版本 ===== */
+
+.edit-history {
+  margin-bottom: 20px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md, 10px);
+  background: var(--paper-raised);
+}
+
+.edit-history summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.edit-history summary::-webkit-details-marker {
+  display: none;
+}
+
+.edit-history summary span {
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+
+.edit-history ul {
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.edit-history li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.edit-history li > div:first-child {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+
+.edit-history-meta {
+  color: var(--ink);
+}
+
+.edit-history-actions {
+  display: flex;
+  gap: 8px;
 }

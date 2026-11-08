@@ -72,8 +72,5 @@ export function wrongBookToCsv(
   return toCsv(headers, rows)
 }
 
-export function dateStamp(now: number = Date.now()): string {
-  const date = new Date(now)
-  const pad = (value: number) => String(value).padStart(2, '0')
-  return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}`
-}
+// 唯一实现在 lib/quiz.ts；此处保留导出名，避免动调用方。
+export { dateStamp } from './quiz'

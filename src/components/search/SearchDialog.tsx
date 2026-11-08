@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { domains } from '../../data/taxonomy'
 import { searchCatalog } from '../../lib/search'
+import { useDialogFocus } from '../../hooks/useDialogFocus'
 import { Chip } from './Chip'
 import { DomainIcon, Search, X } from '../ui/icons'
 
@@ -10,12 +11,10 @@ const hotTags = ['JavaScript', '考研', '雅思', '初级会计', '行测', '�
 export function SearchDialog({ onClose }: { onClose: () => void }) {
   const [query, setQuery] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => inputRef.current?.focus(), 30)
-    return () => window.clearTimeout(timer)
-  }, [])
+  useDialogFocus(panelRef, { open: true, onClose, initialFocus: inputRef })
 
   useEffect(() => {
     const original = document.body.style.overflow
@@ -41,6 +40,7 @@ export function SearchDialog({ onClose }: { onClose: () => void }) {
         role="dialog"
         aria-modal="true"
         aria-label="搜索题库"
+        ref={panelRef}
         onClick={(event) => event.stopPropagation()}
       >
         <div className="search-input-row">

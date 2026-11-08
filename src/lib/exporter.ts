@@ -1,5 +1,6 @@
 import type { ImportedBank } from '../store/useAppStore'
 import type { ImportBankInput } from './importer'
+import { dateKey } from './quiz'
 
 export const BANK_PACKAGE_FORMAT = 'tiyu-bank'
 export const BANK_PACKAGE_VERSION = 2
@@ -48,8 +49,8 @@ export function exportFileName(bank: ImportedBank): string {
     .replace(/[\\/:*?"<>|]+/g, '')
     .replace(/\s+/g, '-')
     .slice(0, 40)
-  const date = new Date(bank.importedAt).toISOString().slice(0, 10)
-  return `${slug || 'bank'}-${date}.tiyu.json`
+  // dateKey 是本地时区；toISOString 是 UTC，深夜导出的文件名日期会差一天。
+  return `${slug || 'bank'}-${dateKey(bank.importedAt)}.tiyu.json`
 }
 
 export function downloadBankPackage(bank: ImportedBank): void {

@@ -13,6 +13,7 @@ import {
   Flame,
   Layers,
   Library,
+  Play,
   Sparkles,
   Target,
   TrendingUp,
@@ -21,8 +22,15 @@ import {
 } from '../components/ui/icons'
 import { DomainIcon } from '../components/ui/icons'
 import { Badge, ProgressBar } from '../components/ui/primitives'
+import type { PendingSession } from '../data/records'
 
 const TODAY_KEY = dateKey(Date.now())
+
+/** 未完成会话回到哪一页：练习与错题重练走题库练习页，组卷走组卷运行页。 */
+function resumePath(session: PendingSession): string {
+  if (session.collectionId.startsWith('compose:')) return '/compose'
+  return `/practice/${session.collectionId}?mode=${session.mode}`
+}
 
 const paths = [
   {
@@ -50,7 +58,7 @@ const paths = [
     to: '/strategy/daily',
     kicker: '路径三',
     title: '不知道练什么',
-    copy: '交给系统：按薄弱项与遗忘曲线自动配题。',
+    copy: '交给系统：按薄弱领域加权，正确率越低分到的题越多。',
     detail: '4 种练习策略',
     icon: Sparkles,
     tone: 'auto',
@@ -64,6 +72,7 @@ export function HomePage() {
   const favorites = useAppStore((state) => state.favorites)
   const lastCollectionId = useAppStore((state) => state.lastCollectionId)
   const lastCollection = lastCollectionId ? getCollection(lastCollectionId) : undefined
+  const pendingSession = useAppStore((state) => state.pendingSession)
 
   const streak = streakFromDates(Object.keys(daily))
   const totalAnswered = Object.values(daily).reduce((sum, item) => sum + item.answered, 0)
@@ -138,7 +147,24 @@ export function HomePage() {
           </Link>
         </div>
         <div className="continue-row">
-          {lastCollection ? (
+          {pendingSession ? (
+            <Link
+              to={resumePath(pendingSession)}
+              className="continue-card continue-primary"
+            >
+              <span className="continue-icon">
+                <Play />
+              </span>
+              <span className="continue-text">
+                <strong>继续「{pendingSession.collectionTitle}」</strong>
+                <small>
+                  已完成 {Object.keys(pendingSession.answers).length} /{' '}
+                  {pendingSession.questionIds.length} 题 · 中途退出也不会丢
+                </small>
+              </span>
+              <Zap />
+            </Link>
+          ) : lastCollection ? (
             <Link
               to={`/practice/${lastCollection.id}?mode=practice`}
               className="continue-card continue-primary"

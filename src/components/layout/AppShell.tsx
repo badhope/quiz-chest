@@ -1,15 +1,19 @@
 import { useEffect, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { Sidebar, MobileNav } from './Sidebar'
+import { StorageBanner } from './StorageBanner'
 import { SearchDialog } from '../search/SearchDialog'
 import { useAppStore } from '../../store/useAppStore'
 import { useBrand } from '../../hooks/useBrand'
 import { applyBrand } from '../../lib/brand'
 import { domains } from '../../data/taxonomy'
+import { ErrorBoundary } from '../ErrorBoundary'
 import { Menu, Moon, Search, Sun, X } from '../ui/icons'
 
-const pageTitles: Record<string, string> = {
-  '/': '学习台',
+/** 自带顶栏的沉浸式路由，不套侧边栏与全局顶栏。 */
+const FULLSCREEN_ROUTES = ['/practice/', '/practice-plan/', '/compose-run']
+
+const pageTitles: Record<string, string> = {  '/': '学习台',
   '/catalog': '题库总览',
   '/wrong': '错题本',
   '/favorites': '我的收藏',
@@ -79,13 +83,14 @@ export function AppShell() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
-  if (
-    location.pathname.startsWith('/practice/') ||
-    location.pathname.startsWith('/practice-plan/')
-  ) {
+  // 全屏沉浸式路由：练习、策略练习、自定义组卷。这些页面自带顶栏与进度条，
+  // 再套一层侧边栏会挤压答题区，所以只渲染内容本身。
+  if (FULLSCREEN_ROUTES.some((prefix) => location.pathname.startsWith(prefix))) {
     return (
       <>
-        <Outlet />
+        <ErrorBoundary>
+          <Outlet />
+        </ErrorBoundary>
         {searchOpen ? <SearchDialog onClose={() => setSearchOpen(false)} /> : null}
       </>
     )
@@ -96,6 +101,7 @@ export function AppShell() {
       <a className="skip-link" href="#main">
         跳到主要内容
       </a>
+      <StorageBanner />
       <Sidebar open={navOpen} onClose={() => setNavOpen(false)} />
       {navOpen ? (
         <div className="mobile-scrim" onClick={() => setNavOpen(false)} aria-hidden="true" />
@@ -130,7 +136,9 @@ export function AppShell() {
           </button>
         </header>
         <main id="main" className="content page-enter" key={location.pathname}>
-          <Outlet />
+          <ErrorBoundary>
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
       <MobileNav />

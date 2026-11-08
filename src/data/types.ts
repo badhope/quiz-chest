@@ -111,6 +111,15 @@ export interface Question {
   explanation: string
   difficulty: Difficulty
   tags: string[]
+  /**
+   * 题干配图。支持两种形式：
+   *   - `https://…` 外链（导入时只存 URL，不下载）
+   *   - `data:image/…;base64,…` 内嵌（离线优先场景必须自包含）
+   * 图表题、几何题、阅读理解题都靠它；没有图时为 undefined。
+   */
+  image?: string
+  /** 选项配图，长度与 options 对齐；某项为空表示纯文字选项。 */
+  optionImages?: string[]
 }
 
 export type QuestionSeed = Omit<Question, 'id' | 'collectionId'>

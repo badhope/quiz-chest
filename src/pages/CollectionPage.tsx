@@ -12,6 +12,7 @@ import {
   Clock,
   Flame,
   Layers,
+  PenLine,
   RotateCcw,
   Target,
   TrendingUp,
@@ -153,6 +154,12 @@ export function CollectionPage() {
               >
                 <RotateCcw />
                 错题重练 · {wrongCount}
+              </Link>
+            ) : null}
+            {collection.origin === 'imported' ? (
+              <Link to={`/edit/${collection.id}`} className="button button-ghost">
+                <PenLine />
+                编辑题库
               </Link>
             ) : null}
           </div>

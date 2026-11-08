@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { detectFormat, normalizeId, parseImportCsv, parseImportJson } from './importer'
+import {
+  detectFormat,
+  normalizeImageSource,
+  detectFormatFromContent,
+  normalizeId,
+  parseImportCsv,
+  parseImportJson,
+  parseRows,
+} from './importer'
 
 const validBank = {
   title: '前端面试 300 题',
@@ -142,7 +150,8 @@ describe('helpers', () => {
   it('detects format by extension', () => {
     expect(detectFormat('bank.json')).toBe('json')
     expect(detectFormat('bank.CSV')).toBe('csv')
-    expect(detectFormat('bank.xlsx')).toBeNull()
+    expect(detectFormat('bank.xlsx')).toBe('xlsx')
+    expect(detectFormat('题库.XLS')).toBe('xlsx')
   })
 
   it('builds stable unique ids from title', () => {
@@ -153,5 +162,145 @@ describe('helpers', () => {
     expect(a).not.toBe(b)
     expect(normalizeId('!!!', 3)).toMatch(/^[a-z0-9-]*-3$/)
     expect(normalizeId('Front End', 4)).toMatch(/^front.*end-4$/)
+  })
+})
+
+describe('detectFormatFromContent', () => {
+  it('treats object and array payloads as JSON', () => {
+    expect(detectFormatFromContent('{"title":"x"}')).toBe('json')
+    expect(detectFormatFromContent('  [{"stem":"a"}]')).toBe('json')
+  })
+
+  it('treats everything else as CSV', () => {
+    expect(detectFormatFromContent('stem,optionA\n题干,选项')).toBe('csv')
+    expect(detectFormatFromContent('\n\nstem,answer')).toBe('csv')
+  })
+})
+
+describe('parseImportCsv tolerance', () => {
+  it('accepts a minimal header set without optional columns', () => {
+    const csv = 'stem,optionA,optionB,answer,explanation\n1+1 等于几,1,2,B,基础加法运算'
+    const result = parseImportCsv(csv)
+    expect(result.bank).not.toBeNull()
+    expect(result.questionCount).toBe(1)
+    expect(result.issues).toHaveLength(0)
+  })
+
+  it('uses the title column to name the bank', () => {
+    const csv = [
+      'title,stem,optionA,optionB,answer,explanation',
+      '小学数学,1+1 等于几,1,2,B,基础加法运算',
+      '小学数学,2+2 等于几,3,4,B,基础加法运算',
+    ].join('\n')
+    expect(parseImportCsv(csv).bank?.title).toBe('小学数学')
+  })
+
+  it('parses multi-answer separators B;D and B,D and B、D', () => {
+    for (const answer of ['B;D', 'B,D', 'B、D', 'B/D']) {
+      const csv = [
+        'stem,optionA,optionB,optionC,optionD,answer,explanation,type',
+        `下列哪些是偶数,1,2,3,4,${answer},偶数定义说明,multiple`,
+      ].join('\n')
+      const result = parseImportCsv(csv)
+      expect(result.bank?.questions[0].answer, answer).toEqual([1, 3])
+    }
+  })
+
+  it('parses numeric answer indexes as 1-based positions', () => {
+    const csv = 'stem,optionA,optionB,optionC,answer,explanation,type\n选两个,1,2,3,"1,3",多选说明,multiple'
+    expect(parseImportCsv(csv).bank?.questions[0].answer).toEqual([0, 2])
+  })
+
+  it('reports a clear error when a required column is missing', () => {
+    const result = parseImportCsv('stem,optionA,answer\n题干,选项,B')
+    expect(result.bank).toBeNull()
+    expect(result.issues[0].message).toContain('缺少必需列')
+  })
+})
+
+describe('配图列', () => {
+  const HEADERS_WITH_IMAGE = [
+    'title', 'stem', 'optionA', 'optionB', 'answer', 'explanation', 'type', 'image',
+  ]
+
+  it('接受 https 外链与 data:image 内嵌', () => {
+    const result = parseRows(HEADERS_WITH_IMAGE, [
+      ['图解卷', '看图回答', '甲', '乙', 'A', '因为甲对', 'single', 'https://example.com/a.png'],
+      ['图解卷', '再看一题', '甲', '乙', 'B', '因为乙对', 'single', 'data:image/png;base64,iVBORw0KGgo='],
+    ])
+    expect(result.questionCount).toBe(2)
+    expect(result.bank?.questions[0].image).toBe('https://example.com/a.png')
+    expect(result.bank?.questions[1].image).toBe('data:image/png;base64,iVBORw0KGgo=')
+  })
+
+  it('丢弃 javascript: 与 file: 等危险协议', () => {
+    // 题干图会直接进 <img src>；放行 javascript: 等于把导入文件变成脚本入口。
+    const result = parseRows(HEADERS_WITH_IMAGE, [
+      ['危险卷', '注入尝试', '甲', '乙', 'A', '解析文字', 'single', 'javascript:alert(1)'],
+      ['危险卷', '本地文件', '甲', '乙', 'A', '解析文字', 'single', 'file:///etc/passwd'],
+      ['危险卷', '普通文本', '甲', '乙', 'A', '解析文字', 'single', 'not-a-url'],
+    ])
+    expect(result.questionCount).toBe(3)
+    for (const question of result.bank!.questions) {
+      expect(question.image).toBeUndefined()
+    }
+  })
+
+  it('选项配图按选项顺序对齐，纯文字选项留空', () => {
+    const headers = ['stem', 'optionA', 'optionB', 'answer', 'explanation', 'optionImageA']
+    const result = parseRows(headers, [
+      ['看图选', '甲', '乙', 'A', '解析文字', 'https://example.com/opt-a.png'],
+    ])
+    expect(result.bank?.questions[0].optionImages).toEqual([
+      'https://example.com/opt-a.png',
+      '',
+    ])
+  })
+
+  it('全部选项都没有图时不产生 optionImages 字段', () => {
+    const result = parseRows(['stem', 'optionA', 'optionB', 'answer', 'explanation'], [
+      ['纯文字题', '甲', '乙', 'A', '解析文字'],
+    ])
+    expect(result.bank?.questions[0].optionImages).toBeUndefined()
+  })
+
+  it('normalizeImageSource 白名单边角', () => {
+    expect(normalizeImageSource('HTTPS://EXAMPLE.COM/A.PNG')).toBe('HTTPS://EXAMPLE.COM/A.PNG')
+    expect(normalizeImageSource('  https://a.com/b.png  ')).toBe('https://a.com/b.png')
+    expect(normalizeImageSource('data:image/svg+xml;base64,PHN2Zz4=')).toBe(
+      'data:image/svg+xml;base64,PHN2Zz4=',
+    )
+    expect(normalizeImageSource('data:text/html;base64,PHNjcmlwdD4=')).toBe('')
+    expect(normalizeImageSource('vbscript:msgbox')).toBe('')
+  })
+})
+
+describe('CSV 里的 data URI（未加引号）', () => {
+  it('data:image 自带逗号，不能被切成两列', () => {
+    // 真实场景：用户从 Excel 复制含图题目，data URI 没有加引号。
+    // 逗号既存在于 data:image/png;base64, 之后，也可能出现在 base64 里。
+    const png =
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+    const csv = `title,stem,optionA,optionB,answer,explanation,type,image
+图解题库,下图显示了什么,圆形,方形,A,图中是一个圆点,single,${png}`
+    const result = parseImportCsv(csv)
+    expect(result.questionCount).toBe(1)
+    expect(result.bank?.questions[0].image).toBe(png)
+  })
+
+  it('加了引号的写法同样正确', () => {
+    const png = 'data:image/png;base64,AAAA=='
+    const csv = `title,stem,optionA,optionB,answer,explanation,type,image
+图解题库,看图,甲,乙,A,解析文字,single,"${png}"`
+    const result = parseImportCsv(csv)
+    expect(result.bank?.questions[0].image).toBe(png)
+  })
+
+  it('普通题目不受影响（没有图片列时行为不变）', () => {
+    const csv = `title,stem,optionA,optionB,answer,explanation
+普通题库,一加一等于几,1,2,A,因为一加一等于二`
+    const result = parseImportCsv(csv)
+    expect(result.questionCount).toBe(1)
+    expect(result.bank?.questions[0].image).toBeUndefined()
   })
 })

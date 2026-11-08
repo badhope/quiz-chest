@@ -172,3 +172,12 @@ describe('catalog search', () => {
     expect(searchCatalog('   ')).toEqual({ collections: [], questions: [] })
   })
 })
+
+describe('裸内容构建开关', () => {
+  it('默认构建（未设置 VITE_BARE_CONTENT）保留示例题库', async () => {
+    const mod = await import('../data')
+    expect(mod.isBareContentBuild).toBe(false)
+    expect(mod.questionBank.length).toBeGreaterThan(0)
+    expect(mod.totalQuestions).toBeGreaterThan(0)
+  })
+})

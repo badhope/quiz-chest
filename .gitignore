@@ -22,3 +22,8 @@ artifacts/*.apk
 artifacts/*.exe
 artifacts/*.msi
 .aqg/
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/

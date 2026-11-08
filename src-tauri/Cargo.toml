@@ -1,6 +1,6 @@
 [package]
 name = "tiyu-desktop"
-version = "1.0.0"
+version = "1.8.0"
 description = "题匣 · QuizChest desktop application"
 authors = ["QuizChest"]
 license = "MIT"
@@ -23,3 +23,4 @@ serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
 tauri = { version = "2.12.5", features = [] }
 tauri-plugin-log = "2"
+rusqlite = { version = "0.40", features = ["bundled"] }

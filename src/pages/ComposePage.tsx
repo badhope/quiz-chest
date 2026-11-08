@@ -17,7 +17,7 @@ import type { CustomPaperSpec } from '../lib/customPaper'
 import { formatRelativeTime } from '../lib/quiz'
 import { EmptyState } from '../components/ui/primitives'
 import { DomainIcon } from '../components/ui/icons'
-import { ArrowRight, BookOpen, CircleCheck, CircleX, Layers, RotateCcw, Trash2, Trophy } from '../components/ui/icons'
+import { ArrowRight, BookOpen, CircleCheck, CircleX, Layers, Printer, RotateCcw, Trash2, Trophy } from '../components/ui/icons'
 
 export function ComposePage() {
   const navigate = useNavigate()
@@ -59,6 +59,19 @@ export function ComposePage() {
         timeLimitMin: mode === 'exam' ? durationMin : 0,
         bankIds: selected,
       },
+    })
+  }
+
+  /**
+   * 打印不写组卷历史：历史记录用于「重开上次的卷」，而打印是一次性动作，
+   * 混进去会让历史列表被大量重复条目挤占。
+   */
+  const print = () => {
+    const spec: CustomPaperSpec = { collectionIds: selected, count: effectiveCount, durationMin, order }
+    const paper = buildCustomPaper(spec)
+    if (paper.questions.length === 0) return
+    navigate('/print', {
+      state: { questions: paper.questions, title: paper.title, durationMin },
     })
   }
 
@@ -212,6 +225,13 @@ export function ComposePage() {
           onClick={() => start('exam')}
         >
           <Trophy /> 模拟考试（{effectiveCount} 题 · {durationMin} 分钟）
+        </button>
+        <button
+          className="button button-ghost"
+          disabled={selected.length === 0 || available === 0}
+          onClick={print}
+        >
+          <Printer /> 打印试卷
         </button>
       </section>
 

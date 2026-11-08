@@ -6,6 +6,7 @@ import type { BankMeta, QuestionBankOrigin } from './bankRegistry'
 import { onBanksChange } from './bankRegistry'
 import { useAppStore } from '../store/useAppStore'
 import type { ImportedBank } from '../store/useAppStore'
+import { dateKey } from './quiz'
 import { makeImportedQuestion } from './bankRegistry'
 
 export interface LibraryCollection extends CollectionWithQuestions {
@@ -48,7 +49,7 @@ function toLibraryCollection(bank: ImportedBank): LibraryCollection {
     durationMin: bank.durationMin,
     heat: 0,
     tags: bank.tags,
-    updated: new Date(bank.importedAt).toISOString().slice(0, 10),
+    updated: dateKey(bank.importedAt),
     questions,
     origin: 'imported',
     importedAt: bank.importedAt,

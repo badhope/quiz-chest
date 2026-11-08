@@ -15,8 +15,10 @@ import { HistoryPage } from './pages/HistoryPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { ImportPage } from './pages/ImportPage'
 import { LibraryPage } from './pages/LibraryPage'
+import { EditPage } from './pages/EditPage'
 import { ComposePage } from './pages/ComposePage'
 import { ComposeRunPage } from './pages/ComposeRunPage'
+import { PrintPage } from './pages/PrintPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 
 const StatsPage = lazy(() =>
@@ -38,6 +40,8 @@ export function App() {
           <Route path="import" element={<ImportPage />} />
           <Route path="compose" element={<ComposePage />} />
           <Route path="compose-run" element={<ComposeRunPage />} />
+          <Route path="print" element={<PrintPage />} />
+          <Route path="edit/:collectionId" element={<EditPage />} />
           <Route path="goals" element={<GoalsPage />} />
           <Route path="goal/:goalId" element={<GoalPage />} />
           <Route path="strategy/:kind" element={<StrategyPage />} />

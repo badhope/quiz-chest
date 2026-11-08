@@ -1,28 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { Question } from '../../data/types'
-import { useAppStore } from '../../store/useAppStore'
-import { dateKey, isCorrect, typeLabel, LETTERS } from '../../lib/quiz'
+import { usePracticeSession } from '../../hooks/usePracticeSession'
 import type { SessionMode } from '../../lib/quiz'
-import { Badge, ProgressBar } from '../ui/primitives'
-import {
-  ArrowLeft,
-  ArrowRight,
-  Bookmark,
-  ChevronDown,
-  CircleCheck,
-  CircleHelp,
-  CircleX,
-  Clock,
-  Flame,
-  RotateCcw,
-  Target,
-  Trophy,
-  X,
-} from '../ui/icons'
-import { useTimer, useCountdown } from '../../hooks/useTimer'
-
-const EMPTY_SELECTION: number[] = []
+import { useAppStore } from '../../store/useAppStore'
+import { AnswerCard } from './AnswerCard'
+import { QuestionCard } from './QuestionCard'
+import { SubmitDialog } from './SubmitDialog'
+import { ArrowLeft, CircleHelp, Clock, Grid3x3, RotateCcw } from '../ui/icons'
+import { ProgressBar } from '../ui/primitives'
 
 const MODE_LABEL: Record<SessionMode, string> = {
   practice: '顺序练习',
@@ -43,230 +29,63 @@ export interface PracticeRunnerProps {
   timeLimitSec?: number
 }
 
-export function PracticeRunner({
-  questions,
-  title,
-  subtitle,
-  mode,
-  historyCollectionId,
-  historyTitle,
-  historyDomainId,
-  backTo,
-  emptyHint,
-  timeLimitSec,
-}: PracticeRunnerProps) {
+/**
+ * 练习 / 考试的统一运行器。
+ *
+ * 本组件只做三件事：把会话状态映射到界面、把用户操作转给会话 hook、
+ * 在页面级组装子组件。业务规则在 `usePracticeSession`，单题视觉在
+ * `QuestionCard`，答题卡在 `AnswerCard`，交卷确认在 `SubmitDialog`。
+ */
+export function PracticeRunner(props: PracticeRunnerProps) {
+  const { title, subtitle, mode, backTo, emptyHint, timeLimitSec } = props
   const navigate = useNavigate()
-  const wrongBook = useAppStore((state) => state.wrongBook)
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [outlineOpen, setOutlineOpen] = useState(false)
+
+  const session = usePracticeSession({
+    questions: props.questions,
+    mode,
+    historyCollectionId: props.historyCollectionId,
+    historyTitle: props.historyTitle,
+    historyDomainId: props.historyDomainId,
+    backTo,
+    timeLimitSec,
+  })
+
+  const fontScale = useAppStore((state) => state.settings.fontScale)
   const favorites = useAppStore((state) => state.favorites)
   const toggleFavorite = useAppStore((state) => state.toggleFavorite)
-  const recordWrong = useAppStore((state) => state.recordWrong)
-  const removeWrong = useAppStore((state) => state.removeWrong)
-  const addHistory = useAppStore((state) => state.addHistory)
-  const setLastCollection = useAppStore((state) => state.setLastCollection)
-  const fontScale = useAppStore((state) => state.settings.fontScale)
-  const autoNext = useAppStore((state) => state.settings.autoNext)
 
-  const [answers, setAnswers] = useState<Record<string, number[]>>({})
-  const [index, setIndex] = useState(0)
-  const [checked, setChecked] = useState<Record<string, boolean>>({})
-  const [showAnalysis, setShowAnalysis] = useState(false)
-  const [showOutline, setShowOutline] = useState(false)
-  const [confirmSubmit, setConfirmSubmit] = useState(false)
-  const [sessionQuestions] = useState<Question[]>(() =>
-    mode === 'review' ? questions.filter((question) => wrongBook[question.id]) : questions,
-  )
-  const startedAt = useRef<number | null>(null)
-  const finishedRef = useRef(false)
+  const { current, select, goNext, submitQuestion, isChecked, selection, isLast } = session
 
-  const elapsed = useTimer(true)
-
-  const finishRef = useRef<() => void>(() => {})
-  const { remaining: remainingLabel, remainingSec } = useCountdown(
-    mode === 'exam' && typeof timeLimitSec === 'number' && timeLimitSec > 0,
-    typeof timeLimitSec === 'number' && timeLimitSec > 0 ? timeLimitSec : 1,
-    () => finishRef.current(),
-  )
-  const timeCritical = mode === 'exam' && remainingSec <= 60
-
-  const current = sessionQuestions[index]
-  const selection = current ? answers[current.id] ?? EMPTY_SELECTION : EMPTY_SELECTION
-  const isChecked = current ? Boolean(checked[current.id]) : false
-  const answeredCount = sessionQuestions.filter(
-    (question) => (answers[question.id] ?? []).length > 0,
-  ).length
-  const reviewedCount = sessionQuestions.filter((question) => checked[question.id]).length
-  const correctCount = sessionQuestions.filter(
-    (question) => checked[question.id] && isCorrect(question, answers[question.id] ?? []),
-  ).length
-
-  const select = useCallback(
-    (question: Question, optionIndex: number) => {
-      if (!current) return
-      if (checked[question.id]) return
-      setAnswers((prev) => {
-        const existing = prev[question.id] ?? []
-        if (question.type === 'multiple') {
-          const next = existing.includes(optionIndex)
-            ? existing.filter((value) => value !== optionIndex)
-            : [...existing, optionIndex].sort((a, b) => a - b)
-          return { ...prev, [question.id]: next }
-        }
-        return { ...prev, [question.id]: [optionIndex] }
-      })
-    },
-    [checked, current],
-  )
-
-  const submitQuestion = useCallback(() => {
-    if (!current) return
-    if (selection.length === 0) return
-    setChecked((prev) => ({ ...prev, [current.id]: true }))
-    setShowAnalysis(true)
-    const correct = isCorrect(current, selection)
-    if (!correct) {
-      recordWrong({
-        questionId: current.id,
-        collectionId: current.collectionId,
-        lastSelection: selection,
-      })
-    } else if (mode === 'review') {
-      removeWrong(current.id)
-    }
-  }, [current, selection, recordWrong, removeWrong, mode])
-
-  const goNext = useCallback(() => {
-    if (index < sessionQuestions.length - 1) {
-      setIndex((value) => value + 1)
-      setShowAnalysis(false)
-    }
-  }, [index, sessionQuestions.length])
-
-  const goPrev = useCallback(() => {
-    if (index > 0) {
-      setIndex((value) => value - 1)
-      setShowAnalysis(false)
-    }
-  }, [index])
-
-  const finish = useCallback(() => {
-    if (finishedRef.current) return
-    finishedRef.current = true
-    const started = startedAt.current ?? Date.now()
-    const durationSec = Math.max(1, Math.round((Date.now() - started) / 1000))
-    let correct = 0
-    let answered = 0
-    for (const question of sessionQuestions) {
-      const picked = answers[question.id] ?? []
-      if (picked.length === 0) continue
-      answered += 1
-      if (isCorrect(question, picked)) {
-        correct += 1
-      } else if (!checked[question.id]) {
-        recordWrong({
-          questionId: question.id,
-          collectionId: question.collectionId,
-          lastSelection: picked,
-        })
-      }
-    }
-    const entryId = `h_${Date.now()}`
-    addHistory({
-      id: entryId,
-      mode,
-      collectionId: historyCollectionId,
-      collectionTitle: historyTitle,
-      domainId: historyDomainId,
-      answered,
-      correct,
-      wrong: answered - correct,
-      skipped: sessionQuestions.length - answered,
-      total: sessionQuestions.length,
-      accuracy: answered === 0 ? 0 : Math.round((correct / answered) * 100),
-      durationSec,
-      finishedAt: Date.now(),
-      dateKey: dateKey(Date.now()),
-    })
-    if (!historyCollectionId.startsWith('plan:')) {
-      setLastCollection(historyCollectionId)
-    }
-    const params = new URLSearchParams({
-      mode,
-      correct: String(correct),
-      answered: String(answered),
-      total: String(sessionQuestions.length),
-      duration: String(durationSec),
-      title: historyTitle,
-      back: backTo,
-    })
-    navigate(`/result/${encodeURIComponent(historyCollectionId)}?${params.toString()}`)
-  }, [
-    sessionQuestions,
-    answers,
-    checked,
-    mode,
-    historyCollectionId,
-    historyTitle,
-    historyDomainId,
-    addHistory,
-    navigate,
-    recordWrong,
-    setLastCollection,
-    backTo,
-  ])
-
+  // 键盘作答：数字键选项、Enter 提交 / 下一题。输入框聚焦时不拦截。
   useEffect(() => {
-    finishRef.current = finish
-  }, [finish])
-
-  useEffect(() => {
-    if (startedAt.current === null) startedAt.current = Date.now()
-  }, [])
-
-  useEffect(() => {
-    if (!autoNext || mode !== 'practice') return undefined
-    if (!current || !checked[current.id]) return undefined
-    if (!isCorrect(current, answers[current.id] ?? [])) return undefined
-    if (index >= sessionQuestions.length - 1) return undefined
-    const timer = window.setTimeout(() => {
-      setIndex((value) => value + 1)
-      setShowAnalysis(false)
-    }, 900)
-    return () => window.clearTimeout(timer)
-  }, [autoNext, mode, current, checked, answers, index, sessionQuestions.length])
-
-  useEffect(() => {
+    if (!current) return undefined
     const onKey = (event: KeyboardEvent) => {
-      if (!current) return
+      const target = event.target as HTMLElement | null
+      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return
+
       const number = Number(event.key)
       if (Number.isInteger(number) && number >= 1 && number <= current.options.length) {
-        select(current, number - 1)
+        select(number - 1)
+        return
       }
-      if (event.key === 'Enter') {
-        if (mode === 'exam') {
-          if (index < sessionQuestions.length - 1) goNext()
-          else setConfirmSubmit(true)
-        } else if (!isChecked && selection.length > 0) {
-          submitQuestion()
-        } else if (isChecked) {
-          goNext()
-        }
+      if (event.key !== 'Enter') return
+
+      if (mode === 'exam') {
+        if (!isLast) goNext()
+        else setDialogOpen(true)
+      } else if (!isChecked && selection.length > 0) {
+        submitQuestion()
+      } else if (isChecked) {
+        goNext()
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [
-    current,
-    select,
-    isChecked,
-    selection.length,
-    submitQuestion,
-    goNext,
-    mode,
-    index,
-    sessionQuestions.length,
-  ])
+  }, [current, select, goNext, submitQuestion, isChecked, selection.length, mode, isLast])
 
-  if (sessionQuestions.length === 0 || !current) {
+  if (session.total === 0 || !current) {
     return (
       <div className="practice-missing">
         <h1>{emptyHint ?? '这里暂时没有题目'}</h1>
@@ -282,18 +101,16 @@ export function PracticeRunner({
     )
   }
 
-  const progress = Math.round(((index + 1) / sessionQuestions.length) * 100)
   const modeLabel = MODE_LABEL[mode]
+  const hasTimer = mode === 'exam' && typeof timeLimitSec === 'number' && timeLimitSec > 0
 
   return (
-    <div className={`practice-shell font-${fontScale}${showOutline ? ' outline-open' : ''}`}>
+    <div className={`practice-shell font-${fontScale}${outlineOpen ? ' outline-open' : ''}`}>
       <header className="practice-topbar">
         <button
           className="icon-button"
           onClick={() => {
-            if (window.confirm('退出本次练习？当前作答不会保存。')) {
-              navigate(backTo)
-            }
+            if (window.confirm('退出本次练习？当前作答不会保存。')) navigate(backTo)
           }}
           aria-label="退出练习"
         >
@@ -306,219 +123,88 @@ export function PracticeRunner({
           </span>
           <strong>{title}</strong>
         </div>
-        {mode === 'exam' && typeof timeLimitSec === 'number' && timeLimitSec > 0 ? (
-          <div
-            className={`practice-timer mono${timeCritical ? ' timer-critical' : ''}`}
-            aria-label={`剩余时间 ${remainingLabel}`}
-          >
-            <Clock /> {remainingLabel}
-          </div>
-        ) : (
-          <div className="practice-timer mono">
-            <Clock /> {elapsed}
-          </div>
-        )}
-        <button
-          className={`icon-button${showOutline ? ' active' : ''}`}
-          onClick={() => setShowOutline((value) => !value)}
-          aria-label="答题卡"
-          aria-expanded={showOutline}
+        <div
+          className={`practice-timer mono${session.timeCritical ? ' timer-critical' : ''}`}
+          aria-label={hasTimer ? `剩余时间 ${session.remainingLabel}` : `已用时间 ${session.elapsed}`}
         >
-          <Target />
+          <Clock /> {hasTimer ? session.remainingLabel : session.elapsed}
+        </div>
+        <button
+          className={`icon-button practice-outline-toggle${outlineOpen ? ' active' : ''}`}
+          onClick={() => setOutlineOpen((value) => !value)}
+          aria-label="答题卡"
+          aria-expanded={outlineOpen}
+        >
+          <Grid3x3 />
         </button>
         <button
           className="button button-primary button-sm practice-submit"
-          onClick={() => setConfirmSubmit(true)}
+          onClick={() => setDialogOpen(true)}
         >
           交卷
         </button>
       </header>
 
       <div className="practice-progress">
-        <ProgressBar value={progress} label="答题进度" />
+        <ProgressBar value={session.progress} label="答题进度" />
         <span className="mono">
-          {index + 1} / {sessionQuestions.length}
+          {session.index + 1} / {session.total}
         </span>
       </div>
 
       <main className="practice-main">
-        <article className="question-card" aria-live="polite">
-          <div className="question-meta">
-            <Badge tone="accent">{typeLabel(current.type)}</Badge>
-            <Badge tone="neutral">难度 {'●'.repeat(current.difficulty)}</Badge>
-            <span className="question-id mono">Q{String(index + 1).padStart(2, '0')}</span>
-            <button
-              className={`favorite-button${favorites.includes(current.id) ? ' active' : ''}`}
-              onClick={() => toggleFavorite(current.id)}
-              aria-label={favorites.includes(current.id) ? '取消收藏' : '收藏本题'}
-              aria-pressed={favorites.includes(current.id)}
-            >
-              <Bookmark />
-            </button>
-          </div>
-
-          <h1 className="question-stem">{current.stem}</h1>
-          <p className="question-hint">
-            {current.type === 'multiple' ? '多选题：选出全部正确选项' : '请选择一个答案'}
-            <span className="keyboard-hint">
-              {mode === 'exam'
-                ? ` · 键盘 1-${current.options.length} 选择，Enter 进入下一题`
-                : ` · 键盘 1-${current.options.length} 选择，Enter 提交`}
-            </span>
-          </p>
-
-          <div className="options" role="group" aria-label="选项">
-            {current.options.map((option, optionIndex) => {
-              const picked = selection.includes(optionIndex)
-              const correctOption = current.answer.includes(optionIndex)
-              const state = isChecked
-                ? correctOption
-                  ? 'correct'
-                  : picked
-                    ? 'wrong'
-                    : 'idle'
-                : picked
-                  ? 'picked'
-                  : 'idle'
-              return (
-                <button
-                  key={optionIndex}
-                  className={`option option-${state}`}
-                  onClick={() => select(current, optionIndex)}
-                  aria-pressed={picked}
-                  disabled={isChecked && mode !== 'exam'}
-                >
-                  <span className="option-letter mono">{LETTERS[optionIndex]}</span>
-                  <span className="option-text">{option}</span>
-                  {isChecked && correctOption ? <CircleCheck className="option-mark" /> : null}
-                  {isChecked && picked && !correctOption ? <CircleX className="option-mark" /> : null}
-                </button>
-              )
-            })}
-          </div>
-
-          {isChecked && mode !== 'exam' ? (
-            <section className={`analysis${showAnalysis ? ' open' : ''}`} aria-label="答案解析">
-              <header className="analysis-head">
-                <span className={isCorrect(current, selection) ? 'ok' : 'bad'}>
-                  {isCorrect(current, selection) ? <CircleCheck /> : <CircleX />}
-                  {isCorrect(current, selection) ? '回答正确' : '回答错误'}
-                </span>
-                <span className="analysis-answer">
-                  正确答案：
-                  <strong className="mono">
-                    {current.answer.map((value) => LETTERS[value]).join('、')}
-                  </strong>
-                </span>
-              </header>
-              <div className="analysis-body">
-                <h3>解析</h3>
-                <p>{current.explanation}</p>
-                <div className="analysis-tags">
-                  {current.tags.map((tag) => (
-                    <span key={tag}>{tag}</span>
-                  ))}
-                </div>
-              </div>
-            </section>
-          ) : null}
-
-          <div className="question-actions">
-            <button className="button button-ghost" onClick={goPrev} disabled={index === 0}>
-              <ArrowLeft /> 上一题
-            </button>
-            {!isChecked && mode !== 'exam' ? (
-              <button
-                className="button button-primary"
-                onClick={submitQuestion}
-                disabled={selection.length === 0}
-              >
-                确认答案 <ChevronDown className="rotate-icon" />
-              </button>
-            ) : null}
-            {isChecked || mode === 'exam' ? (
-              <button
-                className="button button-primary"
-                onClick={index === sessionQuestions.length - 1 ? () => setConfirmSubmit(true) : goNext}
-              >
-                {index === sessionQuestions.length - 1 ? '完成练习' : '下一题'} <ArrowRight />
-              </button>
-            ) : null}
-          </div>
-        </article>
+        <QuestionCard
+          question={current}
+          index={session.index}
+          mode={mode}
+          selection={session.selection}
+          isChecked={session.isChecked}
+          showAnalysis={session.showAnalysis}
+          favorite={favorites.includes(current.id)}
+          onToggleFavorite={() => toggleFavorite(current.id)}
+          onSelect={session.select}
+          onPrev={session.goPrev}
+          onNext={session.goNext}
+          onSubmit={session.submitQuestion}
+          onRequestSubmit={() => setDialogOpen(true)}
+          canGoPrev={session.index > 0}
+          isLast={session.isLast}
+        />
 
         <aside className="practice-aside">
           <div className="aside-block">
             <span className="aside-title">本次进度</span>
             <div className="aside-progress-row">
-              <strong className="mono">{answeredCount}</strong>
-              <span>/ {sessionQuestions.length} 已作答</span>
+              <strong className="mono">{session.answeredCount}</strong>
+              <span>/ {session.total} 已作答</span>
             </div>
             {mode === 'exam' ? null : (
               <div className="aside-progress-row">
-                <strong className="mono">{correctCount}</strong>
-                <span>题答对 / 已核对 {reviewedCount}</span>
+                <strong className="mono">{session.correctCount}</strong>
+                <span>题答对 / 已核对 {session.reviewedCount}</span>
               </div>
             )}
             <button
               className="aside-link"
-              onClick={() => {
-                if (mode === 'exam') {
-                  setConfirmSubmit(true)
-                } else {
-                  const firstUnanswered = sessionQuestions.findIndex(
-                    (question) => (answers[question.id] ?? []).length === 0,
-                  )
-                  if (firstUnanswered >= 0) {
-                    setIndex(firstUnanswered)
-                    setShowAnalysis(false)
-                  }
-                }
-              }}
+              onClick={() => (mode === 'exam' ? setDialogOpen(true) : session.jumpToUnanswered())}
             >
               {mode === 'exam' ? '提前交卷' : '跳到未作答'}
             </button>
           </div>
 
-          <div className="aside-block outline-block">
-            <button
-              className="aside-title-button"
-              onClick={() => setShowOutline((value) => !value)}
-              aria-expanded={showOutline}
-            >
-              <span className="aside-title">答题卡</span>
-              <ChevronDown className={showOutline ? ' flip' : ''} />
-            </button>
-            {showOutline ? (
-              <div className="outline-grid">
-                {sessionQuestions.map((question, questionIndex) => {
-                  const picked = (answers[question.id] ?? []).length > 0
-                  const done = Boolean(checked[question.id])
-                  return (
-                    <button
-                      key={question.id}
-                      className={`outline-cell${picked ? ' picked' : ''}${
-                        done
-                          ? isCorrect(question, answers[question.id] ?? [])
-                            ? ' right'
-                            : ' wrong'
-                          : ''
-                      }${questionIndex === index ? ' current' : ''}`}
-                      onClick={() => {
-                        setIndex(questionIndex)
-                        setShowAnalysis(false)
-                        if (window.matchMedia('(max-width: 560px)').matches) {
-                          setShowOutline(false)
-                        }
-                      }}
-                    >
-                      {questionIndex + 1}
-                    </button>
-                  )
-                })}
-              </div>
-            ) : null}
-          </div>
+          <AnswerCard
+            questions={session.questions}
+            answers={session.answers}
+            checked={session.checked}
+            currentIndex={session.index}
+            open={outlineOpen}
+            onToggle={() => setOutlineOpen((value) => !value)}
+            onJump={(target) => {
+              session.goTo(target)
+              // 移动端抽屉在跳题后应自动收起，避免遮挡题干。
+              if (window.matchMedia('(max-width: 560px)').matches) setOutlineOpen(false)
+            }}
+          />
 
           <div className="aside-tip">
             <CircleHelp />
@@ -531,48 +217,17 @@ export function PracticeRunner({
         </aside>
       </main>
 
-      {confirmSubmit ? (
-        <div
-          className="confirm-layer"
-          role="presentation"
-          onClick={() => setConfirmSubmit(false)}
-        >
-          <div
-            className="confirm-card"
-            role="dialog"
-            aria-modal="true"
-            aria-label="确认交卷"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <button
-              className="icon-button confirm-close"
-              onClick={() => setConfirmSubmit(false)}
-              aria-label="关闭"
-            >
-              <X />
-            </button>
-            <span className="confirm-icon">
-              <Trophy />
-            </span>
-            <h2 className="serif">确认提交本次{modeLabel}？</h2>
-            <p>
-              已作答 {answeredCount} / {sessionQuestions.length} 题
-              {answeredCount < sessionQuestions.length
-                ? `，还有 ${sessionQuestions.length - answeredCount} 题未作答`
-                : ''}
-              。提交后将生成成绩单，未作答按跳过计。
-            </p>
-            <div className="confirm-actions">
-              <button className="button button-ghost" onClick={() => setConfirmSubmit(false)}>
-                继续作答
-              </button>
-              <button className="button button-primary" onClick={finish}>
-                提交并查看结果
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <SubmitDialog
+        open={dialogOpen}
+        modeLabel={modeLabel}
+        answered={session.answeredCount}
+        total={session.total}
+        onCancel={() => setDialogOpen(false)}
+        onConfirm={() => {
+          setDialogOpen(false)
+          session.finish()
+        }}
+      />
 
       {mode === 'review' ? (
         <div className="review-flag">
@@ -581,7 +236,6 @@ export function PracticeRunner({
       ) : null}
 
       <div className="practice-footer-meta">
-        <Flame />{' '}
         {mode === 'exam' ? '保持专注，交卷后可查看完整解析' : '做完一题就立刻对答案，记得更牢'}
       </div>
     </div>

@@ -745,3 +745,56 @@
     gap: 4px;
   }
 }
+
+/* 答题卡抽屉开关：仅在移动端出现，桌面端用侧栏内的折叠面板。 */
+.practice-outline-toggle {
+  display: none;
+}
+
+@media (max-width: 560px) {
+  .practice-outline-toggle {
+    display: inline-flex;
+  }
+
+  .practice-outline-toggle.active {
+    color: var(--accent);
+    background: var(--accent-soft);
+  }
+}
+
+/* ===== 题目配图 ===== */
+
+.question-figure {
+  margin: 14px 0 4px;
+  display: flex;
+  justify-content: center;
+}
+
+.question-figure img {
+  max-width: 100%;
+  max-height: 320px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: #fff;
+  object-fit: contain;
+}
+
+.option-image {
+  display: block;
+  max-width: 100%;
+  max-height: 160px;
+  margin-top: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #fff;
+  object-fit: contain;
+}
+
+@media print {
+  .question-figure img {
+    max-height: 70mm;
+  }
+  .option-image {
+    max-height: 35mm;
+  }
+}
