@@ -1,3 +1,4 @@
+import Papa from 'papaparse'
 import type { Difficulty, QuestionSeed, QuestionType } from '../data/types'
 
 export interface ImportBankInput {
@@ -314,36 +315,6 @@ export function parseImportJson(raw: string): ParseResult {
   return { bank: { ...meta, questions }, issues, questionCount: questions.length }
 }
 
-function splitCsvLine(line: string): string[] {
-  const cells: string[] = []
-  let current = ''
-  let inQuotes = false
-  for (let i = 0; i < line.length; i += 1) {
-    const char = line[i]
-    if (inQuotes) {
-      if (char === '"') {
-        if (line[i + 1] === '"') {
-          current += '"'
-          i += 1
-        } else {
-          inQuotes = false
-        }
-      } else {
-        current += char
-      }
-    } else if (char === '"') {
-      inQuotes = true
-    } else if (char === ',') {
-      cells.push(current)
-      current = ''
-    } else {
-      current += char
-    }
-  }
-  cells.push(current)
-  return cells
-}
-
 /**
  * 修复未加引号的多选答案。
  *
@@ -407,16 +378,26 @@ function repairUnquotedAnswer(
 }
 
 export function parseImportCsv(raw: string): ParseResult {
-  const issues: ImportIssue[] = []
-  const lines = raw.replace(/\r\n?/g, '\n').split('\n').filter((line, index, all) =>
-    !(index === all.length - 1 && line.trim() === ''),
-  )
-  if (lines.length < 2) {
+  // 交给 Papa Parse：引号、转义引号、分隔符探测、BOM、跨行单元格都由它处理。
+  // 自己逐行 split 会在「题干里带逗号/换行」时错位，这不是靠加几条正则能补的。
+  const parsed = Papa.parse<string[]>(raw, {
+    skipEmptyLines: 'greedy',
+    delimitersToGuess: [',', '\t', ';', '|'],
+  })
+  const issues: ImportIssue[] = parsed.errors
+    .filter((error) => error.row !== undefined)
+    .map((error) => ({
+      line: (error.row ?? 0) + 1,
+      field: 'file',
+      message: error.message,
+    }))
+  const rows = parsed.data.filter((row) => row.some((cell) => String(cell ?? '').trim() !== ''))
+  if (rows.length < 2) {
     return { bank: null, issues: [{ line: 1, field: 'file', message: 'CSV 至少需要表头 + 1 行数据' }], questionCount: 0 }
   }
-  const headers = splitCsvLine(lines[0]).map((cell) => cell.trim())
-  const rows = lines.slice(1).map((line) => repairUnquotedAnswer(splitCsvLine(line), headers))
-  return parseRows(headers, rows, issues)
+  const headers = rows[0].map((cell) => String(cell ?? '').trim())
+  const body = rows.slice(1).map((row) => repairUnquotedAnswer(row.map((cell) => String(cell ?? '')), headers))
+  return parseRows(headers, body, issues)
 }
 
 /**
@@ -486,7 +467,7 @@ export function detectFormat(fileName: string): ImportFormat | null {
   const lower = fileName.toLowerCase()
   if (lower.endsWith('.json')) return 'json'
   if (lower.endsWith('.csv')) return 'csv'
-  if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) return 'xlsx'
+  if (lower.endsWith('.xlsx')) return 'xlsx'
   return null
 }
 

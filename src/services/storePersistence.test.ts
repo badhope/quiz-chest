@@ -34,7 +34,7 @@ function bank(id: string): ImportedBank {
 
 function reset(): void {
   useAppStore.setState({
-    settings: { theme: 'light', fontScale: 'normal', autoNext: false, showSampleBanks: true },
+    settings: { theme: 'light', fontScale: 'normal', autoNext: false, showSampleBanks: true, allowRemoteImages: false },
     favorites: [],
     wrongBook: {},
     history: [],
@@ -66,7 +66,7 @@ describe('store 与数据库的联动', () => {
       theme: 'dark',
       fontScale: 'large',
       autoNext: true,
-      showSampleBanks: false,
+      showSampleBanks: false, allowRemoteImages: false,
     })
     attachRepositoryForTest(repo)
 

@@ -77,6 +77,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   fontScale: 'normal',
   autoNext: false,
   showSampleBanks: true,
+  allowRemoteImages: false,
 }
 
 export function emptySnapshot(): DataSnapshot {

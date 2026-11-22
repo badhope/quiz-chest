@@ -22,11 +22,11 @@ fully functional practice bank in under a second, and everything stays on your m
 | **Import anything reasonable** | Excel (`.xlsx`), JSON, CSV, or a portable `.tixing.json` bank package — all validated by the same row pipeline, with a preview before anything is saved. |
 | **Three ways to find what to study** | Follow a goal track, drill down domain → stage → bank, or let a strategy pick for you. |
 | **A complete practice loop** | Single choice, multiple choice and true/false. Instant feedback in practice mode, countdown and auto-submit in exam mode. |
-| **Nothing you get wrong is lost** | Mistakes auto-collect into a wrong-book; answering correctly in review mode removes them. |
+| **Nothing you get wrong is lost** | Mistakes auto-collect into a wrong-book. Correct answers are scheduled by FSRS (spaced repetition) instead of vanishing; mark a question mastered when it truly sticks. |
 | **Edit what you imported** | Fix a typo without re-importing: stems, options, answers and explanations are editable in place; question IDs stay stable so wrong-book references never break. |
 | **Undo a bad edit** | Every save archives the previous version first. Roll back to any of the last 20 revisions; a rollback itself is reversible. |
 | **Pick up where you stopped** | Progress is written to the database as you answer. Close the app mid-session and the home screen offers to resume exactly where you left off. |
-| **Questions can have images** | Diagram, geometry and reading-comprehension questions work: import a stem image or per-option images (URL or embedded data URI). |
+| **Questions can have images** | Diagram, geometry and reading-comprehension questions work: import a stem image or per-option images. Embedded data URIs always render; remote http(s) images stay blocked until you opt in. |
 | **Numbers that mean something** | Streaks, accuracy trend, per-domain distribution and a 7-day volume chart. |
 | **Print a real paper** | Build a custom paper, then print it: A4 layout with name and score lines, optional answer key, navigation hidden automatically. |
 | **Runs everywhere you do** | Web/PWA, Windows/macOS/Linux desktop (Tauri 2), Android (Capacitor 8). Same codebase, same data model. |
@@ -59,7 +59,8 @@ pnpm preview      # serve dist/ at http://localhost:4173
 
 ```bash
 pnpm build                  # Web / PWA — deploy dist/ to any static host
-pnpm desktop:build          # Windows desktop installer (needs Rust + MSVC)
+pnpm desktop:build          # native installer for the current OS (Windows / macOS / Linux)
+scripts/build-desktop.sh    # Linux/macOS helper; scripts/build-desktop.cmd on Windows
 pnpm build:native && npx cap sync android   # then build in android/ with Gradle
 ```
 
@@ -153,7 +154,7 @@ pnpm test:e2e:apk # Playwright against the real APK assets, Pixel 5 viewport
 
 `pnpm check` covers question-bank integrity, grading, session summaries, strategies,
 import/export round-trips, CSV export, both data-layer drivers, store-to-database
-persistence, dialog focus management and the practice component. It also runs
+persistence, FSRS review scheduling and the practice component. It also runs
 `cargo test` for the Rust data layer (skipped with an explicit notice if cargo is
 absent) and `scripts/audit-deps.mjs`, which fails on high/critical vulnerabilities in
 runtime dependencies. Build-only toolchain advisories are reported separately, since

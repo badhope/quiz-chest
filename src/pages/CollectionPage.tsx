@@ -3,8 +3,10 @@ import { Link, useParams } from 'react-router-dom'
 import { domains } from '../data/taxonomy'
 import { useAppStore } from '../store/useAppStore'
 import { useLibraryCollections, type LibraryCollection } from '../lib/library'
+import { downloadBankPackage } from '../lib/exporter'
 import { Badge, EmptyState, ProgressBar } from '../components/ui/primitives'
 import { DomainIcon } from '../components/ui/icons'
+import { SectionHeader } from '../components/ui/sections'
 import {
   ArrowLeft,
   Bookmark,
@@ -12,8 +14,10 @@ import {
   Clock,
   Flame,
   Layers,
+  Download,
   PenLine,
   RotateCcw,
+  Trash2,
   Target,
   TrendingUp,
   Trophy,
@@ -29,6 +33,8 @@ export function CollectionPage() {
   const history = useAppStore((state) => state.history)
   const wrongBook = useAppStore((state) => state.wrongBook)
   const favorites = useAppStore((state) => state.favorites)
+  const banks = useAppStore((state) => state.banks)
+  const removeBank = useAppStore((state) => state.removeBank)
 
   const records = useMemo(
     () => history.filter((entry) => entry.collectionId === collectionId),
@@ -157,10 +163,31 @@ export function CollectionPage() {
               </Link>
             ) : null}
             {collection.origin === 'imported' ? (
-              <Link to={`/edit/${collection.id}`} className="button button-ghost">
-                <PenLine />
-                编辑题库
-              </Link>
+              <>
+                <Link to={`/edit/${collection.id}`} className="button button-ghost">
+                  <PenLine />
+                  编辑题库
+                </Link>
+                <button
+                  className="button button-ghost"
+                  onClick={() => {
+                    const bank = banks.find((item) => item.id === collection.id)
+                    if (bank) downloadBankPackage(bank)
+                  }}
+                >
+                  <Download /> 导出备份
+                </button>
+                <button
+                  className="button button-ghost library-delete"
+                  onClick={() => {
+                    if (window.confirm(`删除「${collection.title}」？该题库与其练习记录关联将失效。`)) {
+                      removeBank(collection.id)
+                    }
+                  }}
+                >
+                  <Trash2 /> 删除题库
+                </button>
+              </>
             ) : null}
           </div>
         </div>
@@ -183,12 +210,7 @@ export function CollectionPage() {
       </div>
 
       <section className="section">
-        <div className="section-head">
-          <div>
-            <span className="eyebrow">题目构成</span>
-            <h2 className="section-title serif">先了解这份题库</h2>
-          </div>
-        </div>
+        <SectionHeader eyebrow="题目构成" title="先了解这份题库" />
         <div className="composition-grid">
           <div className="composition-card">
             <span className="composition-icon accent">
@@ -222,12 +244,7 @@ export function CollectionPage() {
       </section>
 
       <section className="section">
-        <div className="section-head">
-          <div>
-            <span className="eyebrow">考点标签</span>
-            <h2 className="section-title serif">这份题库覆盖什么</h2>
-          </div>
-        </div>
+        <SectionHeader eyebrow="考点标签" title="这份题库覆盖什么" />
         <div className="tag-cloud">
           {collection.tags.map((tag) => (
             <span key={tag} className="tag-chip">
@@ -239,15 +256,15 @@ export function CollectionPage() {
       </section>
 
       <section className="section">
-        <div className="section-head">
-          <div>
-            <span className="eyebrow">我的记录</span>
-            <h2 className="section-title serif">最近练习</h2>
-          </div>
-          <Link to="/history" className="section-link">
-            全部记录 <ChevronRight />
-          </Link>
-        </div>
+        <SectionHeader
+          eyebrow="我的记录"
+          title="最近练习"
+          aside={
+            <Link to="/records?tab=history" className="section-link">
+              全部记录 <ChevronRight />
+            </Link>
+          }
+        />
         {records.length === 0 ? (
           <EmptyState
             icon={<Trophy />}

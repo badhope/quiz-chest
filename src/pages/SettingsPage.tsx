@@ -14,6 +14,7 @@ import {
   parseBackup,
 } from '../lib/backup'
 import { ArrowRight, Download, Menu, Settings, Sun, Moon, RotateCcw, Upload } from '../components/ui/icons'
+import { PageHeader } from '../components/ui/sections'
 
 /**
  * 备份恢复的单文件体积上限。
@@ -30,6 +31,7 @@ export function SettingsPage() {
   const setFontScale = useAppStore((state) => state.setFontScale)
   const setAutoNext = useAppStore((state) => state.setAutoNext)
   const setShowSampleBanks = useAppStore((state) => state.setShowSampleBanks)
+  const setAllowRemoteImages = useAppStore((state) => state.setAllowRemoteImages)
   const bankCount = useAppStore((state) => state.banks.length)
   const resetProgress = useAppStore((state) => state.resetProgress)
   const favorites = useAppStore((state) => state.favorites)
@@ -110,11 +112,11 @@ export function SettingsPage() {
 
   return (
     <div className="settings-page">
-      <header className="page-head">
-        <span className="eyebrow">设置</span>
-        <h1 className="page-title serif">按你的习惯调整</h1>
-        <p className="page-sub">所有设置保存在本机数据库，不涉及账号与云端同步。</p>
-      </header>
+      <PageHeader
+        eyebrow="设置"
+        title="按你的习惯调整"
+        subtitle="所有设置保存在本机数据库，不涉及账号与云端同步。"
+      />
 
       <section className="settings-group">
         <div className="settings-group-head">
@@ -214,6 +216,22 @@ export function SettingsPage() {
             </button>
           </div>
         )}
+        <div className="settings-row">
+          <div>
+            <strong>允许远程图片</strong>
+            <p>
+              关闭时只显示随题库内嵌的图片；开启后才会加载 http(s) 外链，第三方服务器可能得知你正在做哪道题。
+            </p>
+          </div>
+          <button
+            role="switch"
+            aria-checked={settings.allowRemoteImages}
+            className={`switch${settings.allowRemoteImages ? ' on' : ''}`}
+            onClick={() => setAllowRemoteImages(!settings.allowRemoteImages)}
+          >
+            <span />
+          </button>
+        </div>
         <div className="settings-row">
           <div>
             <strong>导入题库</strong>

@@ -3,6 +3,7 @@ import { getCollection, getQuestion } from '../data'
 import { useAppStore } from '../store/useAppStore'
 import { formatRelativeTime } from '../lib/quiz'
 import { Badge, EmptyState } from '../components/ui/primitives'
+import { PageHeader } from '../components/ui/sections'
 import { ArrowRight, Bookmark, Clock, Target, Trash2 } from '../components/ui/icons'
 
 export function FavoritesPage() {
@@ -19,10 +20,7 @@ export function FavoritesPage() {
   if (questions.length === 0) {
     return (
       <div className="favorites-page">
-        <header className="page-head">
-          <span className="eyebrow">我的收藏</span>
-          <h1 className="page-title serif">把值得回看的题留在这里</h1>
-        </header>
+        <PageHeader eyebrow="我的收藏" title="把值得回看的题留在这里" />
         <EmptyState
           icon={<Bookmark />}
           title="还没有收藏"
@@ -39,21 +37,21 @@ export function FavoritesPage() {
 
   return (
     <div className="favorites-page">
-      <header className="page-head page-head-row">
-        <div>
-          <span className="eyebrow">我的收藏</span>
-          <h1 className="page-title serif">{questions.length} 道题已收藏</h1>
-          <p className="page-sub">按收藏顺序排列，可随时取消收藏或回到所属题库练习。</p>
-        </div>
-        <button
-          className="button button-ghost button-sm"
-          onClick={() => {
-            if (window.confirm('清空全部收藏？该操作不可撤销。')) clearFavorites()
-          }}
-        >
-          <Trash2 /> 清空收藏
-        </button>
-      </header>
+      <PageHeader
+        eyebrow="我的收藏"
+        title={`${questions.length} 道题已收藏`}
+        subtitle="按收藏顺序排列，可随时取消收藏或回到所属题库练习。"
+        actions={
+          <button
+            className="button button-ghost button-sm"
+            onClick={() => {
+              if (window.confirm('清空全部收藏？该操作不可撤销。')) clearFavorites()
+            }}
+          >
+            <Trash2 /> 清空收藏
+          </button>
+        }
+      />
 
       <div className="favorite-list">
         {questions.map((question) => {

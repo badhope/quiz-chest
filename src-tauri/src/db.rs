@@ -1,5 +1,6 @@
 use rusqlite::{params, Connection, OptionalExtension, Transaction};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Mutex;
 use tauri::{AppHandle, Manager, State};
@@ -10,7 +11,7 @@ use tauri::{AppHandle, Manager, State};
 /// 由前端在启动页展示并提供重试与恢复入口。
 pub struct Db(pub Mutex<Option<Connection>>, pub Mutex<Option<String>>);
 
-const SCHEMA_VERSION: i64 = 3;
+const SCHEMA_VERSION: i64 = 4;
 
 /// 每个题库保留的历史版本数上限。与前端 src/services/snapshotPolicy.ts 保持一致；
 /// 两端都强制，任何一端漏掉都不会导致无限增长。
@@ -23,6 +24,10 @@ pub struct SettingsRecord {
   pub font_scale: String,
   pub auto_next: bool,
   pub show_sample_banks: bool,
+  /// 是否允许加载题库里的 http(s) 远程图片。默认关闭：导入的题库是不可信输入，
+  /// 打开就等于让第三方服务器知道「这台机器正在做哪道题」。
+  #[serde(default)]
+  pub allow_remote_images: bool,
 }
 
 impl Default for SettingsRecord {
@@ -32,6 +37,7 @@ impl Default for SettingsRecord {
       font_scale: "normal".into(),
       auto_next: false,
       show_sample_banks: true,
+      allow_remote_images: false,
     }
   }
 }
@@ -69,6 +75,13 @@ pub struct BankRecord {
   pub duration_min: i64,
   pub tags: Vec<String>,
   pub imported_at: i64,
+  /// 导入题库可以归入某个领域/分组；老库没有这些列时读成 None。
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub domain_id: Option<String>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub track_id: Option<String>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub track_name: Option<String>,
   pub questions: Vec<QuestionRecord>,
 }
 
@@ -80,6 +93,9 @@ pub struct WrongRecord {
   pub wrong_count: i64,
   pub last_wrong_at: i64,
   pub last_selection: Vec<i64>,
+  /// FSRS 调度状态，前端自己的结构，Rust 原样存取、不解释。
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub fsrs: Option<serde_json::Value>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -161,6 +177,14 @@ where
   T: Default,
 {
   serde_json::from_str(&raw).unwrap_or_default()
+}
+
+/// 空串表示「没有」，坏 JSON 也当没有：历史数据不该阻断整库读取。
+fn parse_optional_json(raw: String) -> Option<serde_json::Value> {
+  if raw.is_empty() {
+    return None;
+  }
+  serde_json::from_str(&raw).ok()
 }
 
 pub fn open(app: &AppHandle) -> Result<Connection, String> {
@@ -258,6 +282,7 @@ fn migrate(connection: &mut Connection) -> Result<(), String> {
       1 => schema_v1(&tx)?,
       2 => schema_v2(&tx)?,
       3 => schema_v3(&tx)?,
+      4 => schema_v4(&tx)?,
       other => return Err(format!("缺少 schema v{other} 的迁移步骤")),
     }
     tx.execute(
@@ -406,6 +431,40 @@ fn schema_v3(tx: &Transaction) -> Result<(), String> {
   .map_err(|error| format!("创建题库快照表失败: {error}"))
 }
 
+/// v4：导入题库带上领域/分组，错题带上 FSRS 调度状态。
+///
+/// 全部用 ADD COLUMN：现有题库、错题、历史都保留。FSRS 用 `''` 表示「尚未排期」，
+/// 读的时候再解析，解析失败就当没有——老数据不应因为新算法而打不开。
+fn schema_v4(tx: &Transaction) -> Result<(), String> {
+  let has_column = |table: &str, name: &str| -> Result<bool, String> {
+    let sql = format!("PRAGMA table_info({table})");
+    let mut statement = tx
+      .prepare(&sql)
+      .map_err(|error| format!("读取 {table} 表结构失败: {error}"))?;
+    let rows = statement
+      .query_map([], |row| row.get::<_, String>(1))
+      .map_err(|error| format!("读取 {table} 列名失败: {error}"))?;
+    for column in rows {
+      if column.map_err(|error| format!("读取 {table} 列名失败: {error}"))? == name {
+        return Ok(true);
+      }
+    }
+    Ok(false)
+  };
+
+  for column in ["domain_id", "track_id", "track_name"] {
+    if !has_column("banks", column)? {
+      let sql = format!("ALTER TABLE banks ADD COLUMN {column} TEXT");
+      tx.execute(&sql, []).map_err(|error| format!("添加 banks.{column} 失败: {error}"))?;
+    }
+  }
+  if !has_column("wrong_book", "fsrs")? {
+    tx.execute("ALTER TABLE wrong_book ADD COLUMN fsrs TEXT NOT NULL DEFAULT ''", [])
+      .map_err(|error| format!("添加 wrong_book.fsrs 失败: {error}"))?;
+  }
+  Ok(())
+}
+
 fn setting(connection: &Connection, key: &str) -> Result<Option<String>, String> {
   connection
     .query_row("SELECT value FROM settings WHERE key = ?1", params![key], |row| row.get(0))
@@ -435,6 +494,9 @@ fn load_settings(connection: &Connection) -> Result<SettingsRecord, String> {
     show_sample_banks: setting(connection, "showSampleBanks")?
       .map(|value| value == "1")
       .unwrap_or(defaults.show_sample_banks),
+    allow_remote_images: setting(connection, "allowRemoteImages")?
+      .map(|value| value == "1")
+      .unwrap_or(defaults.allow_remote_images),
   })
 }
 
@@ -443,7 +505,8 @@ fn load_banks(connection: &Connection) -> Result<Vec<BankRecord>, String> {
   {
     let mut statement = connection
       .prepare(
-        "SELECT id, title, subtitle, description, exam, icon, accent, level, duration_min, tags, imported_at
+        "SELECT id, title, subtitle, description, exam, icon, accent, level, duration_min, tags,
+                imported_at, domain_id, track_id, track_name
          FROM banks ORDER BY imported_at DESC, rowid DESC",
       )
       .map_err(|error| format!("读取题库失败: {error}"))?;
@@ -461,6 +524,9 @@ fn load_banks(connection: &Connection) -> Result<Vec<BankRecord>, String> {
           duration_min: row.get(8)?,
           tags: from_json(row.get(9)?),
           imported_at: row.get(10)?,
+          domain_id: row.get(11)?,
+          track_id: row.get(12)?,
+          track_name: row.get(13)?,
           questions: Vec::new(),
         })
       })
@@ -469,30 +535,41 @@ fn load_banks(connection: &Connection) -> Result<Vec<BankRecord>, String> {
       banks.push(row.map_err(|error| format!("读取题库行失败: {error}"))?);
     }
   }
+
+  // 以前是「每个题库再查一次题目」的 N+1：库越多，启动越慢。一次查全，
+  // 在内存里按 bank_id 归位；题目量是本地文件规模，内存完全放得下。
+  let mut index = HashMap::new();
+  for (position, bank) in banks.iter().enumerate() {
+    index.insert(bank.id.clone(), position);
+  }
   let mut statement = connection
     .prepare(
-      "SELECT type, stem, options, answer, explanation, difficulty, tags, image, option_images
-       FROM questions WHERE bank_id = ?1 ORDER BY ordinal ASC",
+      "SELECT bank_id, type, stem, options, answer, explanation, difficulty, tags, image, option_images
+       FROM questions ORDER BY bank_id ASC, ordinal ASC",
     )
     .map_err(|error| format!("读取题目失败: {error}"))?;
-  for bank in &mut banks {
-    let rows = statement
-      .query_map(params![bank.id], |row| {
-        Ok(QuestionRecord {
-          kind: row.get(0)?,
-          stem: row.get(1)?,
-          options: from_json(row.get(2)?),
-          answer: from_json(row.get(3)?),
-          explanation: row.get(4)?,
-          difficulty: row.get(5)?,
-          tags: from_json(row.get(6)?),
-          image: row.get(7)?,
-          option_images: from_json(row.get::<_, String>(8)?),
-        })
-      })
-      .map_err(|error| format!("读取题目失败: {error}"))?;
-    for row in rows {
-      bank.questions.push(row.map_err(|error| format!("读取题目行失败: {error}"))?);
+  let rows = statement
+    .query_map([], |row| {
+      Ok((
+        row.get::<_, String>(0)?,
+        QuestionRecord {
+          kind: row.get(1)?,
+          stem: row.get(2)?,
+          options: from_json(row.get(3)?),
+          answer: from_json(row.get(4)?),
+          explanation: row.get(5)?,
+          difficulty: row.get(6)?,
+          tags: from_json(row.get(7)?),
+          image: row.get(8)?,
+          option_images: from_json(row.get::<_, String>(9)?),
+        },
+      ))
+    })
+    .map_err(|error| format!("读取题目失败: {error}"))?;
+  for row in rows {
+    let (bank_id, question) = row.map_err(|error| format!("读取题目行失败: {error}"))?;
+    if let Some(position) = index.get(&bank_id) {
+      banks[*position].questions.push(question);
     }
   }
   Ok(banks)
@@ -514,7 +591,7 @@ fn load_snapshot(connection: &Connection) -> Result<Snapshot, String> {
   let wrong_book = {
     let mut statement = connection
       .prepare(
-        "SELECT question_id, collection_id, wrong_count, last_wrong_at, last_selection
+        "SELECT question_id, collection_id, wrong_count, last_wrong_at, last_selection, fsrs
          FROM wrong_book ORDER BY last_wrong_at DESC",
       )
       .map_err(|error| format!("读取错题失败: {error}"))?;
@@ -526,6 +603,7 @@ fn load_snapshot(connection: &Connection) -> Result<Snapshot, String> {
           wrong_count: row.get(2)?,
           last_wrong_at: row.get(3)?,
           last_selection: from_json(row.get(4)?),
+          fsrs: parse_optional_json(row.get::<_, String>(5)?),
         })
       })
       .map_err(|error| format!("读取错题失败: {error}"))?;
@@ -685,12 +763,14 @@ fn lock<'a>(db: &'a State<Db>) -> Result<DbConn<'a>, String> {
 
 fn upsert_bank(tx: &Transaction, bank: &BankRecord) -> Result<(), String> {
   tx.execute(
-    "INSERT INTO banks(id, title, subtitle, description, exam, icon, accent, level, duration_min, tags, imported_at)
-     VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
+    "INSERT INTO banks(id, title, subtitle, description, exam, icon, accent, level, duration_min, tags,
+                       imported_at, domain_id, track_id, track_name)
+     VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)
      ON CONFLICT(id) DO UPDATE SET
        title = excluded.title, subtitle = excluded.subtitle, description = excluded.description,
        exam = excluded.exam, icon = excluded.icon, accent = excluded.accent, level = excluded.level,
-       duration_min = excluded.duration_min, tags = excluded.tags, imported_at = excluded.imported_at",
+       duration_min = excluded.duration_min, tags = excluded.tags, imported_at = excluded.imported_at,
+       domain_id = excluded.domain_id, track_id = excluded.track_id, track_name = excluded.track_name",
     params![
       bank.id,
       bank.title,
@@ -702,7 +782,10 @@ fn upsert_bank(tx: &Transaction, bank: &BankRecord) -> Result<(), String> {
       bank.level,
       bank.duration_min,
       json(&bank.tags),
-      bank.imported_at
+      bank.imported_at,
+      bank.domain_id,
+      bank.track_id,
+      bank.track_name
     ],
   )
   .map_err(|error| format!("写入题库失败: {error}"))?;
@@ -760,14 +843,15 @@ fn replace_all(connection: &mut Connection, snapshot: &Snapshot) -> Result<(), S
   }
   for wrong in &snapshot.wrong_book {
     tx.execute(
-      "INSERT INTO wrong_book(question_id, collection_id, wrong_count, last_wrong_at, last_selection)
-       VALUES(?1, ?2, ?3, ?4, ?5)",
+      "INSERT INTO wrong_book(question_id, collection_id, wrong_count, last_wrong_at, last_selection, fsrs)
+       VALUES(?1, ?2, ?3, ?4, ?5, ?6)",
       params![
         wrong.question_id,
         wrong.collection_id,
         wrong.wrong_count,
         wrong.last_wrong_at,
-        json(&wrong.last_selection)
+        json(&wrong.last_selection),
+        wrong.fsrs.as_ref().map(|value| value.to_string()).unwrap_or_default()
       ],
     )
     .map_err(|error| format!("写入错题失败: {error}"))?;
@@ -834,6 +918,11 @@ fn save_settings_tx(tx: &Transaction, settings: &SettingsRecord) -> Result<(), S
     tx,
     "showSampleBanks",
     if settings.show_sample_banks { "1" } else { "0" },
+  )?;
+  set_setting_tx(
+    tx,
+    "allowRemoteImages",
+    if settings.allow_remote_images { "1" } else { "0" },
   )
 }
 
@@ -999,17 +1088,19 @@ pub fn db_record_wrong(db: State<Db>, entry: WrongRecord) -> Result<(), String> 
   let connection = lock(&db)?;
   connection
     .execute(
-      "INSERT INTO wrong_book(question_id, collection_id, wrong_count, last_wrong_at, last_selection)
-       VALUES(?1, ?2, ?3, ?4, ?5)
+      "INSERT INTO wrong_book(question_id, collection_id, wrong_count, last_wrong_at, last_selection, fsrs)
+       VALUES(?1, ?2, ?3, ?4, ?5, ?6)
        ON CONFLICT(question_id) DO UPDATE SET
          collection_id = excluded.collection_id, wrong_count = excluded.wrong_count,
-         last_wrong_at = excluded.last_wrong_at, last_selection = excluded.last_selection",
+         last_wrong_at = excluded.last_wrong_at, last_selection = excluded.last_selection,
+         fsrs = excluded.fsrs",
       params![
         entry.question_id,
         entry.collection_id,
         entry.wrong_count,
         entry.last_wrong_at,
-        json(&entry.last_selection)
+        json(&entry.last_selection),
+        entry.fsrs.as_ref().map(|value| value.to_string()).unwrap_or_default()
       ],
     )
     .map(|_| ())
@@ -1182,6 +1273,7 @@ mod tests {
         font_scale: "large".into(),
         auto_next: true,
         show_sample_banks: false,
+        allow_remote_images: true,
       },
       favorites: vec!["bank-1-1".into()],
       wrong_book: vec![WrongRecord {
@@ -1190,6 +1282,7 @@ mod tests {
         wrong_count: 3,
         last_wrong_at: 42,
         last_selection: vec![1, 2],
+        fsrs: Some(serde_json::json!({"due": 1000, "state": 2})),
       }],
       history: vec![HistoryRecord {
         id: "h1".into(),
@@ -1221,6 +1314,9 @@ mod tests {
         duration_min: 30,
         tags: vec!["a".into()],
         imported_at: 7,
+        domain_id: Some("imported".into()),
+        track_id: Some("track-demo".into()),
+        track_name: Some("演示分组".into()),
         questions: vec![
           QuestionRecord {
             kind: "single".into(),
@@ -1366,6 +1462,9 @@ mod tests {
       duration_min: 10,
       tags: vec![],
       imported_at: 1,
+      domain_id: None,
+      track_id: None,
+      track_name: None,
       questions: vec![QuestionRecord {
         kind: "single".into(),
         stem: "s".into(),

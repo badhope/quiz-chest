@@ -1,9 +1,12 @@
 import { Link, useParams } from 'react-router-dom'
 import { goals, getGoal } from '../data/goals'
 import { getCollection } from '../data'
+import { useLibraryCollections } from '../lib/library'
+import type { Goal } from '../data/types'
 import { useAppStore } from '../store/useAppStore'
 import { Badge, EmptyState, ProgressBar } from '../components/ui/primitives'
 import { DomainIcon } from '../components/ui/icons'
+import { PageHeader } from '../components/ui/sections'
 import {
   ArrowLeft,
   ArrowRight,
@@ -15,18 +18,36 @@ import {
 } from '../components/ui/icons'
 
 export function GoalsPage() {
+  const imported = useLibraryCollections().filter((collection) => collection.origin === 'imported')
+  const allGoals: Goal[] = imported.length === 0 ? goals : [
+    ...goals,
+    {
+      id: 'my-banks',
+      title: '我的题库路线',
+      audience: '自己导入的内容',
+      outcome: `把 ${imported.length} 个导入题库按导入顺序走一遍，适合自建课程与面试题单。`,
+      durationWeeks: Math.max(1, Math.ceil(imported.length / 2)),
+      intensity: '轻量',
+      accent: '#7A5C2E',
+      icon: 'book',
+      keywords: ['我的题库', '导入'],
+      steps: imported.map((collection, index) => ({
+        collectionId: collection.id,
+        phase: `第 ${index + 1} 步`,
+        note: collection.description || `${collection.questions.length} 题，按自己的节奏推进。`,
+      })),
+    },
+  ]
   return (
     <div className="goals-page">
-      <header className="page-head">
-        <span className="eyebrow">目标方案</span>
-        <h1 className="page-title serif">先定目标，再谈刷多少题</h1>
-        <p className="page-sub">
-          把 {goals.length} 条备考路径拆成有序的题库步骤，按周推进，不必自己排计划。
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="目标方案"
+        title="先定目标，再谈刷多少题"
+        subtitle={`把 ${allGoals.length} 条备考路径拆成有序的题库步骤，按周推进，不必自己排计划。`}
+      />
 
       <div className="goal-grid">
-        {goals.map((goal) => (
+        {allGoals.map((goal) => (
           <Link
             key={goal.id}
             to={`/goal/${goal.id}`}
@@ -71,7 +92,24 @@ export function GoalsPage() {
 
 export function GoalPage() {
   const { goalId = '' } = useParams()
-  const goal = getGoal(goalId)
+  const imported = useLibraryCollections().filter((collection) => collection.origin === 'imported')
+  const myGoal: Goal | null = imported.length === 0 ? null : {
+    id: 'my-banks',
+    title: '我的题库路线',
+    audience: '自己导入的内容',
+    outcome: `把 ${imported.length} 个导入题库按导入顺序走一遍。`,
+    durationWeeks: Math.max(1, Math.ceil(imported.length / 2)),
+    intensity: '轻量',
+    accent: '#7A5C2E',
+    icon: 'book',
+    keywords: ['我的题库', '导入'],
+    steps: imported.map((collection, index) => ({
+      collectionId: collection.id,
+      phase: `第 ${index + 1} 步`,
+      note: collection.description || `${collection.questions.length} 题，按自己的节奏推进。`,
+    })),
+  }
+  const goal = goalId === 'my-banks' ? myGoal : getGoal(goalId)
   const history = useAppStore((state) => state.history)
 
   if (!goal) {

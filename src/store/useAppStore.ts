@@ -15,6 +15,7 @@ import { getRepository, setRepositoryForTest } from '../services/dataLayer'
 import type { Repository } from '../services/repository'
 import { resilientStorage } from '../lib/storage'
 import { BANK_SNAPSHOT_LIMIT } from '../services/snapshotPolicy'
+import { gradeReview } from '../lib/review'
 
 export type {
   AppSettings,
@@ -54,9 +55,12 @@ interface AppState {
   setFontScale: (scale: AppSettings['fontScale']) => void
   setAutoNext: (value: boolean) => void
   setShowSampleBanks: (value: boolean) => void
+  setAllowRemoteImages: (value: boolean) => void
   toggleFavorite: (questionId: string) => void
   clearFavorites: () => void
-  recordWrong: (entry: Omit<WrongEntry, 'wrongCount' | 'lastWrongAt'>) => void
+  recordWrong: (entry: Omit<WrongEntry, 'wrongCount' | 'lastWrongAt' | 'fsrs'>) => void
+  /** 复习答对：按 FSRS 延后到期时间，不直接把题移出错题本。 */
+  gradeCorrect: (questionId: string) => void
   removeWrong: (questionId: string) => void
   clearWrongBook: () => void
   addHistory: (entry: HistoryEntry) => void
@@ -194,6 +198,10 @@ export const useAppStore = create<AppState>()((set, get) => ({
     set((state) => ({ settings: { ...state.settings, showSampleBanks } }))
     persist((repo) => repo.saveSettings(get().settings))
   },
+  setAllowRemoteImages: (allowRemoteImages) => {
+    set((state) => ({ settings: { ...state.settings, allowRemoteImages } }))
+    persist((repo) => repo.saveSettings(get().settings))
+  },
 
   toggleFavorite: (questionId) => {
     const favorite = !get().favorites.includes(questionId)
@@ -211,16 +219,28 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   recordWrong: (entry) => {
     const existing = get().wrongBook[entry.questionId]
+    const now = Date.now()
     const next: WrongEntry = {
       ...entry,
       wrongCount: (existing?.wrongCount ?? 0) + 1,
-      lastWrongAt: Date.now(),
+      lastWrongAt: now,
+      // 答错按 Again 处理；旧数据没有 fsrs 时由 gradeReview 新建一张卡。
+      fsrs: gradeReview(existing?.fsrs, 'again', now),
     }
     set((state) => ({
       wrongBook: { ...state.wrongBook, [entry.questionId]: next },
     }))
     persist((repo) => repo.recordWrong(next))
   },
+  gradeCorrect: (questionId) => {
+    const existing = get().wrongBook[questionId]
+    if (!existing) return
+    const now = Date.now()
+    const next: WrongEntry = { ...existing, fsrs: gradeReview(existing.fsrs, 'good', now) }
+    set((state) => ({ wrongBook: { ...state.wrongBook, [questionId]: next } }))
+    persist((repo) => repo.recordWrong(next))
+  },
+
   removeWrong: (questionId) => {
     set((state) => {
       const next = { ...state.wrongBook }

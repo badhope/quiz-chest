@@ -27,7 +27,7 @@ function bank(id: string, stem = '原始题干'): ImportedBank {
 
 function reset(): void {
   useAppStore.setState({
-    settings: { theme: 'light', fontScale: 'normal', autoNext: false, showSampleBanks: true },
+    settings: { theme: 'light', fontScale: 'normal', autoNext: false, showSampleBanks: true, allowRemoteImages: false },
     favorites: [],
     wrongBook: {},
     history: [],

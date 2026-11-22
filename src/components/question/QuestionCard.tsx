@@ -2,6 +2,7 @@ import type { Question } from '../../data/types'
 import { isCorrect, LETTERS, typeLabel, type SessionMode } from '../../lib/quiz'
 import { ArrowLeft, ArrowRight, Bookmark, ChevronDown, CircleCheck, CircleX } from '../ui/icons'
 import { Badge } from '../ui/primitives'
+import { RemoteImage } from '../ui/RemoteImage'
 
 export interface QuestionCardProps {
   question: Question
@@ -64,7 +65,7 @@ export function QuestionCard({
       <h1 className="question-stem">{question.stem}</h1>
       {question.image ? (
         <figure className="question-figure">
-          <img src={question.image} alt="题干配图" loading="lazy" />
+          <RemoteImage src={question.image} alt="题干配图" />
         </figure>
       ) : null}
       <p className="question-hint">
@@ -101,11 +102,10 @@ export function QuestionCard({
               <span className="option-text">
                 {option}
                 {question.optionImages?.[optionIndex] ? (
-                  <img
+                  <RemoteImage
                     className="option-image"
                     src={question.optionImages[optionIndex]}
                     alt={`选项 ${LETTERS[optionIndex]} 配图`}
-                    loading="lazy"
                   />
                 ) : null}
               </span>

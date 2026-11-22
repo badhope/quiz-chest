@@ -51,7 +51,7 @@ export async function readStores(page: {
         theme: 'light',
         fontScale: 'normal',
         autoNext: false,
-        showSampleBanks: true,
+        showSampleBanks: true, allowRemoteImages: false,
       },
     }
   })

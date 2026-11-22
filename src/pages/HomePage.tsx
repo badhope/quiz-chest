@@ -142,7 +142,7 @@ export function HomePage() {
               {lastCollection ? lastCollection.title : '还没有开始，先做一组'}
             </h2>
           </div>
-          <Link to="/history" className="section-link">
+          <Link to="/records?tab=history" className="section-link">
             练习记录 <ChevronRight />
           </Link>
         </div>
@@ -194,7 +194,7 @@ export function HomePage() {
             </span>
             <ArrowRight />
           </Link>
-          <Link to="/wrong" className="continue-card">
+          <Link to="/review?tab=wrong" className="continue-card">
             <span className="continue-icon muted">
               <Target />
             </span>

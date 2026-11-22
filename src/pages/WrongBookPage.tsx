@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom'
 import { getQuestion } from '../data'
 import { useAppStore } from '../store/useAppStore'
 import { useLibraryCollections } from '../lib/library'
-import { formatRelativeTime, LETTERS, typeLabel } from '../lib/quiz'
+import { LETTERS, typeLabel } from '../lib/quiz'
+import { compareByDue, dueCount, dueLabel } from '../lib/review'
 import { Badge, EmptyState } from '../components/ui/primitives'
+import { PageHeader } from '../components/ui/sections'
 import { ArrowRight, Bookmark, Target, RotateCcw, Trash2 } from '../components/ui/icons'
 import { DomainIcon } from '../components/ui/icons'
 
@@ -16,7 +18,7 @@ export function WrongBookPage() {
   const toggleFavorite = useAppStore((state) => state.toggleFavorite)
   const library = useLibraryCollections()
   const [expanded, setExpanded] = useState<string | null>(null)
-  const [sort, setSort] = useState<'recent' | 'count'>('recent')
+  const [sort, setSort] = useState<'due' | 'recent' | 'count'>('due')
   const [collectionFilter, setCollectionFilter] = useState('all')
 
   const collectionOptions = useMemo(() => {
@@ -29,18 +31,16 @@ export function WrongBookPage() {
       (entry) => getQuestion(entry.questionId) &&
         (collectionFilter === 'all' || entry.collectionId === collectionFilter),
     )
-    return list.sort((a, b) =>
-      sort === 'count' ? b.wrongCount - a.wrongCount : b.lastWrongAt - a.lastWrongAt,
-    )
+    return list.sort((a, b) => {
+      if (sort === 'due') return compareByDue(a, b)
+      return sort === 'count' ? b.wrongCount - a.wrongCount : b.lastWrongAt - a.lastWrongAt
+    })
   }, [wrongBook, sort, collectionFilter])
 
   if (entries.length === 0) {
     return (
       <div className="wrong-page">
-        <header className="page-head">
-          <span className="eyebrow">错题本</span>
-          <h1 className="page-title serif">错题会自动出现在这里</h1>
-        </header>
+        <PageHeader eyebrow="错题本" title="错题会自动出现在这里" />
         <EmptyState
           icon={<Target />}
           title="还没有错题"
@@ -57,13 +57,12 @@ export function WrongBookPage() {
 
   return (
     <div className="wrong-page">
-      <header className="page-head page-head-row">
-        <div>
-          <span className="eyebrow">错题本</span>
-          <h1 className="page-title serif">{entries.length} 道题等待复习</h1>
-          <p className="page-sub">按错误次数或最近出错排序，逐题回顾解析，标记掌握后自动移出。</p>
-        </div>
-        <div className="page-head-actions">
+      <PageHeader
+        eyebrow="错题本"
+        title={`${entries.length} 道题等待复习`}
+        subtitle={`今天到期 ${dueCount(entries)} 道，按 FSRS 记忆曲线安排复习；标记掌握后自动移出。`}
+        actions={
+          <div className="page-head-actions">
           <label className="wrong-filter">
             <span>题库</span>
             <select
@@ -83,6 +82,9 @@ export function WrongBookPage() {
             </select>
           </label>
           <div className="segmented">
+            <button className={sort === 'due' ? 'active' : ''} onClick={() => setSort('due')}>
+              到期优先
+            </button>
             <button className={sort === 'recent' ? 'active' : ''} onClick={() => setSort('recent')}>
               最近出错
             </button>
@@ -98,8 +100,9 @@ export function WrongBookPage() {
           >
             <Trash2 /> 清空
           </button>
-        </div>
-      </header>
+          </div>
+        }
+      />
 
       {entries.length === 0 ? (
         <EmptyState
@@ -124,7 +127,9 @@ export function WrongBookPage() {
                 <span className="wrong-stem">{question.stem}</span>
                 <span className="wrong-meta">
                   <Badge tone="neutral">{typeLabel(question.type)}</Badge>
-                  <span className="wrong-time">{formatRelativeTime(entry.lastWrongAt)}</span>
+                  <Badge tone={dueLabel(entry) === '今天到期' ? 'gold' : 'neutral'}>
+                    {dueLabel(entry)}
+                  </Badge>
                 </span>
               </button>
               {isOpen ? (

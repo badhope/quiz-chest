@@ -25,10 +25,11 @@ async function importCsv(page: Page, csv = CSV, title = 'E2E 题库') {
   await expect(page.getByRole('heading', { name: /已导入 \d+ 题/ })).toBeVisible()
 }
 
-/** 从「我的题库」进入某个题库详情：匹配卡片链接而不是标题文本。 */
+/** 从题库总览搜索并进入某个题库详情。我的题库已并入总览，不再单独开页。 */
 async function openBank(page: Page, title = 'E2E 题库') {
-  await page.goto('/library')
-  await page.getByRole('link', { name: title, exact: true }).first().click()
+  await page.goto('/catalog')
+  await page.getByRole('textbox', { name: '搜索题库' }).fill(title)
+  await page.locator('.tree-search-row').filter({ hasText: title }).first().click()
   await expect(page.getByRole('heading', { name: title })).toBeVisible()
 }
 
@@ -42,9 +43,9 @@ test('导入题库后数据写入 IndexedDB，刷新后仍在', async ({ page })
   expect(before.banks.map((bank) => bank.title)).toContain('E2E 题库')
 
   await page.reload()
-  await page.goto('/library')
-  await expect(page.getByRole('heading', { name: '导入的题库都住在这里' })).toBeVisible()
-  await expect(page.getByText('E2E 题库').first()).toBeVisible()
+  await page.goto('/catalog')
+  await page.getByRole('textbox', { name: '搜索题库' }).fill('E2E 题库')
+  await expect(page.locator('.tree-search-row').filter({ hasText: 'E2E 题库' }).first()).toBeVisible()
 })
 
 test('难度题作答后错题进错题本，答对的题不进', async ({ page }) => {
@@ -175,10 +176,12 @@ test('删除题库会一并清掉它的错题与收藏', async ({ page }) => {
   await expect.poll(async () => (await readStores(page)).wrong.length).toBe(1)
   await expect.poll(async () => (await readStores(page)).favorites.length).toBe(1)
 
-  // 回题库列表删除
-  await page.goto('/library')
+  // 回题库详情删除：管理动作已从「我的题库」页并到详情页
+  await page.goto('/catalog')
+  page.getByRole('textbox', { name: '搜索题库' }).fill('E2E 题库')
+  await page.locator('.tree-search-row').filter({ hasText: 'E2E 题库' }).first().click()
   page.on('dialog', (dialog) => dialog.accept())
-  await page.getByRole('button', { name: '删除' }).first().click()
+  await page.getByRole('button', { name: /删除题库/ }).click()
 
   const after = await readStores(page)
   expect(after.banks.map((bank) => bank.title)).not.toContain('E2E 题库')
@@ -336,8 +339,9 @@ test('带配图的题目能导入并渲染图片', async ({ page }) => {
   expect(bank?.questions[0].image).toBe(png)
 
   // 进入练习页，图片元素必须真的渲染出来且加载成功
-  await page.goto('/library')
-  await page.getByRole('link', { name: '图解题库', exact: true }).first().click()
+  await page.goto('/catalog')
+  await page.getByRole('textbox', { name: '搜索题库' }).fill('图解题库')
+  await page.locator('.tree-search-row').filter({ hasText: '图解题库' }).first().click()
   await page.getByRole('link', { name: /顺序练习/ }).click()
   const img = page.locator('.question-figure img')
   await expect(img).toBeVisible()
