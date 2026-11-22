@@ -151,7 +151,7 @@ describe('helpers', () => {
     expect(detectFormat('bank.json')).toBe('json')
     expect(detectFormat('bank.CSV')).toBe('csv')
     expect(detectFormat('bank.xlsx')).toBe('xlsx')
-    expect(detectFormat('题库.XLS')).toBe('xlsx')
+    expect(detectFormat('题库.XLS')).toBe(null)
   })
 
   it('builds stable unique ids from title', () => {

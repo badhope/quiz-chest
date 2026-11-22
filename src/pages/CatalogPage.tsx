@@ -1,20 +1,24 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { useLibraryCollections } from '../lib/library'
+import { libraryTracksOfDomain, useLibraryCollections, useLibraryDomains } from '../lib/library'
 import { domains, tracksOfDomain } from '../data/taxonomy'
-import type { Domain, IconKey } from '../data/types'
+import type { Domain } from '../data/types'
 import { DomainIcon } from '../components/ui/icons'
 import { Badge, EmptyState } from '../components/ui/primitives'
-import { ChevronRight, Clock, Library, Search } from '../components/ui/icons'
+import { ChevronRight, Clock, Library, Search, Upload } from '../components/ui/icons'
 
 export function CatalogPage() {
   const library = useLibraryCollections()
+  const libraryDomains = useLibraryDomains()
   const [domainFilter, setDomainFilter] = useState<string>(domains[0].id)
   const [trackFilter, setTrackFilter] = useState<string>('all')
   const [query, setQuery] = useState('')
 
-  const domain = domains.find((item) => item.id === domainFilter) ?? domains[0]
-  const tracks = tracksOfDomain(domain.id)
+  const domain =
+    libraryDomains.find((item) => item.id === domainFilter) ??
+    domains.find((item) => item.id === domainFilter) ??
+    domains[0]
+  const tracks = libraryTracksOfDomain(library, domain.id)
   const keyword = query.trim().toLowerCase()
 
   const domainId = domain.id
@@ -50,15 +54,20 @@ export function CatalogPage() {
           <span className="eyebrow">题库总览</span>
           <h1 className="page-title serif">先选领域，再选学段，最后挑题库</h1>
         </div>
-        <label className="tree-search">
-          <Search />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="直接搜题库、考试或考点"
-            aria-label="搜索题库"
-          />
-        </label>
+        <div className="tree-head-actions">
+          <label className="tree-search">
+            <Search />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="直接搜题库、考试或考点"
+              aria-label="搜索题库"
+            />
+          </label>
+          <Link to="/import" className="button button-primary button-sm">
+            <Upload /> 导入题库
+          </Link>
+        </div>
       </header>
 
       {keyword ? (
@@ -109,14 +118,7 @@ export function CatalogPage() {
         <div className="tree-layout">
           <nav className="tree-nav" aria-label="领域与学段">
             <span className="tree-nav-label">领域</span>
-            {[...domains, ...(library.some((item) => item.domainId === 'imported')
-              ? [{
-                  id: 'imported' as Domain['id'],
-                  name: '我的题库',
-                  icon: 'book' as IconKey,
-                  accent: '#7A5C2E',
-                }]
-              : [])].map((item) => {
+            {libraryDomains.map((item) => {
               const active = item.id === domain.id
               const owned = library.filter((collection) => collection.domainId === item.id)
               return (
@@ -142,7 +144,7 @@ export function CatalogPage() {
                         全部
                         <span className="mono">{owned.length}</span>
                       </button>
-                      {tracksOfDomain(item.id).map((track) => (
+                      {libraryTracksOfDomain(library, item.id).map((track) => (
                         <button
                           key={track.id}
                           className={`tree-track${trackFilter === track.id ? ' active' : ''}`}
@@ -197,6 +199,7 @@ export function CatalogPage() {
               <div className="tree-collections">
                 {matched.map((collection) => {
                   const track = tracks.find((item) => item.id === collection.trackId)
+                  const trackLabel = collection.trackName ?? track?.name
                   return (
                     <Link
                       key={collection.id}
@@ -208,7 +211,7 @@ export function CatalogPage() {
                         <span className="tree-collection-icon">
                           <DomainIcon name={collection.icon} />
                         </span>
-                        {track ? <Badge tone="neutral">{track.name}</Badge> : null}
+                        {trackLabel ? <Badge tone="neutral">{trackLabel}</Badge> : null}
                         <Badge tone="neutral">{collection.level}</Badge>
                         {collection.origin === 'builtin' ? (
                           <Badge tone="gold" outline>

@@ -13,7 +13,7 @@ const steps = [
   ['version', 'node', ['scripts/sync-version.mjs', 'check']],
   ['typecheck', 'npx', ['tsc', '-b', '--pretty', 'false']],
   ['lint', 'npx', ['eslint', '.']],
-  ['test', 'npx', ['vitest', 'run']],
+  ['test+coverage', 'npx', ['vitest', 'run', '--coverage']],
   ['build', 'npm', ['run', 'build']],
   // E2E 显式排除在默认门禁外：它要起 dev server 并驱动真实浏览器，
   // 在 CI 之外会拖慢每次提交。用 `pnpm test:e2e` 单独跑。

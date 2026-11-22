@@ -12,12 +12,9 @@ import {
   Layers,
   LayoutGrid,
   Library,
-  ListChecks,
   Settings,
   Sparkles,
   Target,
-  TrendingUp,
-  Upload,
 } from '../ui/icons'
 
 interface SidebarProps {
@@ -28,7 +25,6 @@ interface SidebarProps {
 export function Sidebar({ open, onClose }: SidebarProps) {
   const wrongCount = useAppStore((state) => Object.keys(state.wrongBook).length)
   const favoriteCount = useAppStore((state) => state.favorites.length)
-  const bankCount = useAppStore((state) => state.banks.length)
   const daily = useAppStore((state) => state.daily)
   const streak = streakFromDates(Object.keys(daily))
   const brand = useBrand()
@@ -80,15 +76,6 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           题库总览
         </NavLink>
         <NavLink
-          to="/library"
-          className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
-          onClick={onClose}
-        >
-          <Upload />
-          我的题库
-          {bankCount > 0 ? <span className="nav-count">{bankCount}</span> : null}
-        </NavLink>
-        <NavLink
           to="/compose"
           className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
           onClick={onClose}
@@ -101,38 +88,23 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       <nav className="nav-group">
         <span className="nav-label">我的</span>
         <NavLink
-          to="/wrong"
-          className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
-          onClick={onClose}
-        >
-          <Target />
-          错题本
-          {wrongCount > 0 ? <span className="nav-count">{wrongCount}</span> : null}
-        </NavLink>
-        <NavLink
-          to="/favorites"
+          to="/review?tab=wrong"
           className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
           onClick={onClose}
         >
           <Bookmark />
-          我的收藏
-          {favoriteCount > 0 ? <span className="nav-count">{favoriteCount}</span> : null}
+          题夹
+          {wrongCount + favoriteCount > 0 ? (
+            <span className="nav-count">{wrongCount + favoriteCount}</span>
+          ) : null}
         </NavLink>
         <NavLink
-          to="/stats"
+          to="/records?tab=stats"
           className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
           onClick={onClose}
         >
           <BarChart3 />
-          学习统计
-        </NavLink>
-        <NavLink
-          to="/history"
-          className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
-          onClick={onClose}
-        >
-          <ListChecks />
-          练习记录
+          学习档案
         </NavLink>
       </nav>
 
@@ -170,16 +142,19 @@ export function MobileNav() {
       to: '/catalog',
       label: '题库',
       icon: LayoutGrid,
-      match: pathname.startsWith('/catalog') || pathname.startsWith('/domain'),
+      match: pathname.startsWith('/catalog') || pathname.startsWith('/domain') || pathname.startsWith('/import'),
     },
     {
-      to: '/library',
-      label: '我的',
-      icon: Upload,
-      match:
-        pathname.startsWith('/library') ||
-        pathname.startsWith('/import') ||
-        pathname.startsWith('/compose'),
+      to: '/review?tab=wrong',
+      label: '题夹',
+      icon: Target,
+      match: pathname.startsWith('/review') || pathname.startsWith('/wrong') || pathname.startsWith('/favorites'),
+    },
+    {
+      to: '/records?tab=stats',
+      label: '档案',
+      icon: BarChart3,
+      match: pathname.startsWith('/records') || pathname.startsWith('/stats') || pathname.startsWith('/history'),
     },
     {
       to: '/strategy/daily',
@@ -187,8 +162,12 @@ export function MobileNav() {
       icon: Sparkles,
       match: pathname.startsWith('/strategy') || pathname.startsWith('/practice-plan'),
     },
-    { to: '/wrong', label: '错题本', icon: Target, match: pathname.startsWith('/wrong') },
-    { to: '/stats', label: '统计', icon: TrendingUp, match: pathname.startsWith('/stats') },
+    {
+      to: '/settings',
+      label: '设置',
+      icon: Settings,
+      match: pathname.startsWith('/settings') || pathname.startsWith('/goals') || pathname.startsWith('/compose'),
+    },
   ]
   return (
     <nav className="mobile-nav" aria-label="移动端导航">

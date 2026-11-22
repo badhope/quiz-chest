@@ -13,17 +13,15 @@ import { Menu, Moon, Search, Sun, X } from '../ui/icons'
 /** 自带顶栏的沉浸式路由，不套侧边栏与全局顶栏。 */
 const FULLSCREEN_ROUTES = ['/practice/', '/practice-plan/', '/compose-run']
 
-const pageTitles: Record<string, string> = {  '/': '学习台',
+const pageTitles: Record<string, string> = {
+  '/': '学习台',
   '/catalog': '题库总览',
-  '/wrong': '错题本',
-  '/favorites': '我的收藏',
-  '/stats': '学习统计',
-  '/history': '练习记录',
-    '/settings': '设置',
-    '/library': '我的题库',
-    '/import': '导入题库',
-    '/compose': '自定义组卷',
-  }
+  '/review': '题夹',
+  '/records': '学习档案',
+  '/settings': '设置',
+  '/import': '导入题库',
+  '/compose': '自定义组卷',
+}
 
 function resolveTitle(pathname: string): string {
   if (pageTitles[pathname]) return pageTitles[pathname]

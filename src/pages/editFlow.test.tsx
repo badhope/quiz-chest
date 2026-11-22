@@ -26,7 +26,7 @@ function bank(id: string): ImportedBank {
 
 function reset(): void {
   useAppStore.setState({
-    settings: { theme: 'light', fontScale: 'normal', autoNext: false, showSampleBanks: true },
+    settings: { theme: 'light', fontScale: 'normal', autoNext: false, showSampleBanks: true, allowRemoteImages: false },
     favorites: [],
     wrongBook: {},
     history: [],

@@ -3,7 +3,6 @@ import { questionBank as builtinBank, registerImportedLookup } from '../data'
 import { collections as builtinCollections, domains, tracks } from '../data/taxonomy'
 import type { CollectionWithQuestions, Domain, IconKey, Question, Track } from '../data/types'
 import type { BankMeta, QuestionBankOrigin } from './bankRegistry'
-import { onBanksChange } from './bankRegistry'
 import { useAppStore } from '../store/useAppStore'
 import type { ImportedBank } from '../store/useAppStore'
 import { dateKey } from './quiz'
@@ -13,6 +12,8 @@ export interface LibraryCollection extends CollectionWithQuestions {
   origin: QuestionBankOrigin
   importedAt: number
   accent: string
+  /** 导入时指定的分组名；内置题库没有，按轨道标题推导。 */
+  trackName?: string
 }
 
 export interface LibraryDomain extends Domain {
@@ -38,8 +39,8 @@ function toLibraryCollection(bank: ImportedBank): LibraryCollection {
   )
   return {
     id: bank.id,
-    domainId: 'imported',
-    trackId: `imported-${bank.id}`,
+    domainId: (bank.domainId as Domain['id']) ?? 'imported',
+    trackId: bank.trackId ?? `imported-${bank.id}`,
     title: bank.title,
     subtitle: bank.subtitle,
     description: bank.description,
@@ -54,6 +55,7 @@ function toLibraryCollection(bank: ImportedBank): LibraryCollection {
     origin: 'imported',
     importedAt: bank.importedAt,
     accent: bank.accent,
+    trackName: bank.trackName,
   }
 }
 
@@ -73,24 +75,27 @@ function snapshot(): LibraryCollection[] {
 }
 
 let cache: { key: string; value: LibraryCollection[] } | null = null
-let listenerVersion = 0
 
 function cacheKey(): string {
   const state = useAppStore.getState()
-  return `${state.banksVersion}|${state.settings.showSampleBanks ? 1 : 0}|${listenerVersion}`
+  return `${state.banksVersion}|${state.settings.showSampleBanks ? 1 : 0}`
 }
 
+/**
+ * 只订阅真正会改变题库快照的两个字段。
+ *
+ * 之前订阅整个 store：每 400ms 落一次未完成会话、每次切页都会唤醒，
+ * 然后把几百道题重新构造成 Question 对象，纯属白烧 CPU。现在版本号没变
+ * 就不通知 React，快照对象因此保持引用稳定。
+ */
 function subscribe(listener: () => void): () => void {
-  const wrapped = () => {
-    listenerVersion += 1
+  let key = cacheKey()
+  return useAppStore.subscribe(() => {
+    const next = cacheKey()
+    if (next === key) return
+    key = next
     listener()
-  }
-  const offRegistry = onBanksChange(wrapped)
-  const offStore = useAppStore.subscribe(wrapped)
-  return () => {
-    offRegistry()
-    offStore()
-  }
+  })
 }
 
 export function useLibraryCollections(): LibraryCollection[] {
@@ -104,14 +109,18 @@ export function useLibraryCollections(): LibraryCollection[] {
 }
 
 export function getLibraryCollections(): LibraryCollection[] {
-  return snapshot()
+  const key = cacheKey()
+  if (cache?.key !== key) cache = { key, value: snapshot() }
+  return cache.value
 }
 
 export function useLibraryDomains(): LibraryDomain[] {
   const collections = useLibraryCollections()
   const used = new Set(collections.map((collection) => collection.domainId))
   const result: LibraryDomain[] = []
-  if (used.has('imported')) result.push(importedDomain)
+  if (collections.some((collection) => collection.origin === 'imported' && !collection.trackName && collection.domainId === 'imported')) {
+    result.push(importedDomain)
+  }
   for (const domain of domains) {
     if (used.has(domain.id)) result.push({ ...domain, origin: 'builtin' })
   }
@@ -152,7 +161,7 @@ export function libraryTracksOfDomain(tracks: LibraryCollection[], domainId: str
     result.push({
       id: collection.trackId,
       domainId,
-      name: collection.title,
+      name: collection.trackName ?? collection.title,
       short: collection.subtitle.slice(0, 4),
       description: collection.description,
     })

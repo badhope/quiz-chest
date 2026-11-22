@@ -1,3 +1,4 @@
+import * as v from 'valibot'
 import type { AppSettings, DailyStat, HistoryEntry, ImportedBank, PaperRecord, WrongEntry } from '../store/useAppStore'
 import { dateStamp } from './quiz'
 
@@ -15,7 +16,7 @@ import { dateStamp } from './quiz'
  */
 
 export const BACKUP_FORMAT = 'quizchest-backup'
-export const BACKUP_VERSION = 1
+export const BACKUP_VERSION = 2
 
 export interface BackupPayload {
   format: typeof BACKUP_FORMAT
@@ -85,9 +86,132 @@ export function backupFileName(now: Date = new Date()): string {
 /**
  * 解析并校验备份包。
  *
- * 采取「先验证结构、再放行」的策略：任何一个顶层集合类型不对都直接拒绝，
- * 而不是部分导入——半份数据比没有数据更难排查。
+ * 结构校验交给 valibot：字段类型、嵌套题库、题目、错题、记录一次定义，
+ * 备份与未来的导入接口共用同一套 schema。之前只检查顶层数组，`banks:[null]`
+ * 能过关并在渲染时崩掉；现在坏一份就整包拒绝，绝不做「半份导入」。
  */
+const QuestionSchema = v.object({
+  type: v.picklist(['single', 'multiple', 'judge']),
+  stem: v.string(),
+  options: v.array(v.string()),
+  answer: v.array(v.number()),
+  explanation: v.string(),
+  difficulty: v.picklist([1, 2, 3]),
+  tags: v.array(v.string()),
+  image: v.optional(v.string()),
+  optionImages: v.optional(v.array(v.string())),
+})
+
+const BankSchema = v.object({
+  id: v.string(),
+  title: v.string(),
+  subtitle: v.string(),
+  description: v.string(),
+  exam: v.string(),
+  icon: v.string(),
+  accent: v.string(),
+  level: v.picklist(['入门', '进阶', '挑战']),
+  durationMin: v.number(),
+  tags: v.array(v.string()),
+  importedAt: v.number(),
+  domainId: v.optional(v.picklist(['k12', 'university', 'career', 'language', 'coding', 'public', 'general', 'imported'])),
+  trackId: v.optional(v.string()),
+  trackName: v.optional(v.string()),
+  questions: v.array(QuestionSchema),
+})
+
+const ReviewSchema = v.object({
+  due: v.number(),
+  stability: v.number(),
+  difficulty: v.number(),
+  scheduledDays: v.number(),
+  learningSteps: v.number(),
+  reps: v.number(),
+  lapses: v.number(),
+  state: v.picklist([0, 1, 2, 3]),
+  lastReview: v.nullable(v.number()),
+})
+
+const WrongSchema = v.object({
+  questionId: v.string(),
+  collectionId: v.string(),
+  wrongCount: v.number(),
+  lastWrongAt: v.number(),
+  lastSelection: v.array(v.number()),
+  fsrs: v.optional(ReviewSchema),
+})
+
+const HistorySchema = v.object({
+  id: v.string(),
+  mode: v.picklist(['practice', 'exam', 'review']),
+  collectionId: v.string(),
+  collectionTitle: v.string(),
+  domainId: v.optional(v.string()),
+  answered: v.number(),
+  correct: v.number(),
+  wrong: v.number(),
+  skipped: v.number(),
+  total: v.number(),
+  accuracy: v.number(),
+  durationSec: v.number(),
+  finishedAt: v.number(),
+  dateKey: v.string(),
+})
+
+const DailySchema = v.object({ date: v.string(), answered: v.number(), correct: v.number() })
+
+const PaperSchema = v.object({
+  id: v.string(),
+  title: v.string(),
+  collectionIds: v.array(v.string()),
+  count: v.number(),
+  durationMin: v.number(),
+  order: v.picklist(['random', 'sequence']),
+  createdAt: v.number(),
+})
+
+const SettingsSchema = v.object({
+  theme: v.picklist(['light', 'dark']),
+  fontScale: v.picklist(['normal', 'large']),
+  autoNext: v.boolean(),
+  showSampleBanks: v.boolean(),
+  allowRemoteImages: v.optional(v.boolean(), false),
+})
+
+const PayloadSchema = v.object({
+  settings: SettingsSchema,
+  favorites: v.array(v.string()),
+  wrongBook: v.record(v.string(), WrongSchema),
+  history: v.array(HistorySchema),
+  daily: v.record(v.string(), DailySchema),
+  banks: v.array(BankSchema),
+  papers: v.array(PaperSchema),
+})
+
+const BackupSchema = v.object({
+  format: v.literal(BACKUP_FORMAT),
+  version: v.number(),
+  exportedAt: v.string(),
+  appVersion: v.string(),
+  data: PayloadSchema,
+})
+
+function labelForPath(path: readonly { key?: unknown }[]): string {
+  const keys = path.map((item) => String(item.key ?? ''))
+  if (keys[0] === 'data') keys.shift()
+  const head = keys[0]
+  const labels: Record<string, string> = {
+    settings: '备份中的设置损坏',
+    favorites: '备份中的收藏数据损坏',
+    wrongBook: '备份中的错题本损坏',
+    history: '备份中的练习记录损坏',
+    daily: '备份中的每日统计损坏',
+    banks: '备份中的题库数据损坏',
+    papers: '备份中的组卷历史损坏',
+  }
+  return (head && labels[head]) || '备份文件格式不正确'
+}
+
 export function parseBackup(raw: string): BackupParseResult {
   let data: unknown
   try {
@@ -95,12 +219,9 @@ export function parseBackup(raw: string): BackupParseResult {
   } catch {
     return { payload: null, error: '文件不是合法的 JSON' }
   }
-  if (!isObject(data)) {
-    return { payload: null, error: '备份文件格式不正确' }
-  }
-  if (data.format !== BACKUP_FORMAT) {
-    return { payload: null, error: '不是 QuizChest 备份文件' }
-  }
+  if (!isObject(data)) return { payload: null, error: '备份文件格式不正确' }
+  if (data.format !== BACKUP_FORMAT) return { payload: null, error: '不是 QuizChest 备份文件' }
+
   const version = typeof data.version === 'number' ? data.version : 0
   if (version > BACKUP_VERSION) {
     return {
@@ -108,33 +229,12 @@ export function parseBackup(raw: string): BackupParseResult {
       error: `备份版本 ${version} 高于当前支持的 ${BACKUP_VERSION}，请升级应用后再恢复`,
     }
   }
-  const payload = data.data
-  if (!isObject(payload)) {
-    return { payload: null, error: '备份内容为空' }
-  }
-  if (!Array.isArray(payload.favorites)) {
-    return { payload: null, error: '备份中的收藏数据损坏' }
-  }
-  if (!Array.isArray(payload.history)) {
-    return { payload: null, error: '备份中的练习记录损坏' }
-  }
-  if (!Array.isArray(payload.banks)) {
-    return { payload: null, error: '备份中的题库数据损坏' }
-  }
-  if (!Array.isArray(payload.papers)) {
-    return { payload: null, error: '备份中的组卷历史损坏' }
-  }
-  if (!isObject(payload.wrongBook)) {
-    return { payload: null, error: '备份中的错题本损坏' }
-  }
-  if (!isObject(payload.daily)) {
-    return { payload: null, error: '备份中的每日统计损坏' }
-  }
-  if (!isObject(payload.settings)) {
-    return { payload: null, error: '备份中的设置损坏' }
-  }
 
-  return { payload: data as unknown as BackupPayload, error: '' }
+  const result = v.safeParse(BackupSchema, data)
+  if (!result.success) {
+    return { payload: null, error: labelForPath(result.issues[0]?.path ?? []) }
+  }
+  return { payload: result.output as unknown as BackupPayload, error: '' }
 }
 
 /** 下载备份文件。与 CSV 导出一致，走 Blob + 临时链接。 */

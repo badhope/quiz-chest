@@ -50,10 +50,15 @@ git add -A
 git commit -m "chore: release v1.1.0"
 git tag -a v1.1.0 -m "v1.1.0"
 
-# 5. 推送到所有远程
-git push gitee-badhope main --tags
-git push gitcode-badhope main --tags
+# 5. 推送到唯一远程（项目只保留 GitHub；其他平台镜像已下线）
+git push origin main --tags
 ```
+
+## 三·五、构建产物
+
+- **Web / PWA**：`pnpm build`，产物在 `dist/`。
+- **桌面**：`pnpm desktop:build`；Tauri `bundle.targets` 为 `all`，在哪个系统构建就产出该系统可用的安装包（Windows nsis/msi、macOS app/dmg、Linux deb/AppImage）。
+- **Android**：`pnpm build:apk` 生成 debug APK 供验收。Release APK 需要先在 `android/keystore.properties` 填签名信息（模板见 `android/keystore.properties.example`）；该文件与 `*.jks` 已被 `.gitignore` 排除，禁止提交。
 
 ## 四、版本号档位约定
 

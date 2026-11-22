@@ -171,7 +171,7 @@ export function ResultPage() {
         <Link to={backTo} className="button button-ghost">
           返回
         </Link>
-        <Link to="/wrong" className="button button-ghost">
+        <Link to="/review?tab=wrong" className="button button-ghost">
           <RotateCcw /> 错题本
         </Link>
         <Link to={backTo} className="button button-primary">
@@ -185,7 +185,7 @@ export function ResultPage() {
             <span className="eyebrow">错题回顾</span>
             <h2 className="section-title serif">把错的地方看明白</h2>
           </div>
-          <Link to="/wrong" className="section-link">
+          <Link to="/review?tab=wrong" className="section-link">
             打开错题本 <ArrowRight />
           </Link>
         </div>

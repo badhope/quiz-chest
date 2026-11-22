@@ -68,7 +68,7 @@ export function usePracticeSession(options: PracticeSessionOptions): PracticeSes
   const navigate = useNavigate()
   const wrongBook = useAppStore((state) => state.wrongBook)
   const recordWrong = useAppStore((state) => state.recordWrong)
-  const removeWrong = useAppStore((state) => state.removeWrong)
+  const gradeCorrect = useAppStore((state) => state.gradeCorrect)
   const addHistory = useAppStore((state) => state.addHistory)
   const setLastCollection = useAppStore((state) => state.setLastCollection)
   const savePendingSession = useAppStore((state) => state.savePendingSession)
@@ -179,9 +179,11 @@ export function usePracticeSession(options: PracticeSessionOptions): PracticeSes
         lastSelection: picked,
       })
     } else if (mode === 'review') {
-      removeWrong(current.id)
+      // FSRS：答对只是把下次到期时间推后，不把卡片移出错题本。
+      // 用户仍可在错题页手动「标记已掌握」。
+      gradeCorrect(current.id)
     }
-  }, [answers, current, mode, recordWrong, removeWrong])
+  }, [answers, current, mode, recordWrong, gradeCorrect])
 
   const goNext = useCallback(() => {
     setIndex((value) => (value < sessionQuestions.length - 1 ? value + 1 : value))

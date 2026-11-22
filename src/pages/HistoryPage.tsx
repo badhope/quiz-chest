@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useAppStore } from '../store/useAppStore'
 import { formatDuration, percent } from '../lib/quiz'
 import { EmptyState } from '../components/ui/primitives'
+import { PageHeader } from '../components/ui/sections'
 import { ArrowRight, Clock, ListChecks, Target, Trash2, Trophy } from '../components/ui/icons'
 
 export function HistoryPage() {
@@ -11,10 +12,7 @@ export function HistoryPage() {
   if (history.length === 0) {
     return (
       <div className="history-page">
-        <header className="page-head">
-          <span className="eyebrow">练习记录</span>
-          <h1 className="page-title serif">每次练习都会留痕</h1>
-        </header>
+        <PageHeader eyebrow="练习记录" title="每次练习都会留痕" />
         <EmptyState
           icon={<ListChecks />}
           title="还没有练习记录"
@@ -37,21 +35,21 @@ export function HistoryPage() {
 
   return (
     <div className="history-page">
-      <header className="page-head page-head-row">
-        <div>
-          <span className="eyebrow">练习记录</span>
-          <h1 className="page-title serif">{history.length} 次练习，最高 {best}%</h1>
-          <p className="page-sub">平均正确率 {average}%，记录保留在本机，最多 100 条。</p>
-        </div>
-        <button
-          className="button button-ghost button-sm"
-          onClick={() => {
-            if (window.confirm('清空练习记录与每日统计？错题与收藏不受影响。')) clearHistory()
-          }}
-        >
-          <Trash2 /> 清空记录
-        </button>
-      </header>
+      <PageHeader
+        eyebrow="练习记录"
+        title={`${history.length} 次练习，最高 ${best}%`}
+        subtitle={`平均正确率 ${average}%，记录保留在本机，最多 100 条。`}
+        actions={
+          <button
+            className="button button-ghost button-sm"
+            onClick={() => {
+              if (window.confirm('清空练习记录与每日统计？错题与收藏不受影响。')) clearHistory()
+            }}
+          >
+            <Trash2 /> 清空记录
+          </button>
+        }
+      />
 
       <div className="history-list">
         {history.map((entry) => (

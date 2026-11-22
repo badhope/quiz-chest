@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { domains } from '../data/taxonomy'
 import { useAppStore, type ImportedBank } from '../store/useAppStore'
 import {
   detectFormat,
@@ -45,6 +46,8 @@ export function ImportPage() {
   const [error, setError] = useState('')
   const [savedId, setSavedId] = useState('')
   const [overwriteBankId, setOverwriteBankId] = useState<string | null>(null)
+  const [domainId, setDomainId] = useState('')
+  const [trackName, setTrackName] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
   const runParse = (text: string, name: string) => {
@@ -158,6 +161,9 @@ export function ImportPage() {
       durationMin: result.bank.durationMin,
       tags: result.bank.tags,
       importedAt: now,
+      domainId: domainId ? (domainId as ImportedBank['domainId']) : undefined,
+      trackId: trackName.trim() ? `track-${normalizeId(trackName.trim(), 0)}` : undefined,
+      trackName: trackName.trim() || undefined,
       questions: result.bank.questions,
     }
     addBank(bank)
@@ -181,7 +187,7 @@ export function ImportPage() {
               <Link to={`/collection/${savedId}`} className="button button-primary">
                 打开这个题库 <ArrowRight />
               </Link>
-              <Link to="/library" className="button button-ghost">
+              <Link to="/catalog" className="button button-ghost">
                 <Library /> 我的题库
               </Link>
             </div>
@@ -218,6 +224,33 @@ export function ImportPage() {
             <strong>
               <Badge tone="accent">{result.bank.exam}</Badge> <Badge tone="neutral">{result.bank.level}</Badge>
             </strong>
+          </div>
+        </section>
+
+        <section className="import-group">
+          <h2 className="serif">归档到哪里</h2>
+          <p>不选领域就放进「我的题库」；填分组名后，同名的导入题库会并到同一条轨道。</p>
+          <div className="import-group-fields">
+            <label>
+              <span>领域</span>
+              <select value={domainId} onChange={(event) => setDomainId(event.target.value)}>
+                <option value="">我的题库（未分组）</option>
+                {domains.map((domain) => (
+                  <option key={domain.id} value={domain.id}>
+                    {domain.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>分组名</span>
+              <input
+                value={trackName}
+                onChange={(event) => setTrackName(event.target.value)}
+                placeholder="例如：期中复习、面试八股"
+                maxLength={20}
+              />
+            </label>
           </div>
         </section>
 
@@ -312,7 +345,7 @@ export function ImportPage() {
         <input
           ref={fileRef}
           type="file"
-          accept=".json,.csv,.xlsx,.xls,.tiyu.json,text/csv,application/json"
+          accept=".json,.csv,.xlsx,.tiyu.json,text/csv,application/json"
           className="visually-hidden"
           onChange={(event) => onFile(event.target.files?.[0] ?? undefined)}
         />
