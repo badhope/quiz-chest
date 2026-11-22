@@ -209,6 +209,8 @@ describe('IndexedDB 仓储', () => {
     await repo.setFavorite('kept-1', true)
     await repo.recordWrong({ ...wrong, questionId: 'gone-1', collectionId: 'gone' })
     await repo.recordWrong({ ...wrong, questionId: 'kept-1', collectionId: 'kept' })
+    await repo.addBankSnapshot({ id: 'gone:r1', bankId: 'gone', savedAt: 1, revision: 1, bank: bank('gone', 2) })
+    await repo.addBankSnapshot({ id: 'kept:r1', bankId: 'kept', savedAt: 1, revision: 1, bank: bank('kept', 2) })
 
     await repo.deleteBank('gone')
 
@@ -216,6 +218,7 @@ describe('IndexedDB 仓储', () => {
     expect(snapshot.banks.map((item) => item.id)).toEqual(['kept'])
     expect(snapshot.favorites).toEqual(['kept-1'])
     expect(Object.keys(snapshot.wrongBook)).toEqual(['kept-1'])
+    expect(snapshot.bankSnapshots.map((item) => item.id)).toEqual(['kept:r1'])
   })
 
   it('resetProgress 清空学习数据但保留题库', async () => {
@@ -264,11 +267,14 @@ describe('内存仓储', () => {
     await repo.setFavorite('kept-1', true)
     await repo.recordWrong({ ...wrong, questionId: 'gone-1', collectionId: 'gone' })
     await repo.recordWrong({ ...wrong, questionId: 'kept-1', collectionId: 'kept' })
+    await repo.addBankSnapshot({ id: 'gone:r1', bankId: 'gone', savedAt: 1, revision: 1, bank: bank('gone', 2) })
+    await repo.addBankSnapshot({ id: 'kept:r1', bankId: 'kept', savedAt: 1, revision: 1, bank: bank('kept', 2) })
     await repo.deleteBank('gone')
     const snapshot = await repo.load()
     expect(snapshot.banks.map((item) => item.id)).toEqual(['kept'])
     expect(snapshot.favorites).toEqual(['kept-1'])
     expect(Object.keys(snapshot.wrongBook)).toEqual(['kept-1'])
+    expect(snapshot.bankSnapshots.map((item) => item.id)).toEqual(['kept:r1'])
     await repo.close()
   })
 

@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { getCollection, getQuestion } from '../data'
 import { useAppStore } from '../store/useAppStore'
 import { formatRelativeTime } from '../lib/datetime'
+import { AsyncButton } from '../components/ui/AsyncButton'
 import { Badge, EmptyState } from '../components/ui/primitives'
 import { PageHeader } from '../components/ui/sections'
 import { ArrowRight, Bookmark, Clock, Target, Trash2 } from '../components/ui/icons'
@@ -42,14 +43,13 @@ export function FavoritesPage() {
         title={`${questions.length} 道题已收藏`}
         subtitle="按收藏顺序排列，可随时取消收藏或回到所属题库练习。"
         actions={
-          <button
-            className="button button-ghost button-sm"
-            onClick={() => {
-              if (window.confirm('清空全部收藏？该操作不可撤销。')) clearFavorites()
-            }}
+          <AsyncButton
+            confirmText="清空全部收藏？该操作不可撤销。"
+            busyLabel="清空中…"
+            action={() => clearFavorites()}
           >
             <Trash2 /> 清空收藏
-          </button>
+          </AsyncButton>
         }
       />
 

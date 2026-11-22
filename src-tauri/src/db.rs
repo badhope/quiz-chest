@@ -1221,6 +1221,9 @@ fn delete_bank(connection: &mut Connection, bank_id: &str) -> Result<(), String>
     params![bank_id],
   )
   .map_err(|error| format!("清理收藏失败: {error}"))?;
+  // 题库的历史版本没有单独保留的意义，跟着题库一起删，避免孤儿快照占空间。
+  tx.execute("DELETE FROM bank_snapshots WHERE bank_id = ?1", params![bank_id])
+    .map_err(|error| format!("清理题库快照失败: {error}"))?;
   tx.commit().map_err(|error| format!("提交失败: {error}"))
 }
 
@@ -1456,6 +1459,33 @@ mod tests {
       .query_row("SELECT COUNT(*) FROM questions", [], |row| row.get(0))
       .unwrap();
     assert_eq!(remaining, 0);
+  }
+
+  #[test]
+  fn deleting_bank_also_clears_its_snapshots() {
+    let mut connection = memory();
+    let tx = connection.transaction().unwrap();
+    upsert_bank(&tx, &sample_bank("gone")).unwrap();
+    upsert_bank(&tx, &sample_bank("kept")).unwrap();
+    tx.execute(
+      "INSERT INTO bank_snapshots(id, bank_id, saved_at, revision, bank)
+       VALUES('gone:r1', 'gone', 0, 1, '{}'), ('kept:r1', 'kept', 0, 1, '{}')",
+      [],
+    )
+    .unwrap();
+    tx.commit().unwrap();
+
+    delete_bank(&mut connection, "gone").unwrap();
+
+    let ids: Vec<String> = {
+      let mut statement = connection.prepare("SELECT id FROM bank_snapshots").unwrap();
+      statement
+        .query_map([], |row| row.get::<_, String>(0))
+        .unwrap()
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap()
+    };
+    assert_eq!(ids, vec!["kept:r1".to_string()]);
   }
 
   #[test]
