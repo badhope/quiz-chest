@@ -1314,6 +1314,9 @@ mod tests {
         duration_min: 30,
         tags: vec!["a".into()],
         imported_at: 7,
+        domain_id: Some("imported".into()),
+        track_id: Some("track-demo".into()),
+        track_name: Some("演示分组".into()),
         questions: vec![
           QuestionRecord {
             kind: "single".into(),
