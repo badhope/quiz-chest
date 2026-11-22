@@ -152,6 +152,20 @@ describe('parseExportPackage', () => {
     expect(result.error).toContain('解析失败')
   })
 
+  it('rejects a package whose question fields are structurally broken', () => {
+    const raw = JSON.stringify({
+      format: 'tiyu-bank',
+      version: 2,
+      bank: {
+        title: '坏包',
+        questions: [{ type: 'single', stem: '只有题干' }],
+      },
+    })
+    const result = parseExportPackage(raw)
+    expect(result.bank).toBeNull()
+    expect(result.error).toContain('字段不完整')
+  })
+
   it('rejects packages with empty questions', () => {
     const raw = JSON.stringify({ format: 'tiyu-bank', version: 1, bank: { title: 'x', questions: [] } })
     const result = parseExportPackage(raw)
