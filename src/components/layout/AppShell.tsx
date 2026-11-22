@@ -87,6 +87,7 @@ export function AppShell() {
   if (FULLSCREEN_ROUTES.some((prefix) => location.pathname.startsWith(prefix))) {
     return (
       <>
+        <StorageBanner />
         <ErrorBoundary>
           <Outlet />
         </ErrorBoundary>

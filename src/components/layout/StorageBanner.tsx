@@ -1,4 +1,6 @@
 import { useStorageHealth } from '../../hooks/useStorageHealth'
+import { useAppStore } from '../../store/useAppStore'
+import { useDataLayer } from '../../hooks/useDataLayer'
 import { CircleAlert } from '../ui/icons'
 
 /**
@@ -9,12 +11,23 @@ import { CircleAlert } from '../ui/icons'
  */
 export function StorageBanner() {
   const { health, message } = useStorageHealth()
-  if (health === 'ok' || !message) return null
+  const dataLayer = useDataLayer()
+  const persistenceError = useAppStore((state) => state.persistenceError)
+
+  const detail =
+    health !== 'ok'
+      ? message
+      : dataLayer.degraded
+        ? dataLayer.message ?? '当前使用内存数据层，本次改动不会被保存。'
+        : persistenceError
+          ? `最近一次保存失败：${persistenceError}。这项改动可能只在本页生效，请重试或先导出备份。`
+          : null
+  if (!detail) return null
 
   return (
     <div className="storage-banner" role="status" aria-live="polite">
       <CircleAlert className="storage-banner-icon" />
-      <p>{message}</p>
+      <p>{detail}</p>
     </div>
   )
 }
