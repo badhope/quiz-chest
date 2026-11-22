@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { libraryTracksOfDomain, useLibraryCollections, useLibraryDomains } from '../lib/library'
 import { domains, tracksOfDomain } from '../data/taxonomy'
@@ -19,34 +19,48 @@ export function CatalogPage() {
     libraryDomains.find((item) => item.id === domainFilter) ??
     domains.find((item) => item.id === domainFilter) ??
     domains[0]
-  const tracks = libraryTracksOfDomain(library, domain.id)
+  const domainId = domain.id
+  const tracks = useMemo(() => libraryTracksOfDomain(library, domainId), [library, domainId])
   const keyword = query.trim().toLowerCase()
 
-  const domainId = domain.id
+  const matched = useMemo(
+    () =>
+      library.filter((collection) => {
+        if (collection.domainId !== domainId) return false
+        if (trackFilter !== 'all' && collection.trackId !== trackFilter) return false
+        if (!keyword) return true
+        return [collection.title, collection.subtitle, collection.exam, ...collection.tags]
+          .join(' ')
+          .toLowerCase()
+          .includes(keyword)
+      }),
+    [library, domainId, trackFilter, keyword],
+  )
 
-  const matched = library.filter((collection) => {
-    if (collection.domainId !== domainId) return false
-    if (trackFilter !== 'all' && collection.trackId !== trackFilter) return false
-    if (!keyword) return true
-    return [collection.title, collection.subtitle, collection.exam, ...collection.tags]
-      .join(' ')
-      .toLowerCase()
-      .includes(keyword)
-  })
+  const searchHits = useMemo(
+    () =>
+      !keyword
+        ? []
+        : library
+            .filter((collection) =>
+              [collection.title, collection.subtitle, collection.exam, ...collection.tags]
+                .join(' ')
+                .toLowerCase()
+                .includes(keyword),
+            )
+            .slice(0, 8),
+    [library, keyword],
+  )
 
-  const searchHits = !keyword
-    ? []
-    : library
-        .filter((collection) =>
-          [collection.title, collection.subtitle, collection.exam, ...collection.tags]
-            .join(' ')
-            .toLowerCase()
-            .includes(keyword),
-        )
-        .slice(0, 8)
-
-  const countOfTrack = (trackId: string) =>
-    library.filter((item) => item.domainId === domain.id && item.trackId === trackId).length
+  const trackCounts = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const item of library) {
+      if (item.domainId !== domainId) continue
+      counts.set(item.trackId, (counts.get(item.trackId) ?? 0) + 1)
+    }
+    return counts
+  }, [library, domainId])
+  const countOfTrack = (trackId: string) => trackCounts.get(trackId) ?? 0
 
   return (
     <div className="tree-page">
@@ -260,6 +274,14 @@ export function DomainPage() {
         }
       : null
   const domain = importedDomain ?? domains.find((item) => item.id === domainId)
+  const owned = useMemo(
+    () => library.filter((collection) => collection.domainId === domain?.id),
+    [library, domain?.id],
+  )
+  const count = useMemo(
+    () => owned.reduce((sum, item) => sum + item.questions.length, 0),
+    [owned],
+  )
   if (!domain) {
     return (
       <MissingPage
@@ -272,11 +294,9 @@ export function DomainPage() {
     )
   }
 
-  const owned = library.filter((collection) => collection.domainId === domain.id)
   const tracks = domain.id === 'imported'
     ? [{ id: 'imported', domainId: 'imported' as const, name: '全部导入', short: '导入', description: '所有导入的题库' }]
     : tracksOfDomain(domain.id)
-  const count = owned.reduce((sum, item) => sum + item.questions.length, 0)
 
   return (
     <div
