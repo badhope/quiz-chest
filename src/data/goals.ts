@@ -1,0 +1,107 @@
+import type { Goal } from './types'
+
+export const goals: Goal[] = [
+  {
+    id: 'kaoyan-math',
+    title: '考研数学一',
+    audience: '大三大四备考',
+    outcome: '高数、线代、概率三科基础题型成体系',
+    durationWeeks: 12,
+    intensity: '标准',
+    accent: '#315B7D',
+    icon: 'sigma',
+    keywords: ['考研', '数学', '高数', '线代', '概率'],
+    steps: [
+      { collectionId: 'calculus', phase: '第 1-5 周', note: '极限、导数、积分三大计算基本盘' },
+      { collectionId: 'linear-algebra', phase: '第 6-8 周', note: '矩阵运算与秩，先把计算做稳' },
+      { collectionId: 'probability', phase: '第 9-11 周', note: '分布与统计量，配合真题选择' },
+      { collectionId: 'computer-organization', phase: '第 12 周', note: '若考 408，同步补计组' },
+    ],
+  },
+  {
+    id: 'frontend-interview',
+    title: '前端面试冲刺',
+    audience: '1-3 年经验跳槽',
+    outcome: '语言细节、类型系统、算法与网络四轮过关',
+    durationWeeks: 6,
+    intensity: '冲刺',
+    accent: '#3E4C59',
+    icon: 'code',
+    keywords: ['前端', '面试', 'JavaScript', 'TypeScript', '算法'],
+    steps: [
+      { collectionId: 'js-basics', phase: '第 1 周', note: 'typeof、作用域、数组方法必须秒答' },
+      { collectionId: 'ts-types', phase: '第 2-3 周', note: '泛型与工具类型，能读懂复杂声明' },
+      { collectionId: 'algorithms', phase: '第 4-5 周', note: '复杂度与排序稳定性，面试常问' },
+      { collectionId: 'network', phase: '第 6 周', note: 'HTTP 状态码、TCP 握手、DNS' },
+    ],
+  },
+  {
+    id: 'civil-service',
+    title: '国考省考',
+    audience: '应届与在职备考',
+    outcome: '行测两模块稳定得分，申论结构成型',
+    durationWeeks: 10,
+    intensity: '标准',
+    accent: '#9A3B32',
+    icon: 'landmark',
+    keywords: ['公考', '国考', '省考', '行测', '申论'],
+    steps: [
+      { collectionId: 'verbal', phase: '第 1-3 周', note: '成语与病句是提分最快的部分' },
+      { collectionId: 'quantitative', phase: '第 4-6 周', note: '工程与行程问题，练列式速度' },
+      { collectionId: 'essay', phase: '第 7-9 周', note: '先练归纳概括，再练文章结构' },
+      { collectionId: 'public-base', phase: '第 10 周', note: '宪法与公文常识查漏补缺' },
+    ],
+  },
+  {
+    id: 'teacher-cert',
+    title: '教师资格证',
+    audience: '非师范转行',
+    outcome: '科目一职业理念与法规一次通过',
+    durationWeeks: 5,
+    intensity: '轻量',
+    accent: '#6E4B8A',
+    icon: 'graduation',
+    keywords: ['教资', '教师资格', '教师'],
+    steps: [
+      { collectionId: 'teacher-cert', phase: '第 1-3 周', note: '学生观、教师观、教育观三观必背' },
+      { collectionId: 'high-chinese', phase: '第 4 周', note: '文化素养题靠积累，用古诗文补' },
+      { collectionId: 'public-base', phase: '第 5 周', note: '教育法规与公文常识交叉复习' },
+    ],
+  },
+  {
+    id: 'ielts-7',
+    title: '雅思 7 分',
+    audience: '留学申请',
+    outcome: '阅读题型策略成型，学术词汇覆盖',
+    durationWeeks: 8,
+    intensity: '冲刺',
+    accent: '#1F7A5C',
+    icon: 'globe',
+    keywords: ['雅思', 'IELTS', '留学', '出国'],
+    steps: [
+      { collectionId: 'ielts-reading', phase: '第 1-4 周', note: 'TFNG 与标题匹配先定型' },
+      { collectionId: 'cet4', phase: '第 5-6 周', note: '语法与词汇基础回炉' },
+      { collectionId: 'toefl-listening', phase: '第 7-8 周', note: '用托福听力补学术场景听力' },
+    ],
+  },
+  {
+    id: 'zhongkao',
+    title: '中考冲刺',
+    audience: '初三学生',
+    outcome: '数学函数几何、语文古诗文、英语语法三角稳固',
+    durationWeeks: 8,
+    intensity: '标准',
+    accent: '#B45309',
+    icon: 'ruler',
+    keywords: ['中考', '初中', '初三'],
+    steps: [
+      { collectionId: 'middle-math', phase: '第 1-4 周', note: '方程与函数是中考压轴的地基' },
+      { collectionId: 'high-chinese', phase: '第 5-6 周', note: '古诗文默写与文学常识' },
+      { collectionId: 'gaokao-english', phase: '第 7-8 周', note: '提前用高考语法拉高中考上限' },
+    ],
+  },
+]
+
+export function getGoal(id: string): Goal | undefined {
+  return goals.find((goal) => goal.id === id)
+}

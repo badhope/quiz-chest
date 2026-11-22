@@ -1,0 +1,40 @@
+name: Feature request
+description: Suggest a capability QuizChest does not have yet
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        QuizChest is deliberately narrow: local-first, no account, no server.
+        Proposals that fit that boundary are much more likely to be accepted.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the situation you are in, not the solution you have in mind.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: boundaries
+    attributes:
+      label: Fits the product boundary
+      options:
+        - label: This works fully offline, with no account or server.
+          required: true

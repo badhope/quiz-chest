@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="10" fill="#A8442A" />
+  <rect x="9" y="9" width="46" height="46" rx="3" fill="none" stroke="#FBF3E6" stroke-width="1.6" />
+  <text x="32" y="45" text-anchor="middle" font-family="Noto Serif SC, Songti SC, serif" font-size="36" font-weight="600" fill="#FBF3E6">题</text>
+</svg>

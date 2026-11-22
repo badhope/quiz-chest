@@ -1,0 +1,196 @@
+/**
+ * 试卷打印样式。
+ *
+ * 设计约束（都是为了真的印得出来）：
+ *   - 只保留卷面，隐藏侧边栏、顶栏、操作栏
+ *   - 黑白打印也要清楚：不依赖背景色区分选项，答案用文字而不是底色
+ *   - 题目之间 `break-inside: avoid`，避免一道题被劈成两页
+ *   - 页码与页眉由浏览器负责，这里不画伪元素页眉（分页时定位不可靠）
+ */
+.print-page {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 24px 20px 60px;
+}
+
+.print-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.print-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+
+.print-sheet {
+  padding: 32px 36px;
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md, 10px);
+}
+
+.print-head {
+  margin-bottom: 28px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--ink);
+}
+
+.print-head h1 {
+  margin: 0 0 12px;
+  font-size: 22px;
+  line-height: 1.4;
+}
+
+.print-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+
+.print-questions {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.print-question {
+  margin-bottom: 22px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.print-stem {
+  display: flex;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.print-index {
+  flex: 0 0 auto;
+  font-weight: 600;
+}
+
+.print-type {
+  margin-left: 6px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.print-options {
+  margin-top: 8px;
+  padding-left: 24px;
+  display: grid;
+  gap: 4px;
+}
+
+.print-option {
+  display: flex;
+  gap: 6px;
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+
+.print-letter {
+  flex: 0 0 auto;
+  font-weight: 600;
+}
+
+.print-answer {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.print-answer p {
+  margin: 6px 0 0;
+  color: var(--ink-muted);
+}
+
+.print-foot {
+  margin-top: 32px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+  color: var(--ink-muted);
+  text-align: center;
+}
+
+@media print {
+  /* 只留卷面：导航、工具栏、页面外壳全部隐藏。 */
+  .sidebar,
+  .topbar,
+  .mobile-nav,
+  .no-print,
+  .skip-link,
+  .app-shell > footer {
+    display: none !important;
+  }
+
+  .app-shell,
+  .main-col,
+  .content,
+  .print-page {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: none !important;
+    width: auto !important;
+  }
+
+  .print-sheet {
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+  }
+
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    /* 打印时去掉深色主题：白底黑字才省墨、才清晰。 */
+    --ink: #000;
+    --ink-muted: #444;
+    --paper: #fff;
+    --paper-raised: #fff;
+    --line: #bbb;
+    --accent: #000;
+    --accent-soft: #f2f2f2;
+  }
+
+  .print-question {
+    margin-bottom: 18px;
+  }
+
+  .print-answer {
+    border-left: 2px solid #000 !important;
+    background: #f2f2f2 !important;
+    /* 激光打印机上浅底的实心块容易出条纹，这里允许它断页。 */
+  }
+
+  a[href]::after {
+    /* 卷面里不放 URL，避免正文被链接地址污染。 */
+    content: none !important;
+  }
+}
+
+@page {
+  size: A4;
+  margin: 16mm 14mm;
+}
