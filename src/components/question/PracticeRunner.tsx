@@ -2,19 +2,13 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { Question } from '../../data/types'
 import { usePracticeSession } from '../../hooks/usePracticeSession'
-import type { SessionMode } from '../../lib/quiz'
+import { sessionModeLabel, type SessionMode } from '../../lib/quiz'
 import { useAppStore } from '../../store/useAppStore'
 import { AnswerCard } from './AnswerCard'
 import { QuestionCard } from './QuestionCard'
 import { SubmitDialog } from './SubmitDialog'
 import { ArrowLeft, CircleHelp, Clock, Grid3x3, RotateCcw } from '../ui/icons'
 import { ProgressBar } from '../ui/primitives'
-
-const MODE_LABEL: Record<SessionMode, string> = {
-  practice: '顺序练习',
-  exam: '模拟考试',
-  review: '错题重练',
-}
 
 export interface PracticeRunnerProps {
   questions: Question[]
@@ -101,7 +95,7 @@ export function PracticeRunner(props: PracticeRunnerProps) {
     )
   }
 
-  const modeLabel = MODE_LABEL[mode]
+  const modeLabel = sessionModeLabel(mode)
   const hasTimer = mode === 'exam' && typeof timeLimitSec === 'number' && timeLimitSec > 0
 
   return (

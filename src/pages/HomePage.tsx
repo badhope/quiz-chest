@@ -22,6 +22,7 @@ import {
 } from '../components/ui/icons'
 import { DomainIcon } from '../components/ui/icons'
 import { Badge, ProgressBar } from '../components/ui/primitives'
+import { SectionHeader } from '../components/ui/sections'
 import type { PendingSession } from '../data/records'
 
 const TODAY_KEY = dateKey(Date.now())
@@ -135,17 +136,15 @@ export function HomePage() {
       </section>
 
       <section className="home-continue">
-        <div className="section-head">
-          <div>
-            <span className="eyebrow">接着上次</span>
-            <h2 className="section-title serif">
-              {lastCollection ? lastCollection.title : '还没有开始，先做一组'}
-            </h2>
-          </div>
-          <Link to="/records?tab=history" className="section-link">
-            练习记录 <ChevronRight />
-          </Link>
-        </div>
+        <SectionHeader
+          eyebrow="接着上次"
+          title={lastCollection ? lastCollection.title : '还没有开始，先做一组'}
+          aside={
+            <Link to="/records?tab=history" className="section-link">
+              练习记录 <ChevronRight />
+            </Link>
+          }
+        />
         <div className="continue-row">
           {pendingSession ? (
             <Link
@@ -238,15 +237,15 @@ export function HomePage() {
       </section>
 
       <section className="home-goals">
-        <div className="section-head">
-          <div>
-            <span className="eyebrow">如果目标明确</span>
-            <h2 className="section-title serif">直接进入一条备考路线</h2>
-          </div>
-          <Link to="/goals" className="section-link">
-            全部 {goals.length} 条 <ChevronRight />
-          </Link>
-        </div>
+        <SectionHeader
+          eyebrow="如果目标明确"
+          title="直接进入一条备考路线"
+          aside={
+            <Link to="/goals" className="section-link">
+              全部 {goals.length} 条 <ChevronRight />
+            </Link>
+          }
+        />
         <div className="goal-rail">
           {goals.map((goal) => (
             <Link

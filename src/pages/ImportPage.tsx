@@ -14,6 +14,7 @@ import {
 import { looksLikeExportPackage, parseExportPackage } from '../lib/exporter'
 import { parseWorkbookFile } from '../services/xlsxImport'
 import { Badge, EmptyState } from '../components/ui/primitives'
+import { PageHeader, SectionHeader } from '../components/ui/sections'
 import { ArrowRight, BookOpen, CircleCheck, CircleX, Library, Upload } from '../components/ui/icons'
 
 type Step = 'input' | 'review' | 'done'
@@ -174,10 +175,7 @@ export function ImportPage() {
   if (step === 'done') {
     return (
       <div className="import-page">
-        <header className="page-head">
-          <span className="eyebrow">导入题库</span>
-          <h1 className="page-title serif">导入完成</h1>
-        </header>
+        <PageHeader eyebrow="导入题库" title="导入完成" />
         <EmptyState
           icon={<CircleCheck />}
           title={`已导入 ${result?.questionCount ?? 0} 题`}
@@ -201,14 +199,16 @@ export function ImportPage() {
     const blocking = result.issues.filter((issue) => !issue.message.includes('跳过'))
     return (
       <div className="import-page">
-        <header className="page-head">
-          <span className="eyebrow">导入题库 · 确认</span>
-          <h1 className="page-title serif">{result.bank.title}</h1>
-          <p className="page-sub">
-            共 {result.questionCount} 题
-            {result.issues.length > 0 ? ` · ${result.issues.length} 条提示` : ' · 全部通过校验'}
-          </p>
-        </header>
+        <PageHeader
+          eyebrow="导入题库 · 确认"
+          title={result.bank.title}
+          subtitle={
+            <>
+              共 {result.questionCount} 题
+              {result.issues.length > 0 ? ` · ${result.issues.length} 条提示` : ' · 全部通过校验'}
+            </>
+          }
+        />
 
         <section className="import-summary">
           <div className="import-summary-card">
@@ -313,14 +313,16 @@ export function ImportPage() {
 
   return (
     <div className="import-page">
-      <header className="page-head">
-        <span className="eyebrow">导入题库</span>
-        <h1 className="page-title serif">把你自己的题目带进来</h1>
-        <p className="page-sub">
-          支持 JSON 与 CSV 两种格式，逐行校验后才会入库。数据只保存在本机数据库。
-          {existingCount > 0 ? ` 已有 ${existingCount} 个导入题库。` : ''}
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="导入题库"
+        title="把你自己的题目带进来"
+        subtitle={
+          <>
+            支持 JSON 与 CSV 两种格式，逐行校验后才会入库。数据只保存在本机数据库。
+            {existingCount > 0 ? ` 已有 ${existingCount} 个导入题库。` : ''}
+          </>
+        }
+      />
 
       <section className="import-drop">
         <div
@@ -357,12 +359,14 @@ export function ImportPage() {
       </section>
 
       <section className="import-paste">
-        <div className="section-head">
-          <h2 className="section-title serif">或者直接粘贴 JSON</h2>
-          <Link to="/docs" className="text-link" onClick={(event) => event.preventDefault()}>
-            格式说明见 docs/IMPORT_FORMAT.md
-          </Link>
-        </div>
+        <SectionHeader
+          title="或者直接粘贴 JSON"
+          aside={
+            <Link to="/docs" className="text-link" onClick={(event) => event.preventDefault()}>
+              格式说明见 docs/IMPORT_FORMAT.md
+            </Link>
+          }
+        />
         <textarea
           className="import-textarea mono"
           rows={10}

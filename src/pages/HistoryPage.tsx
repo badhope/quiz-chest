@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useAppStore } from '../store/useAppStore'
-import { formatDuration, percent } from '../lib/quiz'
+import { formatDateTime } from '../lib/datetime'
+import { formatDuration, percent, sessionModeLabel } from '../lib/quiz'
 import { EmptyState } from '../components/ui/primitives'
 import { PageHeader } from '../components/ui/sections'
 import { ArrowRight, Clock, ListChecks, Target, Trash2, Trophy } from '../components/ui/icons'
@@ -59,12 +60,12 @@ export function HistoryPage() {
             key={entry.id}
           >
             <span className={`history-mode mode-${entry.mode}`}>
-              {entry.mode === 'exam' ? '模拟考试' : entry.mode === 'review' ? '错题重练' : '顺序练习'}
+              {sessionModeLabel(entry.mode)}
             </span>
             <span className="history-title">
               <strong>{entry.collectionTitle}</strong>
               <span>
-                {new Date(entry.finishedAt).toLocaleString('zh-CN', { hour12: false })}
+                {formatDateTime(entry.finishedAt)}
               </span>
             </span>
             <span className="history-numbers">

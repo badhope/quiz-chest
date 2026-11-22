@@ -27,6 +27,10 @@ import type {
 
 export type DriverName = 'sqlite' | 'indexeddb' | 'memory'
 
+/** 历史记录与组卷历史的保留上限。前端三种仓储共用，Rust 侧保持同值。 */
+export const HISTORY_LIMIT = 100
+export const PAPER_LIMIT = 20
+
 export interface Repository {
   readonly driver: DriverName
   /** 数据库实际位置，用于设置页展示与问题排查。 */

@@ -9,7 +9,7 @@ import type {
   PendingSession,
   WrongEntry,
 } from '../data/records'
-import { normalizeSnapshot, type Repository } from './repository'
+import { HISTORY_LIMIT, PAPER_LIMIT, normalizeSnapshot, type Repository } from './repository'
 import { BANK_SNAPSHOT_LIMIT } from './snapshotPolicy'
 
 /**
@@ -112,11 +112,11 @@ export function createIndexedDbRepository(): Repository {
         },
         favorites: favorites.map((record) => record.questionId).sort((a, b) => a.localeCompare(b)),
         wrongBook,
-        history: [...history].sort((a, b) => b.finishedAt - a.finishedAt).slice(0, 100),
+        history: [...history].sort((a, b) => b.finishedAt - a.finishedAt).slice(0, HISTORY_LIMIT),
         daily: daily.sort((a, b) => a.date.localeCompare(b.date)),
         lastCollectionId: lastCollectionId ?? null,
         banks: banks.sort((a, b) => b.importedAt - a.importedAt),
-        papers: [...papers].sort((a, b) => b.createdAt - a.createdAt).slice(0, 20),
+        papers: [...papers].sort((a, b) => b.createdAt - a.createdAt).slice(0, PAPER_LIMIT),
         pendingSession: pendingSession ?? null,
         bankSnapshots,
       })
@@ -198,7 +198,7 @@ export function createIndexedDbRepository(): Repository {
         correct: (current?.correct ?? 0) + entry.correct,
       })
       const all = await tx.objectStore('history').getAll()
-      const kept = new Set(trimByDate(all, 100, (value) => value.finishedAt).map((value) => value.id))
+      const kept = new Set(trimByDate(all, HISTORY_LIMIT, (value) => value.finishedAt).map((value) => value.id))
       for (const value of all) if (!kept.has(value.id)) await tx.objectStore('history').delete(value.id)
       await tx.done
     },
@@ -238,7 +238,7 @@ export function createIndexedDbRepository(): Repository {
       const db = await database()
       const tx = db.transaction('papers', 'readwrite')
       await tx.store.put(paper)
-      const kept = new Set(trimByDate(await tx.store.getAll(), 20, (item) => item.createdAt).map((item) => item.id))
+      const kept = new Set(trimByDate(await tx.store.getAll(), PAPER_LIMIT, (item) => item.createdAt).map((item) => item.id))
       for (const item of await tx.store.getAll()) if (!kept.has(item.id)) await tx.store.delete(item.id)
       await tx.done
     },

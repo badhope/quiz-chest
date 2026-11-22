@@ -1,16 +1,14 @@
 import { useParams, useSearchParams } from 'react-router-dom'
 import { getCollection } from '../data'
 import { PracticeRunner } from '../components/question/PracticeRunner'
-import type { SessionMode } from '../lib/quiz'
+import { parseSessionMode } from '../lib/quiz'
 
 export function PracticePage() {
   const { collectionId = '' } = useParams()
   const [searchParams] = useSearchParams()
   const collection = getCollection(collectionId)
 
-  const modeParam = searchParams.get('mode')
-  const mode: SessionMode =
-    modeParam === 'exam' ? 'exam' : modeParam === 'review' ? 'review' : 'practice'
+  const mode = parseSessionMode(searchParams.get('mode'))
 
   if (!collection) {
     return (

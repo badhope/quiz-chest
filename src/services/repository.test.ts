@@ -243,4 +243,62 @@ describe('内存仓储', () => {
     expect(snapshot.daily['2026-11-06'].answered).toBe(10)
     await repo.close()
   })
+
+  it('deleteBank 同时清掉该题库的错题与收藏', async () => {
+    const repo = createMemoryRepository()
+    await repo.upsertBank(bank('gone', 2))
+    await repo.upsertBank(bank('kept', 2))
+    await repo.setFavorite('gone-1', true)
+    await repo.setFavorite('kept-1', true)
+    await repo.recordWrong({ ...wrong, questionId: 'gone-1', collectionId: 'gone' })
+    await repo.recordWrong({ ...wrong, questionId: 'kept-1', collectionId: 'kept' })
+    await repo.deleteBank('gone')
+    const snapshot = await repo.load()
+    expect(snapshot.banks.map((item) => item.id)).toEqual(['kept'])
+    expect(snapshot.favorites).toEqual(['kept-1'])
+    expect(Object.keys(snapshot.wrongBook)).toEqual(['kept-1'])
+    await repo.close()
+  })
+
+  it('addBankSnapshot 按快照 id 去重并只保留最近 20 份', async () => {
+    const repo = createMemoryRepository()
+    for (let index = 0; index < 22; index += 1) {
+      await repo.addBankSnapshot({
+        id: `bank-a:${index}`,
+        bankId: 'bank-a',
+        savedAt: index,
+        revision: index + 1,
+        bank: bank('bank-a', 2),
+      })
+    }
+    // 同一 id 再写一次不能变成两份。
+    await repo.addBankSnapshot({
+      id: 'bank-a:21',
+      bankId: 'bank-a',
+      savedAt: 21,
+      revision: 22,
+      bank: bank('bank-a', 2),
+    })
+    const snapshot = await repo.load()
+    expect(snapshot.bankSnapshots).toHaveLength(20)
+    expect(snapshot.bankSnapshots.map((item) => item.id)).not.toContain('bank-a:0')
+    expect(snapshot.bankSnapshots.filter((item) => item.id === 'bank-a:21')).toHaveLength(1)
+    await repo.close()
+  })
+
+  it('历史与组卷上限和数据库实现一致', async () => {
+    const repo = createMemoryRepository()
+    for (let index = 0; index < 105; index += 1) {
+      await repo.addHistory(history(`h${index}`, index))
+    }
+    for (let index = 0; index < 25; index += 1) {
+      await repo.addPaper({ ...paper, id: `p${index}`, createdAt: index })
+    }
+    const snapshot = await repo.load()
+    expect(snapshot.history).toHaveLength(100)
+    expect(snapshot.history[0].id).toBe('h104')
+    expect(snapshot.papers).toHaveLength(20)
+    expect(snapshot.papers[0].id).toBe('p24')
+    await repo.close()
+  })
 })

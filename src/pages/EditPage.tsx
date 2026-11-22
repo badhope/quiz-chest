@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAppStore } from '../store/useAppStore'
+import { formatDateTime } from '../lib/datetime'
 import { buildQuestionSeed, type ImportIssue } from '../lib/importer'
 import type { QuestionType } from '../data/types'
 import { Badge, EmptyState } from '../components/ui/primitives'
+import { PageHeader } from '../components/ui/sections'
 import { ArrowLeft, CircleCheck, CircleX, Layers, RotateCcw, Save, Trash2 } from '../components/ui/icons'
 
 /**
@@ -221,18 +223,16 @@ export function EditPage() {
 
   return (
     <div className="edit-page">
-      <header className="page-head">
-        <div className="page-head-row">
+      <PageHeader
+        eyebrow="编辑题库"
+        title={`修改「${bank.title}」`}
+        subtitle="只能改内容，不能增删或调序——题目编号被错题本引用，改了会串题。"
+        actions={
           <Link to={`/collection/${bank.id}`} className="button button-ghost button-sm">
             <ArrowLeft /> 返回题库
           </Link>
-        </div>
-        <span className="eyebrow">编辑题库</span>
-        <h1 className="page-title serif">修改「{bank.title}」</h1>
-        <p className="page-sub">
-          只能改内容，不能增删或调序——题目编号被错题本引用，改了会串题。
-        </p>
-      </header>
+        }
+      />
 
       {ownSnapshots.length > 0 ? (
         <section className="edit-history">
@@ -246,7 +246,7 @@ export function EditPage() {
                 <li key={snapshot.id}>
                   <div>
                     <strong className="mono">v{snapshot.revision}</strong>
-                    <span>{new Date(snapshot.savedAt).toLocaleString('zh-CN')}</span>
+                    <span>{formatDateTime(snapshot.savedAt)}</span>
                     <span className="edit-history-meta">
                       {snapshot.bank.title} · {snapshot.bank.questions.length} 题
                     </span>
