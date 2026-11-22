@@ -5,6 +5,7 @@ import { domains, tracksOfDomain } from '../data/taxonomy'
 import type { Domain } from '../data/types'
 import { DomainIcon } from '../components/ui/icons'
 import { Badge, EmptyState } from '../components/ui/primitives'
+import { MissingPage } from '../components/ui/MissingPage'
 import { ChevronRight, Clock, Library, Search, Upload } from '../components/ui/icons'
 
 export function CatalogPage() {
@@ -261,15 +262,12 @@ export function DomainPage() {
   const domain = importedDomain ?? domains.find((item) => item.id === domainId)
   if (!domain) {
     return (
-      <EmptyState
+      <MissingPage
         icon={<Library />}
         title="领域不存在"
         description="该分类可能已被调整，请返回题库总览重新选择。"
-        action={
-          <Link to="/catalog" className="button button-primary button-sm">
-            返回题库总览
-          </Link>
-        }
+        to="/catalog"
+        linkLabel="返回题库总览"
       />
     )
   }
