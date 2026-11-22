@@ -1,5 +1,4 @@
-import { useRef, type ReactNode } from 'react'
-import { useDialogFocus } from '../../hooks/useDialogFocus'
+import type { ReactNode } from 'react'
 
 type Tone = 'neutral' | 'accent' | 'moss' | 'gold' | 'danger' | 'success'
 
@@ -83,50 +82,6 @@ export function EmptyState({
       <h3>{title}</h3>
       <p>{description}</p>
       {action ? <div className="empty-action">{action}</div> : null}
-    </div>
-  )
-}
-
-export function Modal({
-  open,
-  title,
-  description,
-  children,
-  onClose,
-}: {
-  open: boolean
-  title: string
-  description?: string
-  children?: ReactNode
-  onClose: () => void
-}) {
-  const modalRef = useRef<HTMLDivElement>(null)
-  useDialogFocus(modalRef, { open, onClose })
-
-  if (!open) return null
-  return (
-    <div className="modal-layer" role="presentation" onClick={onClose}>
-      <div
-        className="modal"
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        ref={modalRef}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="modal-head">
-          <div>
-            <h3>{title}</h3>
-            {description ? <p>{description}</p> : null}
-          </div>
-          <button className="icon-button" onClick={onClose} aria-label="关闭">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path d="M18 6 6 18M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        {children}
-      </div>
     </div>
   )
 }

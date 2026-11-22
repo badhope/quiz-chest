@@ -14,19 +14,6 @@ export interface BankMeta {
   questionCount: number
 }
 
-export type BankListener = () => void
-
-let listeners = new Set<BankListener>()
-
-export function onBanksChange(listener: BankListener): () => void {
-  listeners.add(listener)
-  return () => listeners.delete(listener)
-}
-
-export function emitBanksChange(): void {
-  for (const listener of [...listeners]) listener()
-}
-
 export function makeImportedQuestion(
   bankId: string,
   index: number,
@@ -39,6 +26,3 @@ export function makeImportedQuestion(
   }
 }
 
-export function resetListenersForTest(): void {
-  listeners = new Set()
-}

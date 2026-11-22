@@ -39,9 +39,9 @@ test('导入题库并跨刷新持久化（IndexedDB）', async ({ page }) => {
   expect(before.banks.map((bank) => bank.title)).toContain('APK 验证题库')
 
   await page.reload()
-  await page.goto('/#/library')
-  await expect(page.getByRole('heading', { name: '导入的题库都住在这里' })).toBeVisible()
-  await expect(page.getByText('APK 验证题库').first()).toBeVisible()
+  await page.goto('/#/catalog')
+  await page.getByRole('textbox', { name: '搜索题库' }).fill('APK 验证题库')
+  await expect(page.locator('.tree-search-row').filter({ hasText: 'APK 验证题库' }).first()).toBeVisible()
 
   const after = await readStores(page)
   expect(after.banks.map((bank) => bank.title)).toContain('APK 验证题库')
@@ -54,8 +54,9 @@ test('答题答错进错题本，交卷生成记录', async ({ page }) => {
   await page.getByRole('button', { name: /确认导入 \d+ 题/ }).click()
   await expect(page.getByRole('heading', { name: /已导入 \d+ 题/ })).toBeVisible()
 
-  await page.goto('/#/library')
-  await page.getByRole('link', { name: 'APK 验证题库', exact: true }).first().click()
+  await page.goto('/#/catalog')
+  await page.getByRole('textbox', { name: '搜索题库' }).fill('APK 验证题库')
+  await page.locator('.tree-search-row').filter({ hasText: 'APK 验证题库' }).first().click()
   await page.getByRole('link', { name: /顺序练习/ }).click()
 
   // 第 1 题正确答案是 C，故意选 A

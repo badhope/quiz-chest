@@ -24,7 +24,7 @@ function session(overrides: Partial<PendingSession> = {}): PendingSession {
 
 function reset(): void {
   useAppStore.setState({
-    settings: { theme: 'light', fontScale: 'normal', autoNext: false, showSampleBanks: true },
+    settings: { theme: 'light', fontScale: 'normal', autoNext: false, showSampleBanks: true, allowRemoteImages: false },
     favorites: [],
     wrongBook: {},
     history: [],
@@ -107,7 +107,7 @@ describe('未完成会话（断点续做）', () => {
     expect(useAppStore.getState().pendingSession?.id).toBe('old-machine')
 
     await useAppStore.getState().restoreBackup({
-      settings: { theme: 'dark', fontScale: 'normal', autoNext: false, showSampleBanks: true },
+      settings: { theme: 'dark', fontScale: 'normal', autoNext: false, showSampleBanks: true, allowRemoteImages: false },
       favorites: [],
       wrongBook: {},
       history: [],

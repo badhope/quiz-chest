@@ -1,4 +1,26 @@
-import type { QuestionSeed } from './types'
+import type { DomainId, QuestionSeed } from './types'
+
+/**
+ * 复习卡片状态（FSRS）。
+ *
+ * 这里用纯数字/时间戳而不是 `Date`：同一份结构要经过 JSON、SQLite 与
+ * IndexedDB 三层序列化，Date 在跨层后会变成字符串，读写两端的形状就对不上。
+ * 换算集中在 `src/lib/review.ts`，其余模块只认这个平面结构。
+ */
+export interface ReviewState {
+  /** 下次到期时间（epoch ms）。 */
+  due: number
+  stability: number
+  difficulty: number
+  scheduledDays: number
+  learningSteps: number
+  reps: number
+  lapses: number
+  /** 0=新卡 1=学习中 2=复习 3=重学。 */
+  state: number
+  /** 上次复习时间；新卡为 null。 */
+  lastReview: number | null
+}
 
 /** 判分模式，与 `src/lib/quiz.ts` 的 SessionMode 保持同源。 */
 export type RecordMode = 'practice' | 'exam' | 'review'
@@ -25,6 +47,16 @@ export interface ImportedBank {
   durationMin: number
   tags: string[]
   importedAt: number
+  /**
+   * 导入时指定的领域；缺省表示落在「我的题库」。
+   *
+   * 这个字段是让导入题库从「一个扁平垃圾桶」变成一等公民的关键：
+   * 一旦有领域，目录树、目标路线、薄弱项统计都能正常引用它。
+   */
+  domainId?: DomainId
+  /** 用户自定义的学段/分组；同一 trackId 的题库在目录里会归到一组。 */
+  trackId?: string
+  trackName?: string
   questions: QuestionSeed[]
 }
 
@@ -34,6 +66,8 @@ export interface WrongEntry {
   wrongCount: number
   lastWrongAt: number
   lastSelection: number[]
+  /** FSRS 复习状态；旧数据没有这个字段时按「今天到期」处理。 */
+  fsrs?: ReviewState
 }
 
 export interface HistoryEntry {
@@ -74,6 +108,14 @@ export interface AppSettings {
   fontScale: 'normal' | 'large'
   autoNext: boolean
   showSampleBanks: boolean
+  /**
+   * 是否允许题目里的 http(s) 外链图片联网加载。
+   *
+   * 默认关闭：应用对外宣称「数据不离开本机」，而外链图片会在渲染时
+   * 把本机 IP 与 Referer 送给第三方。需要外链图的用户可以在设置里显式开启，
+   * 内嵌 data:image 不受影响。
+   */
+  allowRemoteImages: boolean
 }
 
 /** 数据库中的完整状态，用于启动加载与整库替换。 */

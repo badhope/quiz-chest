@@ -27,3 +27,8 @@ artifacts/*.msi
 test-results/
 playwright-report/
 blob-report/
+
+# Android release 签名口令与私钥，永远不进仓库
+android/keystore.properties
+*.jks
+*.keystore

@@ -6,6 +6,7 @@ import { getLibraryCollections } from '../lib/library'
 import { domains } from '../data/taxonomy'
 import { EChart } from '../components/charts/EChart'
 import { EmptyState, ProgressBar, Stat } from '../components/ui/primitives'
+import { PageHeader } from '../components/ui/sections'
 import { BarChart3, Clock, Flame, Target, TrendingUp, Trophy } from '../components/ui/icons'
 import type { EChartsCoreOption } from 'echarts/core'
 
@@ -198,11 +199,11 @@ export function StatsPage() {
   if (history.length === 0) {
     return (
       <div className="stats-page">
-        <header className="page-head">
-          <span className="eyebrow">学习统计</span>
-          <h1 className="page-title serif">数据会记录每一次进步</h1>
-          <p className="page-sub">完成练习或模拟考试后，这里会生成作答趋势、领域分布与正确率曲线。</p>
-        </header>
+        <PageHeader
+          eyebrow="学习统计"
+          title="数据会记录每一次进步"
+          subtitle="完成练习或模拟考试后，这里会生成作答趋势、领域分布与正确率曲线。"
+        />
         <EmptyState
           icon={<BarChart3 />}
           title="还没有可统计的数据"
@@ -219,11 +220,11 @@ export function StatsPage() {
 
   return (
     <div className="stats-page">
-      <header className="page-head">
-        <span className="eyebrow">学习统计</span>
-        <h1 className="page-title serif">你的学习曲线</h1>
-        <p className="page-sub">共 {history.length} 次练习记录，数据保存在本机，不上传。</p>
-      </header>
+      <PageHeader
+        eyebrow="学习统计"
+        title="你的学习曲线"
+        subtitle={`共 ${history.length} 次练习记录，数据保存在本机，不上传。`}
+      />
 
       <section className="stat-strip">
         <Stat label="累计作答" value={totalAnswered} hint="全部练习" icon={<BarChart3 />} />
@@ -291,7 +292,7 @@ export function StatsPage() {
               <span>练习次数</span>
             </div>
           </div>
-          <Link to="/wrong" className="button button-ghost button-sm stats-link">
+          <Link to="/review?tab=wrong" className="button button-ghost button-sm stats-link">
             打开错题本
           </Link>
         </section>

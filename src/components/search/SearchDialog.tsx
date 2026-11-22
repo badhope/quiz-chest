@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { domains } from '../../data/taxonomy'
 import { searchCatalog } from '../../lib/search'
-import { useDialogFocus } from '../../hooks/useDialogFocus'
+import * as Dialog from '@radix-ui/react-dialog'
 import { Chip } from './Chip'
 import { DomainIcon, Search, X } from '../ui/icons'
 
@@ -11,18 +11,7 @@ const hotTags = ['JavaScript', '考研', '雅思', '初级会计', '行测', '�
 export function SearchDialog({ onClose }: { onClose: () => void }) {
   const [query, setQuery] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
-  const panelRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
-
-  useDialogFocus(panelRef, { open: true, onClose, initialFocus: inputRef })
-
-  useEffect(() => {
-    const original = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = original
-    }
-  }, [])
 
   const results = useMemo(() => searchCatalog(query), [query])
 
@@ -34,15 +23,22 @@ export function SearchDialog({ onClose }: { onClose: () => void }) {
   const hasResults = results.collections.length > 0 || results.questions.length > 0
 
   return (
-    <div className="search-layer" role="presentation" onClick={onClose}>
-      <div
-        className="search-panel"
-        role="dialog"
-        aria-modal="true"
-        aria-label="搜索题库"
-        ref={panelRef}
-        onClick={(event) => event.stopPropagation()}
-      >
+    <Dialog.Root open onOpenChange={(next) => !next && onClose()}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="search-layer" />
+        <Dialog.Content
+          className="search-panel"
+          aria-label="搜索题库"
+          onOpenAutoFocus={(event) => {
+            event.preventDefault()
+            inputRef.current?.focus()
+          }}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault()
+            document.querySelector<HTMLElement>('.search-trigger')?.focus()
+          }}
+        >
+          <Dialog.Title className="visually-hidden">搜索题库</Dialog.Title>
         <div className="search-input-row">
           <Search />
           <input
@@ -164,7 +160,8 @@ export function SearchDialog({ onClose }: { onClose: () => void }) {
             <kbd>Esc</kbd> 关闭
           </span>
         </div>
-      </div>
-    </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   )
 }

@@ -117,7 +117,7 @@ export function EditPage() {
           title="找不到这个题库"
           description="内置示例题库不支持编辑，只有你导入的题库可以修改。"
           action={
-            <Link to="/library" className="button button-primary button-sm">
+            <Link to="/catalog" className="button button-primary button-sm">
               返回我的题库
             </Link>
           }

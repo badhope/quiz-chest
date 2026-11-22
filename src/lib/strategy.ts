@@ -2,6 +2,7 @@ import { collections, domains, tracksOfDomain } from '../data/taxonomy'
 import type { Question } from '../data/types'
 import type { WrongEntry } from '../store/useAppStore'
 import { shuffle } from './quiz'
+import { compareByDue } from './review'
 import { getLibraryCollections } from './library'
 
 function allQuestionsIncludingImported(): Question[] {
@@ -71,52 +72,35 @@ export function collectAllQuestions(): Question[] {
 export function domainAccuracy(
   history: Array<{ collectionId: string; answered: number; correct: number }>,
 ): Array<{ domainId: string; name: string; answered: number; correct: number; accuracy: number }> {
+  const library = getLibraryCollections()
+  const byCollection = new Map(library.map((collection) => [collection.id, collection]))
+  const names = new Map<string, string>(domains.map((domain) => [domain.id, domain.name]))
+  names.set('imported', '我的题库')
   const bucket = new Map<string, { answered: number; correct: number }>()
-  let importedAnswered = 0
-  let importedCorrect = 0
+
   for (const entry of history) {
-    const collection = collections.find((item) => item.id === entry.collectionId)
-    if (!collection) {
-      if (entry.collectionId.startsWith('plan:') || entry.collectionId.includes('-')) {
-        importedAnswered += entry.answered
-        importedCorrect += entry.correct
-      }
-      continue
-    }
+    // 只统计能对应到真实题库的记录。plan: / compose: 是临时练习容器，
+    // 以前用 startsWith / includes('-') 猜归属，把策略练习和自组卷算进
+    // 「我的题库」，数字自然对不上。
+    const collection = byCollection.get(entry.collectionId)
+    if (!collection) continue
     const current = bucket.get(collection.domainId) ?? { answered: 0, correct: 0 }
     bucket.set(collection.domainId, {
       answered: current.answered + entry.answered,
       correct: current.correct + entry.correct,
     })
   }
-  if (importedAnswered > 0) {
-    bucket.set('imported', { answered: importedAnswered, correct: importedCorrect })
-  }
-  const importedStats = bucket.get('imported')
-  const importedPart = importedStats && importedStats.answered > 0
-    ? [{
-        domainId: 'imported' as const,
-        name: '我的题库',
-        answered: importedStats.answered,
-        correct: importedStats.correct,
-        accuracy: Math.round((importedStats.correct / importedStats.answered) * 100),
-      }]
-    : []
-  return [
-    ...domains
-      .map((domain) => {
-        const stats = bucket.get(domain.id) ?? { answered: 0, correct: 0 }
-        return {
-          domainId: domain.id,
-          name: domain.name,
-          answered: stats.answered,
-          correct: stats.correct,
-          accuracy: stats.answered === 0 ? -1 : Math.round((stats.correct / stats.answered) * 100),
-        }
-      })
-      .filter((item) => item.answered > 0),
-    ...importedPart,
-  ].sort((a, b) => a.accuracy - b.accuracy)
+
+  return [...bucket.entries()]
+    .filter(([, stats]) => stats.answered > 0)
+    .map(([domainId, stats]) => ({
+      domainId,
+      name: names.get(domainId) ?? domainId,
+      answered: stats.answered,
+      correct: stats.correct,
+      accuracy: Math.round((stats.correct / stats.answered) * 100),
+    }))
+    .sort((a, b) => a.accuracy - b.accuracy)
 }
 
 function pickByDomain(counts: Record<string, number>, random: () => number, size: number): Question[] {
@@ -179,7 +163,11 @@ export function buildDailyPlan(options: {
       counts[item.domainId] = Math.max(1, 4 - Math.floor(item.accuracy / 40))
     }
   }
-  const allDomainIds = domains.map((domain) => domain.id)
+  // 内置领域 + 导入题库实际用到的领域，都参与每日一练的权重。
+  const allDomainIds = new Set([
+    ...domains.map((domain) => domain.id),
+    ...getLibraryCollections().map((collection) => collection.domainId),
+  ])
   for (const domainId of allDomainIds) {
     if (!counts[domainId]) counts[domainId] = 1
   }
@@ -243,7 +231,7 @@ export function buildWrongPlan(options: {
   size?: number
 }): StrategyPlan {
   const size = options.size ?? 20
-  const entries = Object.values(options.wrongBook).sort((a, b) => b.wrongCount - a.wrongCount)
+  const entries = Object.values(options.wrongBook).sort((a, b) => compareByDue(a, b))
   const idSet = new Set(entries.map((entry) => entry.questionId))
   const questions = collectAllQuestions().filter((question) => idSet.has(question.id)).slice(0, size)
   return {
@@ -279,6 +267,9 @@ export function buildPlan(
 }
 
 export function trackNameOf(collectionId: string): string {
+  const library = getLibraryCollections().find((item) => item.id === collectionId)
+  // 只有导入时显式写了分组名才覆盖；内置题库的 subtitle 是题库简介，不是轨道。
+  if (library?.trackName) return library.trackName
   const collection = collections.find((item) => item.id === collectionId)
   if (!collection) return ''
   const track = tracksOfDomain(collection.domainId).find((item) => item.id === collection.trackId)

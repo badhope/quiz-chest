@@ -14,7 +14,7 @@ const settings: AppSettings = {
   theme: 'dark',
   fontScale: 'large',
   autoNext: true,
-  showSampleBanks: false,
+  showSampleBanks: false, allowRemoteImages: false,
 }
 
 function samplePayload(): BackupPayload {

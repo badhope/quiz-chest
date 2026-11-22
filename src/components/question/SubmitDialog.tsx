@@ -1,5 +1,4 @@
-import { useRef } from 'react'
-import { useDialogFocus } from '../../hooks/useDialogFocus'
+import * as Dialog from '@radix-ui/react-dialog'
 import { Trophy, X } from '../ui/icons'
 
 export interface SubmitDialogProps {
@@ -14,9 +13,9 @@ export interface SubmitDialogProps {
 /**
  * 交卷确认框。
  *
- * 具备模态对话框的必要行为：Esc 关闭、焦点在打开时移入、
- * Tab 在框内循环、背景点击关闭、关闭后焦点还原、`aria-modal` 标记。
- * 焦点管理集中在 `useDialogFocus`，与搜索框共用同一套语义。
+ * 焦点陷阱、Esc、背景点击、滚动锁定、关闭后焦点还原全部交给 Radix Dialog，
+ * 不再自己维护 keydown 监听与可聚焦元素列表——这类代码写对一次很难，
+ * 写错时只有键盘用户会撞上。
  */
 export function SubmitDialog({
   open,
@@ -26,46 +25,37 @@ export function SubmitDialog({
   onCancel,
   onConfirm,
 }: SubmitDialogProps) {
-  const confirmRef = useRef<HTMLButtonElement>(null)
-  const cardRef = useRef<HTMLDivElement>(null)
-
-  useDialogFocus(cardRef, { open, onClose: onCancel, initialFocus: confirmRef })
-
-  if (!open) return null
-
   const unanswered = total - answered
 
   return (
-    <div className="confirm-layer" role="presentation" onClick={onCancel}>
-      <div
-        className="confirm-card"
-        role="dialog"
-        aria-modal="true"
-        aria-label="确认交卷"
-        ref={cardRef}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <button className="icon-button confirm-close" onClick={onCancel} aria-label="关闭">
-          <X />
-        </button>
-        <span className="confirm-icon">
-          <Trophy />
-        </span>
-        <h2 className="serif">确认提交本次{modeLabel}？</h2>
-        <p>
-          已作答 {answered} / {total} 题
-          {unanswered > 0 ? `，还有 ${unanswered} 题未作答` : ''}
-          。提交后将生成成绩单，未作答按跳过计。
-        </p>
-        <div className="confirm-actions">
-          <button className="button button-ghost" onClick={onCancel}>
-            继续作答
-          </button>
-          <button ref={confirmRef} className="button button-primary" onClick={onConfirm}>
-            提交并查看结果
-          </button>
-        </div>
-      </div>
-    </div>
+    <Dialog.Root open={open} onOpenChange={(next) => !next && onCancel()}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="confirm-layer" />
+        <Dialog.Content className="confirm-card" aria-label="确认交卷">
+          <Dialog.Close asChild>
+            <button className="icon-button confirm-close" aria-label="关闭">
+              <X />
+            </button>
+          </Dialog.Close>
+          <span className="confirm-icon">
+            <Trophy />
+          </span>
+          <Dialog.Title className="serif">确认提交本次{modeLabel}？</Dialog.Title>
+          <Dialog.Description>
+            已作答 {answered} / {total} 题
+            {unanswered > 0 ? `，还有 ${unanswered} 题未作答` : ''}
+            。提交后将生成成绩单，未作答按跳过计。
+          </Dialog.Description>
+          <div className="confirm-actions">
+            <Dialog.Close asChild>
+              <button className="button button-ghost">继续作答</button>
+            </Dialog.Close>
+            <button className="button button-primary" onClick={onConfirm}>
+              提交并查看结果
+            </button>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   )
 }

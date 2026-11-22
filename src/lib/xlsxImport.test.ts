@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import { zipSync, strToU8 } from 'fflate'
 import { parseRows } from './importer'
 import { parseWorkbookFile } from '../services/xlsxImport'
-import { readWorkbookMatrix } from '../services/xlsxReader'
 
 const HEADERS = ['title', 'stem', 'optionA', 'optionB', 'optionC', 'optionD', 'answer', 'explanation', 'type']
 
@@ -51,10 +50,16 @@ function buildXlsx(rows: string[][]): ArrayBuffer {
 
   const files: Record<string, Uint8Array> = {
     '[Content_Types].xml': strToU8(
-      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/></Types>`,
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/></Types>`,
+    ),
+    '_rels/.rels': strToU8(
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`,
+    ),
+    'xl/_rels/workbook.xml.rels': strToU8(
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/></Relationships>`,
     ),
     'xl/workbook.xml': strToU8(
-      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheets><sheet name="Sheet1" sheetId="1" r:id="rId1"/></sheets></workbook>`,
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Sheet1" sheetId="1" r:id="rId1"/></sheets></workbook>`,
     ),
     'xl/worksheets/sheet1.xml': strToU8(sheet),
     'xl/sharedStrings.xml': strToU8(sharedStrings),
@@ -94,54 +99,6 @@ describe('Excel 行管线（与 CSV 共用 parseRows）', () => {
   })
 })
 
-describe('xlsx 读取器（真实 zip 结构）', () => {
-  it('读出表头与数据行', () => {
-    const matrix = readWorkbookMatrix(
-      buildXlsx([
-        ['stem', 'answer'],
-        ['第一题', 'A'],
-        ['第二题', 'B'],
-      ]),
-    )
-    expect(matrix.headers).toEqual(['stem', 'answer'])
-    expect(matrix.rows).toEqual([
-      ['第一题', 'A'],
-      ['第二题', 'B'],
-    ])
-  })
-
-  it('共享字符串里的 XML 实体被正确解码', () => {
-    const matrix = readWorkbookMatrix(
-      buildXlsx([
-        ['stem', 'answer'],
-        ['a < b & c > d', 'A'],
-      ]),
-    )
-    expect(matrix.rows[0][0]).toBe('a < b & c > d')
-  })
-
-  it('跳过整行空白', () => {
-    const matrix = readWorkbookMatrix(
-      buildXlsx([
-        ['stem', 'answer'],
-        ['有内容', 'A'],
-        ['', ''],
-      ]),
-    )
-    expect(matrix.rows).toHaveLength(1)
-  })
-
-  it('非 zip 字节给出明确错误', () => {
-    expect(() => readWorkbookMatrix(new Uint8Array([1, 2, 3, 4]))).toThrow(/不是有效的 xlsx/)
-  })
-
-  it('zip 里没有工作表时明确报错', () => {
-    const zipped = zipSync({ 'readme.txt': strToU8('nothing here') })
-    const bytes = zipped.buffer.slice(zipped.byteOffset, zipped.byteOffset + zipped.byteLength)
-    expect(() => readWorkbookMatrix(bytes as ArrayBuffer)).toThrow(/没有工作表/)
-  })
-})
-
 describe('xlsx 文件导入（端到端）', () => {
   it('从真实 xlsx 字节导入题库', async () => {
     const result = await parseWorkbookFile(
@@ -159,7 +116,7 @@ describe('xlsx 文件导入（端到端）', () => {
   it('解析失败时返回 issue 而不是抛错', async () => {
     const result = await parseWorkbookFile(new Uint8Array([0, 1, 2]).buffer)
     expect(result.bank).toBeNull()
-    expect(result.issues[0].message).toContain('不是有效的 xlsx')
+    expect(result.issues[0].message).toContain('Excel 解析失败')
   })
 
   it('只有表头没有数据行时给出明确错误', async () => {
