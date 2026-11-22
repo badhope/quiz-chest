@@ -86,7 +86,11 @@ interface AppState {
   removeBank: (bankId: string) => void
   addPaper: (paper: PaperRecord) => void
   removePaper: (paperId: string) => void
-  resetProgress: () => void
+  /**
+   * 重置学习数据：先落库再清内存，失败时界面必须保持原样。
+   * 返回 Promise 且失败会 reject，调用方要 await 后提示。
+   */
+  resetProgress: () => Promise<void>
   restoreBackup: (data: {
     settings: AppSettings
     favorites: string[]
@@ -422,7 +426,11 @@ export const useAppStore = create<AppState>()((set, get) => ({
     persist((repo) => repo.removePaper(paperId), { retryKey: `paper:${paperId}` })
   },
 
-  resetProgress: () => {
+  resetProgress: async () => {
+    // 重置是不可撤销的破坏性操作，不能先清界面再异步落库：
+    // 否则失败时用户看到的「已清空」只是假象，重开应用数据全回来。
+    // 和备份恢复一样先 await 落库，成功后才改内存。
+    await persist((repo) => repo.resetProgress(), { rethrow: true })
     set({
       favorites: [],
       wrongBook: {},
@@ -433,7 +441,6 @@ export const useAppStore = create<AppState>()((set, get) => ({
       // 一个已经被清空进度的练习里。
       pendingSession: null,
     })
-    persist((repo) => repo.resetProgress(), { retryKey: 'resetProgress' })
   },
 
   restoreBackup: async (data) => {
