@@ -1,6 +1,7 @@
 import * as v from 'valibot'
 import type { AppSettings, DailyStat, HistoryEntry, ImportedBank, PaperRecord, WrongEntry } from '../store/useAppStore'
 import { dateStamp } from './datetime'
+import { downloadBlob } from './download'
 
 /**
  * 全量备份包。
@@ -239,15 +240,8 @@ export function parseBackup(raw: string): BackupParseResult {
 
 /** 下载备份文件。与 CSV 导出一致，走 Blob + 临时链接。 */
 export function downloadBackup(payload: BackupPayload): void {
-  const blob = new Blob([serializeBackup(payload)], {
-    type: 'application/json;charset=utf-8',
-  })
-  const url = URL.createObjectURL(blob)
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = backupFileName()
-  document.body.appendChild(anchor)
-  anchor.click()
-  anchor.remove()
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+  downloadBlob(
+    backupFileName(),
+    new Blob([serializeBackup(payload)], { type: 'application/json;charset=utf-8' }),
+  )
 }

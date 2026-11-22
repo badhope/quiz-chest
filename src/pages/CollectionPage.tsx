@@ -8,6 +8,7 @@ import { Badge, EmptyState, ProgressBar } from '../components/ui/primitives'
 import { DomainIcon } from '../components/ui/icons'
 import { SectionHeader } from '../components/ui/sections'
 import { formatDate } from '../lib/datetime'
+import { summarizeHistory } from '../lib/stats'
 import { sessionModeLabel } from '../lib/quiz'
 import {
   ArrowLeft,
@@ -63,8 +64,7 @@ export function CollectionPage() {
     : undefined)
   const wrongCount = collection.questions.filter((question) => wrongBook[question.id]).length
   const favoriteCount = collection.questions.filter((question) => favorites.includes(question.id)).length
-  const bestAccuracy = records.reduce((best, entry) => Math.max(best, entry.accuracy), 0)
-  const answeredCount = records.reduce((sum, entry) => sum + entry.answered, 0)
+  const { bestAccuracy, answeredCount } = summarizeHistory(records)
   const lastRecord = records[0]
   const mastery = records.length ? Math.round((bestAccuracy + Math.min(100, records.length * 12)) / 2) : 0
 

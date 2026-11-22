@@ -6,7 +6,7 @@ const questionById = getQuestion
 import { useAppStore } from '../store/useAppStore'
 import { formatDateTime } from '../lib/datetime'
 import { formatDuration, parseSessionMode, percent, sessionModeLabel } from '../lib/quiz'
-import { Badge } from '../components/ui/primitives'
+import { Badge, EmptyState } from '../components/ui/primitives'
 import { SectionHeader } from '../components/ui/sections'
 import {
   ArrowRight,
@@ -49,10 +49,16 @@ export function ResultPage() {
   if (!collection && !isPlan) {
     return (
       <div className="result-page">
-        <h1>结果不存在</h1>
-        <Link to="/catalog" className="button button-primary button-sm">
-          返回题库总览
-        </Link>
+        <EmptyState
+          icon={<CircleHelp />}
+          title="结果不存在"
+          description="这次练习对应的题库已不存在，结果页无法还原。"
+          action={
+            <Link to="/catalog" className="button button-primary button-sm">
+              返回题库总览
+            </Link>
+          }
+        />
       </div>
     )
   }

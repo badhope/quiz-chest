@@ -1,6 +1,7 @@
 import type { HistoryEntry, WrongEntry } from '../store/useAppStore'
 import { formatDateTime } from './datetime'
 import { sessionModeLabel } from './quiz'
+import { downloadBlob } from './download'
 
 export function toCsv(headers: string[], rows: Array<Array<string | number>>): string {
   const escape = (value: string | number): string => {
@@ -20,15 +21,7 @@ export function toCsv(headers: string[], rows: Array<Array<string | number>>): s
 
 export function downloadCsv(fileName: string, csv: string): void {
   // UTF-8 BOM 让 Excel 正确识别中文
-  const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = fileName
-  document.body.appendChild(anchor)
-  anchor.click()
-  anchor.remove()
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+  downloadBlob(fileName, new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }))
 }
 
 export function historyToCsv(history: HistoryEntry[]): string {
