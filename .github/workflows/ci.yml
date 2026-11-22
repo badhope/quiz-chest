@@ -22,13 +22,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 10
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -64,9 +64,14 @@ jobs:
         env:
           CI: 'true'
 
+      # Web 构建通过不代表原生壳的 hash 路由与 native mode 可用；
+      # 这一步只多花十几秒，能在打包 APK/桌面之前拦住环境分支错误。
+      - name: Build native shell assets
+        run: pnpm build:native
+
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage
           path: coverage
@@ -74,7 +79,7 @@ jobs:
 
       - name: Upload build output on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dist-on-failure
           path: dist
@@ -82,7 +87,7 @@ jobs:
 
       - name: Upload Playwright traces on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report
           path: |

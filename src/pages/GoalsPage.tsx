@@ -4,7 +4,8 @@ import { getCollection } from '../data'
 import { useLibraryCollections } from '../lib/library'
 import type { Goal } from '../data/types'
 import { useAppStore } from '../store/useAppStore'
-import { Badge, EmptyState, ProgressBar } from '../components/ui/primitives'
+import { Badge, ProgressBar } from '../components/ui/primitives'
+import { MissingPage } from '../components/ui/MissingPage'
 import { DomainIcon } from '../components/ui/icons'
 import { PageHeader } from '../components/ui/sections'
 import {
@@ -114,15 +115,12 @@ export function GoalPage() {
 
   if (!goal) {
     return (
-      <EmptyState
+      <MissingPage
         icon={<Target />}
         title="目标方案不存在"
         description="该路线可能已被调整，请返回目标列表重新选择。"
-        action={
-          <Link to="/goals" className="button button-primary button-sm">
-            返回目标方案
-          </Link>
-        }
+        to="/goals"
+        linkLabel="返回目标方案"
       />
     )
   }

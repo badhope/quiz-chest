@@ -6,6 +6,7 @@ import { useLibraryCollections, type LibraryCollection } from '../lib/library'
 import { downloadBankPackage } from '../lib/exporter'
 import { AsyncButton } from '../components/ui/AsyncButton'
 import { Badge, EmptyState, ProgressBar } from '../components/ui/primitives'
+import { MissingPage } from '../components/ui/MissingPage'
 import { DomainIcon } from '../components/ui/icons'
 import { SectionHeader } from '../components/ui/sections'
 import { formatDate } from '../lib/datetime'
@@ -47,15 +48,12 @@ export function CollectionPage() {
 
   if (!collection) {
     return (
-      <EmptyState
+      <MissingPage
         icon={<Layers />}
         title="题库不存在"
         description="该题库可能已被调整，请返回题库总览重新选择。"
-        action={
-          <Link to="/catalog" className="button button-primary button-sm">
-            返回题库总览
-          </Link>
-        }
+        to="/catalog"
+        linkLabel="返回题库总览"
       />
     )
   }

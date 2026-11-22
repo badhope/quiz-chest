@@ -56,7 +56,8 @@ git push origin main --tags
 
 ## 三·五、构建产物
 
-- **Web / PWA**：`pnpm build`，产物在 `dist/`。
+- **Web / PWA**：`pnpm build`，产物在 `dist/`；CI 还会额外跑 `pnpm build:native`，
+  确认原生壳的 native mode 与 hash 路由资产能正常产出。
 - **桌面**：`pnpm desktop:build`；Tauri `bundle.targets` 为 `all`，在哪个系统构建就产出该系统可用的安装包（Windows nsis/msi、macOS app/dmg、Linux deb/AppImage）。
 - **Android**：`pnpm build:apk` 生成 debug APK 供验收。Release APK 需要先在 `android/keystore.properties` 填签名信息（模板见 `android/keystore.properties.example`）；该文件与 `*.jks` 已被 `.gitignore` 排除，禁止提交。
 
