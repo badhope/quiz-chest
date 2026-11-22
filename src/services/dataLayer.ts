@@ -149,6 +149,7 @@ export function createMemoryRepository(): Repository {
       )
       const prefix = `${bankId}-`
       snapshot.favorites = snapshot.favorites.filter((id) => !id.startsWith(prefix))
+      snapshot.bankSnapshots = snapshot.bankSnapshots.filter((item) => item.bankId !== bankId)
     },
     async addPaper(paper: PaperRecord) {
       snapshot.papers = [paper, ...snapshot.papers.filter((item) => item.id !== paper.id)]

@@ -224,7 +224,7 @@ export function createIndexedDbRepository(): Repository {
 
     async deleteBank(bankId: string): Promise<void> {
       const db = await database()
-      const tx = db.transaction(['banks', 'wrongBook', 'favorites'], 'readwrite')
+      const tx = db.transaction(['banks', 'wrongBook', 'favorites', 'bankSnapshots'], 'readwrite')
       await tx.objectStore('banks').delete(bankId)
       let wrongCursor = await tx.objectStore('wrongBook').openCursor()
       while (wrongCursor) {
@@ -236,6 +236,11 @@ export function createIndexedDbRepository(): Repository {
       while (favoriteCursor) {
         if (String(favoriteCursor.key).startsWith(prefix)) await favoriteCursor.delete()
         favoriteCursor = await favoriteCursor.continue()
+      }
+      let snapshotCursor = await tx.objectStore('bankSnapshots').openCursor()
+      while (snapshotCursor) {
+        if (snapshotCursor.value.bankId === bankId) await snapshotCursor.delete()
+        snapshotCursor = await snapshotCursor.continue()
       }
       await tx.done
     },

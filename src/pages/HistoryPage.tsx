@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useAppStore } from '../store/useAppStore'
 import { formatDateTime } from '../lib/datetime'
 import { formatDuration, percent, sessionModeLabel } from '../lib/quiz'
+import { AsyncButton } from '../components/ui/AsyncButton'
 import { EmptyState } from '../components/ui/primitives'
 import { PageHeader } from '../components/ui/sections'
 import { ArrowRight, Clock, ListChecks, Target, Trash2, Trophy } from '../components/ui/icons'
@@ -41,14 +42,13 @@ export function HistoryPage() {
         title={`${history.length} 次练习，最高 ${best}%`}
         subtitle={`平均正确率 ${average}%，记录保留在本机，最多 100 条。`}
         actions={
-          <button
-            className="button button-ghost button-sm"
-            onClick={() => {
-              if (window.confirm('清空练习记录与每日统计？错题与收藏不受影响。')) clearHistory()
-            }}
+          <AsyncButton
+            confirmText="清空练习记录与每日统计？错题与收藏不受影响。"
+            busyLabel="清空中…"
+            action={() => clearHistory()}
           >
             <Trash2 /> 清空记录
-          </button>
+          </AsyncButton>
         }
       />
 
