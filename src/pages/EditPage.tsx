@@ -4,7 +4,8 @@ import { useAppStore } from '../store/useAppStore'
 import { formatDateTime } from '../lib/datetime'
 import { buildQuestionSeed, type ImportIssue } from '../lib/importer'
 import type { QuestionType } from '../data/types'
-import { Badge, EmptyState } from '../components/ui/primitives'
+import { Badge } from '../components/ui/primitives'
+import { MissingPage } from '../components/ui/MissingPage'
 import { PageHeader } from '../components/ui/sections'
 import { ArrowLeft, CircleCheck, CircleX, Layers, RotateCcw, Save, Trash2 } from '../components/ui/icons'
 
@@ -113,18 +114,14 @@ export function EditPage() {
 
   if (!bank) {
     return (
-      <div className="edit-page">
-        <EmptyState
-          icon={<Layers />}
-          title="找不到这个题库"
-          description="内置示例题库不支持编辑，只有你导入的题库可以修改。"
-          action={
-            <Link to="/catalog" className="button button-primary button-sm">
-              返回我的题库
-            </Link>
-          }
-        />
-      </div>
+      <MissingPage
+        className="edit-page"
+        icon={<Layers />}
+        title="找不到这个题库"
+        description="内置示例题库不支持编辑，只有你导入的题库可以修改。"
+        to="/catalog"
+        linkLabel="返回我的题库"
+      />
     )
   }
 

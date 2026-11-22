@@ -9,3 +9,9 @@ minimumReleaseAgeExclude:
   - playwright@1.65.0
 allowBuilds:
   esbuild: true
+# 构建期依赖漏洞归零：glob 14 / minimatch 11 仍提供 CJS 入口。
+# 升级 workbox 或 @capacitor/cli 时重新核对这两条是否可以移除。
+overrides:
+  glob: 14.0.6
+  "filelist>minimatch": 11.0.9
+  "@typescript-eslint/typescript-estree>minimatch": 11.0.9
