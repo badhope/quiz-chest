@@ -1,4 +1,6 @@
 import type { ImportedBank } from '../store/useAppStore'
+import * as v from 'valibot'
+import { BankContentSchema } from '../data/schemas'
 import type { ImportBankInput } from './importer'
 import { dateKey } from './datetime'
 import { downloadBlob } from './download'
@@ -110,25 +112,36 @@ export function parseExportPackage(raw: string): ParsePackageResult {
     bankRecord = migrateV1ToV2(bankRecord, warnings)
   }
 
-  const bank = bankRecord as unknown as ImportBankInput
-  if (!Array.isArray(bank.questions) || bank.questions.length === 0) {
+  if (!Array.isArray(bankRecord.questions) || bankRecord.questions.length === 0) {
     return { bank: null, error: '题库包内没有题目', warnings, version: rawVersion }
   }
+
+  const parsed = v.safeParse(BankContentSchema, bankRecord)
+  if (!parsed.success) {
+    const path = parsed.issues[0]?.path?.map((item) => String(item.key ?? '')).join('.')
+    return {
+      bank: null,
+      error: `题库包字段不完整：${path || 'bank'}`,
+      warnings,
+      version: rawVersion,
+    }
+  }
+  const content = parsed.output as ImportBankInput
 
   return {
     bank: {
       id: '',
-      title: bank.title ?? '未命名题库',
-      subtitle: bank.subtitle ?? '导入题库',
-      description: bank.description ?? '',
-      exam: bank.exam ?? bank.title ?? '未命名题库',
-      icon: bank.icon ?? 'book',
-      accent: bank.accent ?? '#315B7D',
-      level: bank.level ?? '入门',
-      durationMin: bank.durationMin ?? 10,
-      tags: bank.tags ?? [],
+      title: content.title || '未命名题库',
+      subtitle: content.subtitle || '导入题库',
+      description: content.description,
+      exam: content.exam || content.title || '未命名题库',
+      icon: content.icon,
+      accent: content.accent,
+      level: content.level,
+      durationMin: content.durationMin,
+      tags: content.tags,
       importedAt: 0,
-      questions: bank.questions,
+      questions: content.questions,
     },
     error: '',
     warnings,
