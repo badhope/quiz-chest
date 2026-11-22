@@ -38,10 +38,17 @@ export function StatsPage() {
   const theme = useAppStore((state) => state.settings.theme)
   const colors = palette[theme]
 
-  const days = lastNDays(7)
-  const dailySeries = days.map((day) => daily[day] ?? { date: day, answered: 0, correct: 0 })
-  const { totalAnswered, totalCorrect, accuracy, streak } = summarizeDaily(daily)
-  const { totalMinutes } = summarizeHistory(history)
+  const days = useMemo(() => lastNDays(7), [])
+  // 每天渲染都新建数组会让 barOption 的 useMemo 失效，图表跟着重算。
+  const dailySeries = useMemo(
+    () => days.map((day) => daily[day] ?? { date: day, answered: 0, correct: 0 }),
+    [days, daily],
+  )
+  const { totalAnswered, totalCorrect, accuracy, streak } = useMemo(
+    () => summarizeDaily(daily),
+    [daily],
+  )
+  const { totalMinutes } = useMemo(() => summarizeHistory(history), [history])
 
   const domainStats = useMemo(() => {
     const library = getLibraryCollections()

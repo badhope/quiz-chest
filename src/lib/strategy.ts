@@ -3,10 +3,16 @@ import type { Question } from '../data/types'
 import type { WrongEntry } from '../store/useAppStore'
 import { shuffle } from './quiz'
 import { compareByDue } from './review'
-import { getLibraryCollections } from './library'
+import { getLibraryCollections, type LibraryCollection } from './library'
 
-function allQuestionsIncludingImported(): Question[] {
-  return getLibraryCollections().flatMap((collection) => collection.questions)
+/**
+ * 同一次计划生成里只取一次题库快照。
+ *
+ * `getLibraryCollections()` 本身有缓存，但每次 `flatMap` 题目仍会分配新数组；
+ * 每日一练原先在按领域抽题时反复遍历全库，导入几千题后首页会明显变慢。
+ */
+function questionsOf(library: LibraryCollection[]): Question[] {
+  return library.flatMap((collection) => collection.questions)
 }
 
 export type StrategyKind = 'daily' | 'weak' | 'random' | 'wrong'
@@ -65,14 +71,14 @@ export const strategyCatalog: StrategyMeta[] = [
 
 const DAILY_SIZE = 10
 
-export function collectAllQuestions(): Question[] {
-  return allQuestionsIncludingImported()
+export function collectAllQuestions(library: LibraryCollection[] = getLibraryCollections()): Question[] {
+  return questionsOf(library)
 }
 
 export function domainAccuracy(
   history: Array<{ collectionId: string; answered: number; correct: number }>,
+  library: LibraryCollection[] = getLibraryCollections(),
 ): Array<{ domainId: string; name: string; answered: number; correct: number; accuracy: number }> {
-  const library = getLibraryCollections()
   const byCollection = new Map(library.map((collection) => [collection.id, collection]))
   const names = new Map<string, string>(domains.map((domain) => [domain.id, domain.name]))
   names.set('imported', '我的题库')
@@ -103,19 +109,31 @@ export function domainAccuracy(
     .sort((a, b) => a.accuracy - b.accuracy)
 }
 
-function pickByDomain(counts: Record<string, number>, random: () => number, size: number): Question[] {
+function pickByDomain(
+  counts: Record<string, number>,
+  random: () => number,
+  size: number,
+  library: LibraryCollection[],
+  allQuestions: Question[],
+): Question[] {
   const picked: Question[] = []
   const seen = new Set<string>()
   const domainOrder = Object.keys(counts)
     .sort((a, b) => counts[b] - counts[a])
     .slice(0, 5)
   const totalWeight = domainOrder.reduce((sum, id) => sum + counts[id], 0)
+  const byDomain = new Map<string, LibraryCollection[]>()
+  for (const collection of library) {
+    const list = byDomain.get(collection.domainId)
+    if (list) list.push(collection)
+    else byDomain.set(collection.domainId, [collection])
+  }
 
   for (const domainId of domainOrder) {
     if (picked.length >= size) break
     const quota = Math.max(1, Math.round((counts[domainId] / Math.max(1, totalWeight)) * size))
     const pools = shuffle(
-      getLibraryCollections().filter((collection) => collection.domainId === domainId),
+      byDomain.get(domainId) ?? [],
       random,
     ).map((collection) => ({
       questions: shuffle(collection.questions, random),
@@ -136,7 +154,7 @@ function pickByDomain(counts: Record<string, number>, random: () => number, size
   }
 
   if (picked.length < size) {
-    for (const question of shuffle(collectAllQuestions(), random)) {
+    for (const question of shuffle(allQuestions, random)) {
       if (picked.length >= size) break
       if (seen.has(question.id)) continue
       seen.add(question.id)
@@ -154,7 +172,9 @@ export function buildDailyPlan(options: {
 }): StrategyPlan {
   const size = options.size ?? DAILY_SIZE
   const random = options.random ?? Math.random
-  const weak = domainAccuracy(options.history)
+  const library = getLibraryCollections()
+  const allQuestions = questionsOf(library)
+  const weak = domainAccuracy(options.history, library)
   const counts: Record<string, number> = {}
 
   if (weak.length > 0) {
@@ -166,14 +186,19 @@ export function buildDailyPlan(options: {
   // 内置领域 + 导入题库实际用到的领域，都参与每日一练的权重。
   const allDomainIds = new Set([
     ...domains.map((domain) => domain.id),
-    ...getLibraryCollections().map((collection) => collection.domainId),
+    ...library.map((collection) => collection.domainId),
   ])
   for (const domainId of allDomainIds) {
     if (!counts[domainId]) counts[domainId] = 1
   }
   const recent = new Set(options.recentQuestionIds ?? [])
-  const picked = pickByDomain(counts, random, size).filter((question) => !recent.has(question.id))
-  const filled = picked.length >= size ? picked : pickByDomain(counts, random, size)
+  const picked = pickByDomain(counts, random, size, library, allQuestions).filter(
+    (question) => !recent.has(question.id),
+  )
+  const filled =
+    picked.length >= size
+      ? picked
+      : pickByDomain(counts, random, size, library, allQuestions)
 
   return {
     kind: 'daily',
@@ -191,7 +216,8 @@ export function buildWeaknessPlan(options: {
 }): StrategyPlan {
   const size = options.size ?? 10
   const random = options.random ?? Math.random
-  const weak = domainAccuracy(options.history)
+  const library = getLibraryCollections()
+  const weak = domainAccuracy(options.history, library)
   if (weak.length === 0) {
     return {
       kind: 'weak',
@@ -202,7 +228,7 @@ export function buildWeaknessPlan(options: {
     }
   }
   const target = weak.slice(0, 2).map((item) => item.domainId)
-  const pool = getLibraryCollections()
+  const pool = library
     .filter((collection) => target.includes(collection.domainId))
     .flatMap((collection) => collection.questions)
   return {
@@ -217,11 +243,12 @@ export function buildWeaknessPlan(options: {
 export function buildRandomPlan(options: { size?: number; random?: () => number } = {}): StrategyPlan {
   const size = options.size ?? 12
   const random = options.random ?? Math.random
+  const allQuestions = collectAllQuestions()
   return {
     kind: 'random',
     title: '随机组卷',
-    description: `从全库 ${collectAllQuestions().length} 题中随机抽 ${size} 题，模拟陌生题感。`,
-    questions: shuffle(collectAllQuestions(), random).slice(0, size),
+    description: `从全库 ${allQuestions.length} 题中随机抽 ${size} 题，模拟陌生题感。`,
+    questions: shuffle(allQuestions, random).slice(0, size),
     reason: '全库随机，不偏向任何领域',
   }
 }
@@ -233,7 +260,8 @@ export function buildWrongPlan(options: {
   const size = options.size ?? 20
   const entries = Object.values(options.wrongBook).sort((a, b) => compareByDue(a, b))
   const idSet = new Set(entries.map((entry) => entry.questionId))
-  const questions = collectAllQuestions().filter((question) => idSet.has(question.id)).slice(0, size)
+  const allQuestions = collectAllQuestions()
+  const questions = allQuestions.filter((question) => idSet.has(question.id)).slice(0, size)
   return {
     kind: 'wrong',
     title: '错题复习',
