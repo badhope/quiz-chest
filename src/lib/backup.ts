@@ -2,6 +2,14 @@ import * as v from 'valibot'
 import type { AppSettings, DailyStat, HistoryEntry, ImportedBank, PaperRecord, WrongEntry } from '../store/useAppStore'
 import { dateStamp } from './datetime'
 import { downloadBlob } from './download'
+import {
+  DailySchema,
+  HistorySchema,
+  PaperSchema,
+  SettingsSchema,
+  StoredBankSchema,
+  WrongSchema,
+} from '../data/schemas'
 
 /**
  * 全量备份包。
@@ -88,104 +96,16 @@ export function backupFileName(now: Date = new Date()): string {
  * 解析并校验备份包。
  *
  * 结构校验交给 valibot：字段类型、嵌套题库、题目、错题、记录一次定义，
- * 备份与未来的导入接口共用同一套 schema。之前只检查顶层数组，`banks:[null]`
+ * 备份与题库包导入共用 `data/schemas.ts`。之前只检查顶层数组，`banks:[null]`
  * 能过关并在渲染时崩掉；现在坏一份就整包拒绝，绝不做「半份导入」。
  */
-const QuestionSchema = v.object({
-  type: v.picklist(['single', 'multiple', 'judge']),
-  stem: v.string(),
-  options: v.array(v.string()),
-  answer: v.array(v.number()),
-  explanation: v.string(),
-  difficulty: v.picklist([1, 2, 3]),
-  tags: v.array(v.string()),
-  image: v.optional(v.string()),
-  optionImages: v.optional(v.array(v.string())),
-})
-
-const BankSchema = v.object({
-  id: v.string(),
-  title: v.string(),
-  subtitle: v.string(),
-  description: v.string(),
-  exam: v.string(),
-  icon: v.string(),
-  accent: v.string(),
-  level: v.picklist(['入门', '进阶', '挑战']),
-  durationMin: v.number(),
-  tags: v.array(v.string()),
-  importedAt: v.number(),
-  domainId: v.optional(v.picklist(['k12', 'university', 'career', 'language', 'coding', 'public', 'general', 'imported'])),
-  trackId: v.optional(v.string()),
-  trackName: v.optional(v.string()),
-  questions: v.array(QuestionSchema),
-})
-
-const ReviewSchema = v.object({
-  due: v.number(),
-  stability: v.number(),
-  difficulty: v.number(),
-  scheduledDays: v.number(),
-  learningSteps: v.number(),
-  reps: v.number(),
-  lapses: v.number(),
-  state: v.picklist([0, 1, 2, 3]),
-  lastReview: v.nullable(v.number()),
-})
-
-const WrongSchema = v.object({
-  questionId: v.string(),
-  collectionId: v.string(),
-  wrongCount: v.number(),
-  lastWrongAt: v.number(),
-  lastSelection: v.array(v.number()),
-  fsrs: v.optional(ReviewSchema),
-})
-
-const HistorySchema = v.object({
-  id: v.string(),
-  mode: v.picklist(['practice', 'exam', 'review']),
-  collectionId: v.string(),
-  collectionTitle: v.string(),
-  domainId: v.optional(v.string()),
-  answered: v.number(),
-  correct: v.number(),
-  wrong: v.number(),
-  skipped: v.number(),
-  total: v.number(),
-  accuracy: v.number(),
-  durationSec: v.number(),
-  finishedAt: v.number(),
-  dateKey: v.string(),
-})
-
-const DailySchema = v.object({ date: v.string(), answered: v.number(), correct: v.number() })
-
-const PaperSchema = v.object({
-  id: v.string(),
-  title: v.string(),
-  collectionIds: v.array(v.string()),
-  count: v.number(),
-  durationMin: v.number(),
-  order: v.picklist(['random', 'sequence']),
-  createdAt: v.number(),
-})
-
-const SettingsSchema = v.object({
-  theme: v.picklist(['light', 'dark']),
-  fontScale: v.picklist(['normal', 'large']),
-  autoNext: v.boolean(),
-  showSampleBanks: v.boolean(),
-  allowRemoteImages: v.optional(v.boolean(), false),
-})
-
 const PayloadSchema = v.object({
   settings: SettingsSchema,
   favorites: v.array(v.string()),
   wrongBook: v.record(v.string(), WrongSchema),
   history: v.array(HistorySchema),
   daily: v.record(v.string(), DailySchema),
-  banks: v.array(BankSchema),
+  banks: v.array(StoredBankSchema),
   papers: v.array(PaperSchema),
 })
 
