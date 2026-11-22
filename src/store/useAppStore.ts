@@ -14,7 +14,7 @@ import { DEFAULT_SETTINGS, HISTORY_LIMIT, emptySnapshot } from '../services/repo
 import { getRepository, setRepositoryForTest } from '../services/dataLayer'
 import type { Repository } from '../services/repository'
 import { resilientStorage } from '../lib/storage'
-import { BANK_SNAPSHOT_LIMIT } from '../services/snapshotPolicy'
+import { nextBankSnapshots } from '../services/snapshotPolicy'
 import { gradeReview } from '../lib/review'
 
 export type {
@@ -310,13 +310,9 @@ export const useAppStore = create<AppState>()((set, get) => ({
       // 深拷贝：后续编辑会生成新对象，但题目数组可能被复用，不拷贝会串改历史。
       bank: structuredClone(bank),
     }
-    set((state) => {
-      const others = state.bankSnapshots.filter((item) => item.bankId !== bank.id)
-      const kept = [...state.bankSnapshots.filter((item) => item.bankId === bank.id), snapshot]
-        .sort((a, b) => b.savedAt - a.savedAt)
-        .slice(0, BANK_SNAPSHOT_LIMIT)
-      return { bankSnapshots: [...others, ...kept] }
-    })
+    set((state) => ({
+      bankSnapshots: nextBankSnapshots(state.bankSnapshots, snapshot),
+    }))
     persist((repo) => repo.addBankSnapshot(snapshot))
     return snapshot
   },

@@ -9,18 +9,19 @@ import { applyBrand } from '../../lib/brand'
 import { domains } from '../../data/taxonomy'
 import { ErrorBoundary } from '../ErrorBoundary'
 import { Menu, Moon, Search, Sun, X } from '../ui/icons'
+import { NAV_LABELS } from './navigation'
 
 /** 自带顶栏的沉浸式路由，不套侧边栏与全局顶栏。 */
 const FULLSCREEN_ROUTES = ['/practice/', '/practice-plan/', '/compose-run']
 
 const pageTitles: Record<string, string> = {
-  '/': '学习台',
-  '/catalog': '题库总览',
-  '/review': '题夹',
-  '/records': '学习档案',
-  '/settings': '设置',
+  '/': NAV_LABELS.home,
+  '/catalog': NAV_LABELS.catalog,
+  '/review': NAV_LABELS.review,
+  '/records': NAV_LABELS.records,
+  '/settings': NAV_LABELS.settings,
   '/import': '导入题库',
-  '/compose': '自定义组卷',
+  '/compose': NAV_LABELS.compose,
 }
 
 function resolveTitle(pathname: string): string {
@@ -34,9 +35,9 @@ function resolveTitle(pathname: string): string {
   if (pathname.startsWith('/practice-plan/')) return '策略练习'
   if (pathname.startsWith('/result/')) return '练习结果'
   if (pathname.startsWith('/compose-run')) return '自定义组卷'
-  if (pathname === '/goals') return '目标方案'
+  if (pathname === '/goals') return NAV_LABELS.goals
   if (pathname.startsWith('/goal/')) return '备考路线'
-  if (pathname.startsWith('/strategy/')) return '练习策略'
+  if (pathname.startsWith('/strategy/')) return NAV_LABELS.strategy
   return '题小星'
 }
 

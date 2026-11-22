@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { getCollection, getQuestion } from '../data'
 import { useAppStore } from '../store/useAppStore'
-import { formatRelativeTime } from '../lib/quiz'
+import { formatRelativeTime } from '../lib/datetime'
 import { Badge, EmptyState } from '../components/ui/primitives'
 import { PageHeader } from '../components/ui/sections'
 import { ArrowRight, Bookmark, Clock, Target, Trash2 } from '../components/ui/icons'

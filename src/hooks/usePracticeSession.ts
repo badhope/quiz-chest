@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Question } from '../data/types'
 import { useAppStore } from '../store/useAppStore'
-import { dateKey, isCorrect, type SessionMode } from '../lib/quiz'
+import { dateKey } from '../lib/datetime'
+import { isCorrect, type SessionMode } from '../lib/quiz'
 import { useCountdown, useTimer } from './useTimer'
 
 const EMPTY_SELECTION: number[] = []

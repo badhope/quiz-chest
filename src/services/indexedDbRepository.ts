@@ -9,8 +9,8 @@ import type {
   PendingSession,
   WrongEntry,
 } from '../data/records'
-import { HISTORY_LIMIT, PAPER_LIMIT, normalizeSnapshot, type Repository } from './repository'
-import { BANK_SNAPSHOT_LIMIT } from './snapshotPolicy'
+import { DEFAULT_SETTINGS, HISTORY_LIMIT, PAPER_LIMIT, normalizeSnapshot, type Repository } from './repository'
+import { nextBankSnapshots } from './snapshotPolicy'
 
 /**
  * 浏览器仓储：IndexedDB。
@@ -103,13 +103,7 @@ export function createIndexedDbRepository(): Repository {
           db.getAll('bankSnapshots'),
         ])
       return normalizeSnapshot({
-        settings: {
-          theme: settings?.theme ?? 'light',
-          fontScale: settings?.fontScale ?? 'normal',
-          autoNext: settings?.autoNext ?? false,
-          showSampleBanks: settings?.showSampleBanks ?? true,
-          allowRemoteImages: settings?.allowRemoteImages ?? false,
-        },
+        settings: { ...DEFAULT_SETTINGS, ...(settings ?? {}) },
         favorites: favorites.map((record) => record.questionId).sort((a, b) => a.localeCompare(b)),
         wrongBook,
         history: [...history].sort((a, b) => b.finishedAt - a.finishedAt).slice(0, HISTORY_LIMIT),
@@ -139,8 +133,9 @@ export function createIndexedDbRepository(): Repository {
 
     async addBankSnapshot(entry: BankSnapshot): Promise<void> {
       const db = await database()
-      const sameBank = (await db.getAll('bankSnapshots')).filter((item) => item.bankId === entry.bankId)
-      const keptIds = new Set(trimByDate([...sameBank, entry], BANK_SNAPSHOT_LIMIT, (item) => item.savedAt).map((item) => item.id))
+      const all = await db.getAll('bankSnapshots')
+      const sameBank = all.filter((item) => item.bankId === entry.bankId)
+      const keptIds = new Set(nextBankSnapshots(all, entry).map((item) => item.id))
       const tx = db.transaction('bankSnapshots', 'readwrite')
       await tx.store.put(entry)
       for (const item of sameBank) if (!keptIds.has(item.id)) await tx.store.delete(item.id)

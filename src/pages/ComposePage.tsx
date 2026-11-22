@@ -14,7 +14,7 @@ import {
   DURATION_PRESETS,
 } from '../lib/customPaper'
 import type { CustomPaperSpec } from '../lib/customPaper'
-import { formatRelativeTime } from '../lib/quiz'
+import { formatRelativeTime } from '../lib/datetime'
 import { EmptyState } from '../components/ui/primitives'
 import { PageHeader, SectionHeader } from '../components/ui/sections'
 import { DomainIcon } from '../components/ui/icons'

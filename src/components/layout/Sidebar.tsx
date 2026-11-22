@@ -3,7 +3,8 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { goals } from '../../data/goals'
 import { useAppStore } from '../../store/useAppStore'
 import { useBrand } from '../../hooks/useBrand'
-import { streakFromDates } from '../../lib/quiz'
+import { streakFromDates } from '../../lib/datetime'
+import { NAV_LABELS } from './navigation'
 import {
   BarChart3,
   Bookmark,
@@ -48,7 +49,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           onClick={onClose}
         >
           <House />
-          学习台
+          {NAV_LABELS.home}
         </NavLink>
         <NavLink
           to="/goals"
@@ -56,7 +57,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           onClick={onClose}
         >
           <Target />
-          目标方案
+          {NAV_LABELS.goals}
           <span className="nav-count">{goals.length}</span>
         </NavLink>
         <NavLink
@@ -65,7 +66,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           onClick={onClose}
         >
           <Sparkles />
-          练习策略
+          {NAV_LABELS.strategy}
         </NavLink>
         <NavLink
           to="/catalog"
@@ -73,7 +74,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           onClick={onClose}
         >
           <Library />
-          题库总览
+          {NAV_LABELS.catalog}
         </NavLink>
         <NavLink
           to="/compose"
@@ -81,7 +82,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           onClick={onClose}
         >
           <Layers />
-          自定义组卷
+          {NAV_LABELS.compose}
         </NavLink>
       </nav>
 
@@ -93,7 +94,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           onClick={onClose}
         >
           <Bookmark />
-          题夹
+          {NAV_LABELS.review}
           {wrongCount + favoriteCount > 0 ? (
             <span className="nav-count">{wrongCount + favoriteCount}</span>
           ) : null}
@@ -104,7 +105,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           onClick={onClose}
         >
           <BarChart3 />
-          学习档案
+          {NAV_LABELS.records}
         </NavLink>
       </nav>
 
@@ -124,7 +125,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           onClick={onClose}
         >
           <Settings />
-          设置
+          {NAV_LABELS.settings}
         </NavLink>
         <p className="sidebar-note">
           <LayoutGrid style={{ width: 11, height: 11, verticalAlign: '-1px' }} /> {brand.footerNote}
@@ -137,7 +138,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
 export function MobileNav() {
   const { pathname } = useLocation()
   const items = [
-    { to: '/', label: '学习台', icon: House, match: pathname === '/' },
+    { to: '/', label: NAV_LABELS.home, icon: House, match: pathname === '/' },
     {
       to: '/catalog',
       label: '题库',
@@ -146,7 +147,7 @@ export function MobileNav() {
     },
     {
       to: '/review?tab=wrong',
-      label: '题夹',
+      label: NAV_LABELS.review,
       icon: Target,
       match: pathname.startsWith('/review') || pathname.startsWith('/wrong') || pathname.startsWith('/favorites'),
     },
@@ -164,7 +165,7 @@ export function MobileNav() {
     },
     {
       to: '/settings',
-      label: '设置',
+      label: NAV_LABELS.settings,
       icon: Settings,
       match: pathname.startsWith('/settings') || pathname.startsWith('/goals') || pathname.startsWith('/compose'),
     },

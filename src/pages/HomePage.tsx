@@ -3,7 +3,8 @@ import { collections, domains } from '../data/taxonomy'
 import { totalQuestions, getCollection } from '../data'
 import { goals } from '../data/goals'
 import { useAppStore } from '../store/useAppStore'
-import { dateKey, percent, streakFromDates } from '../lib/quiz'
+import { dateKey, streakFromDates } from '../lib/datetime'
+import { percent } from '../lib/quiz'
 import { buildDailyPlan } from '../lib/strategy'
 import {
   ArrowRight,

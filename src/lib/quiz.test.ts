@@ -5,11 +5,10 @@ import {
   createSession,
   formatDuration,
   isCorrect,
-  lastNDays,
   normalizeSelection,
-  streakFromDates,
   summarizeSession,
 } from './quiz'
+import { lastNDays, streakFromDates } from './datetime'
 import { searchCatalog } from './search'
 import type { Question } from '../data/types'
 
