@@ -46,6 +46,7 @@ export function ImportPage() {
   const [result, setResult] = useState<ParseResult | null>(null)
   const [error, setError] = useState('')
   const [savedId, setSavedId] = useState('')
+  const [saving, setSaving] = useState(false)
   const [overwriteBankId, setOverwriteBankId] = useState<string | null>(null)
   const [domainId, setDomainId] = useState('')
   const [trackName, setTrackName] = useState('')
@@ -141,8 +142,8 @@ export function ImportPage() {
     runParse(rawText, `粘贴内容.${format}`)
   }
 
-  const commit = () => {
-    if (!result?.bank) return
+  const commit = async () => {
+    if (!result?.bank || saving) return
     const now = Date.now()
     const sameTitle = existingBanks.find((bank) => bank.title === result.bank!.title)
     // 同标题时：沿用旧 ID 覆盖（错题与记录仍指向同一题库），或显式新建副本。
@@ -167,9 +168,21 @@ export function ImportPage() {
       trackName: trackName.trim() || undefined,
       questions: result.bank.questions,
     }
-    addBank(bank)
-    setSavedId(bank.id)
-    setStep('done')
+    setSaving(true)
+    setError('')
+    try {
+      // 必须等落库真正成功再进入「导入完成」页，
+      // 否则用户看到成功提示，重启后题库却不在。
+      await addBank(bank)
+      setSavedId(bank.id)
+      setStep('done')
+    } catch (err) {
+      setError(
+        `保存失败：${err instanceof Error ? err.message : String(err)}。题库尚未写入，请重试。`,
+      )
+    } finally {
+      setSaving(false)
+    }
   }
 
   if (step === 'done') {
@@ -299,12 +312,22 @@ export function ImportPage() {
           </div>
         )}
 
+        {error ? (
+          <p className="import-error" role="alert">
+            <CircleX /> {error}
+          </p>
+        ) : null}
+
         <div className="import-actions">
           <button className="button button-ghost" onClick={() => setStep('input')}>
             返回修改
           </button>
-          <button className="button button-primary" onClick={commit} disabled={result.questionCount === 0}>
-            确认导入 {result.questionCount} 题 <ArrowRight />
+          <button
+            className="button button-primary"
+            onClick={() => void commit()}
+            disabled={result.questionCount === 0 || saving}
+          >
+            {saving ? '保存中…' : `确认导入 ${result.questionCount} 题`} <ArrowRight />
           </button>
         </div>
       </div>

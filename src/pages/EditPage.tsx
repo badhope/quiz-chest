@@ -191,7 +191,6 @@ export function EditPage() {
         bank.exam !== (exam.trim() || bank.exam) ||
         bank.description !== (description.trim() || bank.description) ||
         JSON.stringify(bank.questions) !== JSON.stringify(questions)
-      if (changed) archiveBankVersion(bank)
       // 沿用原 ID 与 importedAt：错题本、收藏、练习记录的引用不断。
       // 必须 await：落库失败时不能显示「已保存」。
       await addBank({
@@ -208,6 +207,8 @@ export function EditPage() {
         importedAt: bank.importedAt,
         questions,
       })
+      // 只有新内容真正落库后才压旧版本；保存失败时不该多出一份历史。
+      if (changed) archiveBankVersion(bank)
       setSaved(true)
     } catch (error) {
       setSaved(false)
