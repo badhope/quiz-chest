@@ -6,6 +6,24 @@ export const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'] as const
 
 export type SessionMode = 'practice' | 'exam' | 'review'
 
+export const SESSION_MODE_LABELS: Record<SessionMode, string> = {
+  practice: '顺序练习',
+  exam: '模拟考试',
+  review: '错题重练',
+}
+
+export function parseSessionMode(
+  value: string | null | undefined,
+  fallback: SessionMode = 'practice',
+): SessionMode {
+  if (value === 'exam' || value === 'review') return value
+  return fallback
+}
+
+export function sessionModeLabel(mode: SessionMode): string {
+  return SESSION_MODE_LABELS[mode]
+}
+
 export interface Session {
   id: string
   mode: SessionMode

@@ -6,7 +6,14 @@ import type {
   PaperRecord,
   WrongEntry,
 } from '../data/records'
-import { emptySnapshot, toDaily, toWrongBook, type Repository } from './repository'
+import {
+  HISTORY_LIMIT,
+  PAPER_LIMIT,
+  emptySnapshot,
+  toDaily,
+  toWrongBook,
+  type Repository,
+} from './repository'
 import { BANK_SNAPSHOT_LIMIT } from './snapshotPolicy'
 import { createIndexedDbRepository } from './indexedDbRepository'
 import { createSqliteRepository, rebuildDatabase as rebuildSqlite, sqliteLocation } from './sqliteRepository'
@@ -87,7 +94,10 @@ export function createMemoryRepository(): Repository {
       snapshot.pendingSession = session ? { ...session } : null
     },
     async addBankSnapshot(entry) {
-      const sameBank = snapshot.bankSnapshots.filter((item) => item.bankId === entry.bankId)
+      // 同一快照 id 重复写入时先按 id 去重，语义与 IndexedDB 的 put 一致。
+      const sameBank = snapshot.bankSnapshots.filter(
+        (item) => item.bankId === entry.bankId && item.id !== entry.id,
+      )
       const others = snapshot.bankSnapshots.filter((item) => item.bankId !== entry.bankId)
       const kept = [...sameBank, entry]
         .sort((a, b) => b.savedAt - a.savedAt)
@@ -124,7 +134,7 @@ export function createMemoryRepository(): Repository {
       snapshot.wrongBook = {}
     },
     async addHistory(entry: HistoryEntry) {
-      snapshot.history = [entry, ...snapshot.history].slice(0, 100)
+      snapshot.history = [entry, ...snapshot.history].slice(0, HISTORY_LIMIT)
       const current = snapshot.daily[entry.dateKey]
       snapshot.daily = {
         ...snapshot.daily,
@@ -143,10 +153,17 @@ export function createMemoryRepository(): Repository {
       snapshot.banks = [bank, ...snapshot.banks.filter((item) => item.id !== bank.id)]
     },
     async deleteBank(bankId) {
+      // 与 SQLite / IndexedDB 保持一致：题库、错题、收藏必须一起清，
+      // 否则设置页会把已无题目的孤儿行也算进错题数。
       snapshot.banks = snapshot.banks.filter((item) => item.id !== bankId)
+      snapshot.wrongBook = Object.fromEntries(
+        Object.entries(snapshot.wrongBook).filter(([, entry]) => entry.collectionId !== bankId),
+      )
+      const prefix = `${bankId}-`
+      snapshot.favorites = snapshot.favorites.filter((id) => !id.startsWith(prefix))
     },
     async addPaper(paper: PaperRecord) {
-      snapshot.papers = [paper, ...snapshot.papers.filter((item) => item.id !== paper.id)].slice(0, 20)
+      snapshot.papers = [paper, ...snapshot.papers.filter((item) => item.id !== paper.id)].slice(0, PAPER_LIMIT)
     },
     async removePaper(paperId) {
       snapshot.papers = snapshot.papers.filter((item) => item.id !== paperId)

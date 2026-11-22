@@ -4,8 +4,10 @@ import { getCollection, getQuestion } from '../data'
 
 const questionById = getQuestion
 import { useAppStore } from '../store/useAppStore'
-import { formatDuration, percent } from '../lib/quiz'
+import { formatDateTime } from '../lib/datetime'
+import { formatDuration, parseSessionMode, percent, sessionModeLabel } from '../lib/quiz'
 import { Badge } from '../components/ui/primitives'
+import { SectionHeader } from '../components/ui/sections'
 import {
   ArrowRight,
   CircleCheck,
@@ -29,7 +31,7 @@ export function ResultPage() {
   const favorites = useAppStore((state) => state.favorites)
 
   const resultTitle = searchParams.get('title') ?? collection?.title ?? '策略练习'
-  const mode = searchParams.get('mode') ?? 'practice'
+  const mode = parseSessionMode(searchParams.get('mode'))
   const backTo = searchParams.get('back') ?? (collection ? `/collection/${collection.id}` : '/catalog')
   const correct = Number(searchParams.get('correct') ?? 0)
   const answered = Number(searchParams.get('answered') ?? 0)
@@ -76,7 +78,7 @@ export function ResultPage() {
   return (
     <div className="result-page">
       <header className="result-hero">
-        <span className="result-kicker">{mode === 'exam' ? '模拟考试' : mode === 'review' ? '错题重练' : '顺序练习'} · 已完成</span>
+        <span className="result-kicker">{sessionModeLabel(mode)} · 已完成</span>
         <div className="result-score">
           <strong className="mono">{accuracy}</strong>
           <span>%</span>
@@ -87,7 +89,7 @@ export function ResultPage() {
           <Badge tone={verdict.tone as 'success' | 'moss' | 'gold' | 'danger' | 'neutral'}>
             {resultTitle}
           </Badge>
-          <Badge tone="neutral">{new Date().toLocaleString('zh-CN', { hour12: false })}</Badge>
+          <Badge tone="neutral">{latest ? formatDateTime(latest.finishedAt) : '刚刚'}</Badge>
         </div>
       </header>
 
@@ -180,15 +182,15 @@ export function ResultPage() {
       </div>
 
       <section className="result-review">
-        <div className="section-head">
-          <div>
-            <span className="eyebrow">错题回顾</span>
-            <h2 className="section-title serif">把错的地方看明白</h2>
-          </div>
-          <Link to="/review?tab=wrong" className="section-link">
-            打开错题本 <ArrowRight />
-          </Link>
-        </div>
+        <SectionHeader
+          eyebrow="错题回顾"
+          title="把错的地方看明白"
+          aside={
+            <Link to="/review?tab=wrong" className="section-link">
+              打开错题本 <ArrowRight />
+            </Link>
+          }
+        />
         {wrongCount === 0 ? (
           <div className="result-perfect">
             <Trophy />
@@ -221,7 +223,7 @@ export function ResultPage() {
 
       {latest ? (
         <p className="result-footnote">
-          最近一次记录已保存 · {new Date(latest.finishedAt).toLocaleString('zh-CN', { hour12: false })}
+          最近一次记录已保存 · {formatDateTime(latest.finishedAt)}
         </p>
       ) : null}
     </div>
