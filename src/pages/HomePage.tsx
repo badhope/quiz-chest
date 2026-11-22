@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { collections, domains } from '../data/taxonomy'
 import { totalQuestions, getCollection } from '../data'
@@ -79,8 +80,13 @@ export function HomePage() {
   const { streak, totalAnswered, accuracy } = summarizeDaily(daily)
   const todayAnswered = daily[TODAY_KEY]?.answered ?? 0
 
-  const plan = buildDailyPlan({ history })
-  const coveredCollections = new Set(plan.questions.map((question) => question.collectionId))
+  // 每日计划带随机抽题：不缓存的话，切换主题、保存会话等无关渲染
+  // 都会换一组题，首页「今日一练」会当场跳变。
+  const plan = useMemo(() => buildDailyPlan({ history }), [history])
+  const coveredCollections = useMemo(
+    () => new Set(plan.questions.map((question) => question.collectionId)),
+    [plan],
+  )
 
   return (
     <div className="home">

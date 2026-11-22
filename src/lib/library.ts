@@ -175,11 +175,9 @@ export const allTracks = tracks
 
 // getCollection / getQuestion 的导入题库兜底（库加载时注册一次）。
 registerImportedLookup({
-  collection: (id) =>
-    useAppStore
-      .getState()
-      .banks.map(toLibraryCollection)
-      .find((collection) => collection.id === id),
+  // 走已缓存的合并视图：早先每次 getCollection 都会把所有导入题库
+  // 连同几千道题重新构造成 Question 对象，历史列表逐行调用时非常慢。
+  collection: (id) => getLibraryCollections().find((collection) => collection.id === id),
   question: (id) => {
     const bankId = id.substring(0, id.lastIndexOf('-'))
     const bank = useAppStore.getState().banks.find((item) => item.id === bankId)
