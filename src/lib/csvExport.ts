@@ -69,4 +69,3 @@ export function wrongBookToCsv(
 }
 
 // 唯一实现在 lib/quiz.ts；此处保留导出名，避免动调用方。
-export { dateStamp } from './quiz'

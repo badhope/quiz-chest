@@ -1,6 +1,6 @@
 import type { ImportedBank } from '../store/useAppStore'
 import type { ImportBankInput } from './importer'
-import { dateKey } from './quiz'
+import { dateKey } from './datetime'
 
 export const BANK_PACKAGE_FORMAT = 'tiyu-bank'
 export const BANK_PACKAGE_VERSION = 2

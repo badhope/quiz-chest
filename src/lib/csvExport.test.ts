@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { dateStamp, historyToCsv, toCsv, wrongBookToCsv } from './csvExport'
+import { dateStamp } from './datetime'
+import { historyToCsv, toCsv, wrongBookToCsv } from './csvExport'
 import type { HistoryEntry } from '../store/useAppStore'
 
 const entry: HistoryEntry = {

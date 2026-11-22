@@ -5,7 +5,8 @@ import { useDataLayer } from '../hooks/useDataLayer'
 import { collections } from '../data/taxonomy'
 import { getQuestion, isBareContentBuild, totalQuestions } from '../data'
 import { collectionTitleOf } from '../lib/search'
-import { dateStamp, downloadCsv, historyToCsv, wrongBookToCsv } from '../lib/csvExport'
+import { dateStamp } from '../lib/datetime'
+import { downloadCsv, historyToCsv, wrongBookToCsv } from '../lib/csvExport'
 import { APP_VERSION, versionLabel } from '../lib/version'
 import {
   backupFileName,

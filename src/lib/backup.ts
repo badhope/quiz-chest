@@ -1,6 +1,6 @@
 import * as v from 'valibot'
 import type { AppSettings, DailyStat, HistoryEntry, ImportedBank, PaperRecord, WrongEntry } from '../store/useAppStore'
-import { dateStamp } from './quiz'
+import { dateStamp } from './datetime'
 
 /**
  * 全量备份包。
