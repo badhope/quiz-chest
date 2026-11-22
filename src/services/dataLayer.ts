@@ -14,7 +14,7 @@ import {
   toWrongBook,
   type Repository,
 } from './repository'
-import { BANK_SNAPSHOT_LIMIT } from './snapshotPolicy'
+import { nextBankSnapshots } from './snapshotPolicy'
 import { createIndexedDbRepository } from './indexedDbRepository'
 import { createSqliteRepository, rebuildDatabase as rebuildSqlite, sqliteLocation } from './sqliteRepository'
 
@@ -94,15 +94,7 @@ export function createMemoryRepository(): Repository {
       snapshot.pendingSession = session ? { ...session } : null
     },
     async addBankSnapshot(entry) {
-      // 同一快照 id 重复写入时先按 id 去重，语义与 IndexedDB 的 put 一致。
-      const sameBank = snapshot.bankSnapshots.filter(
-        (item) => item.bankId === entry.bankId && item.id !== entry.id,
-      )
-      const others = snapshot.bankSnapshots.filter((item) => item.bankId !== entry.bankId)
-      const kept = [...sameBank, entry]
-        .sort((a, b) => b.savedAt - a.savedAt)
-        .slice(0, BANK_SNAPSHOT_LIMIT)
-      snapshot.bankSnapshots = [...others, ...kept]
+      snapshot.bankSnapshots = nextBankSnapshots(snapshot.bankSnapshots, entry)
     },
     async removeBankSnapshot(snapshotId) {
       snapshot.bankSnapshots = snapshot.bankSnapshots.filter((item) => item.id !== snapshotId)
@@ -134,7 +126,11 @@ export function createMemoryRepository(): Repository {
       snapshot.wrongBook = {}
     },
     async addHistory(entry: HistoryEntry) {
-      snapshot.history = [entry, ...snapshot.history].slice(0, HISTORY_LIMIT)
+      // 与 IndexedDB / SQLite 的 put + 按完成时间裁剪对齐：
+      // 同 id 覆盖而不是追加，乱序补录也按 finishedAt 归位。
+      snapshot.history = [entry, ...snapshot.history.filter((item) => item.id !== entry.id)]
+        .sort((a, b) => b.finishedAt - a.finishedAt)
+        .slice(0, HISTORY_LIMIT)
       const current = snapshot.daily[entry.dateKey]
       snapshot.daily = {
         ...snapshot.daily,
@@ -150,7 +146,10 @@ export function createMemoryRepository(): Repository {
       snapshot.daily = {}
     },
     async upsertBank(bank: ImportedBank) {
-      snapshot.banks = [bank, ...snapshot.banks.filter((item) => item.id !== bank.id)]
+      // 与两个数据库实现一致：按 importedAt 倒序，编辑旧题库不会跳到最前面。
+      snapshot.banks = [bank, ...snapshot.banks.filter((item) => item.id !== bank.id)].sort(
+        (a, b) => b.importedAt - a.importedAt,
+      )
     },
     async deleteBank(bankId) {
       // 与 SQLite / IndexedDB 保持一致：题库、错题、收藏必须一起清，
@@ -163,7 +162,9 @@ export function createMemoryRepository(): Repository {
       snapshot.favorites = snapshot.favorites.filter((id) => !id.startsWith(prefix))
     },
     async addPaper(paper: PaperRecord) {
-      snapshot.papers = [paper, ...snapshot.papers.filter((item) => item.id !== paper.id)].slice(0, PAPER_LIMIT)
+      snapshot.papers = [paper, ...snapshot.papers.filter((item) => item.id !== paper.id)]
+        .sort((a, b) => b.createdAt - a.createdAt)
+        .slice(0, PAPER_LIMIT)
     },
     async removePaper(paperId) {
       snapshot.papers = snapshot.papers.filter((item) => item.id !== paperId)

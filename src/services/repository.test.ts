@@ -286,6 +286,28 @@ describe('内存仓储', () => {
     await repo.close()
   })
 
+  it('乱序写入也按时间归位，编辑旧题库不会跳到最前', async () => {
+    const repo = createMemoryRepository()
+    await repo.upsertBank({ ...bank('old', 1), importedAt: 1000 })
+    await repo.upsertBank({ ...bank('new', 1), importedAt: 3000 })
+    // 编辑旧题库：内容变了，但排序仍应按 importedAt，而不是写入顺序。
+    await repo.upsertBank({ ...bank('old', 2), importedAt: 1000 })
+    let snapshot = await repo.load()
+    expect(snapshot.banks.map((item) => item.id)).toEqual(['new', 'old'])
+    expect(snapshot.banks[1].questions).toHaveLength(2)
+
+    await repo.addHistory(history('late', 500))
+    await repo.addHistory(history('early', 100))
+    snapshot = await repo.load()
+    expect(snapshot.history.map((entry) => entry.id)).toEqual(['late', 'early'])
+
+    await repo.addPaper({ ...paper, id: 'late-paper', createdAt: 50 })
+    await repo.addPaper({ ...paper, id: 'early-paper', createdAt: 10 })
+    snapshot = await repo.load()
+    expect(snapshot.papers.map((item) => item.id)).toEqual(['late-paper', 'early-paper'])
+    await repo.close()
+  })
+
   it('历史与组卷上限和数据库实现一致', async () => {
     const repo = createMemoryRepository()
     for (let index = 0; index < 105; index += 1) {

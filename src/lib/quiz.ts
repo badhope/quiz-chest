@@ -1,7 +1,5 @@
 import type { Question, QuestionType } from '../data/types'
 
-export { dateKey, dateStamp, formatRelativeTime, lastNDays, streakFromDates } from './datetime'
-
 export const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'] as const
 
 export type SessionMode = 'practice' | 'exam' | 'review'
