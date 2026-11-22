@@ -93,7 +93,7 @@ describe('未完成会话（断点续做）', () => {
       label: '会话落库',
     })
 
-    useAppStore.getState().resetProgress()
+    await useAppStore.getState().resetProgress()
     await waitUntil(async () => (await repo.load()).pendingSession === null, {
       label: '重置清会话',
     })
