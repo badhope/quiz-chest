@@ -396,21 +396,10 @@ export const useAppStore = create<AppState>()((set, get) => ({
     persist((repo) => repo.resetProgress())
   },
 
-  restoreBackup: (data) => {
-    set((state) => ({
-      settings: { ...state.settings, ...data.settings },
-      favorites: data.favorites,
-      wrongBook: data.wrongBook,
-      history: data.history,
-      daily: data.daily,
-      banks: data.banks,
-      banksVersion: state.banksVersion + 1,
-      papers: data.papers,
-      lastCollectionId: null,
-      pendingSession: null,
-    }))
+  restoreBackup: async (data) => {
+    const state = get()
     const next: DataSnapshot = {
-      settings: { ...get().settings, ...data.settings },
+      settings: { ...state.settings, ...data.settings },
       favorites: data.favorites,
       wrongBook: data.wrongBook,
       history: data.history,
@@ -420,9 +409,13 @@ export const useAppStore = create<AppState>()((set, get) => ({
       papers: data.papers,
       pendingSession: null,
       // 备份恢复保留本机已有的历史版本：它们是本机资产，与备份内容无关。
-      bankSnapshots: get().bankSnapshots,
+      bankSnapshots: state.bankSnapshots,
     }
-    return persist((repo) => repo.replaceAll(next), { rethrow: true })
+    // 先落库再改内存：replaceAll 失败时界面必须保持原样，
+    // 否则设置页显示「原数据未被替换」，而内存里其实已经被覆盖了。
+    const ok = await persist((repo) => repo.replaceAll(next), { rethrow: true })
+    set({ ...next, banksVersion: state.banksVersion + 1 })
+    return ok
   },
 }))
 
