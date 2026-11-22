@@ -976,6 +976,45 @@ fn upsert_paper_row(connection: &Connection, paper: &PaperRecord) -> Result<(), 
     .map_err(|error| format!("写入组卷失败: {error}"))
 }
 
+fn adjust_daily_tx(
+  tx: &Transaction,
+  date_key: &str,
+  answered_delta: i64,
+  correct_delta: i64,
+) -> Result<(), String> {
+  tx.execute(
+    "INSERT INTO daily(date, answered, correct) VALUES(?1, MAX(?2, 0), MAX(?3, 0))
+     ON CONFLICT(date) DO UPDATE SET
+       answered = MAX(0, daily.answered + ?2),
+       correct = MAX(0, daily.correct + ?3)",
+    params![date_key, answered_delta, correct_delta],
+  )
+  .map(|_| ())
+  .map_err(|error| format!("更新每日统计失败: {error}"))
+}
+
+fn add_history_tx(tx: &Transaction, entry: &HistoryRecord) -> Result<(), String> {
+  // 同一 id 重放（重试或重复提交）时，先回退旧记录的统计，再计入新值。
+  // 否则「累计作答」会因为一次重试直接翻倍。
+  let previous: Option<(String, i64, i64)> = tx
+    .query_row(
+      "SELECT date_key, answered, correct FROM history WHERE id = ?1",
+      params![entry.id],
+      |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+    )
+    .optional()
+    .map_err(|error| format!("读取旧练习记录失败: {error}"))?;
+
+  insert_history_tx(tx, entry)?;
+  if let Some((date_key, answered, correct)) = previous {
+    adjust_daily_tx(tx, &date_key, -answered, -correct)?;
+  }
+  adjust_daily_tx(tx, &entry.date_key, entry.answered, entry.correct)?;
+  tx.execute("DELETE FROM daily WHERE answered = 0 AND correct = 0", [])
+    .map(|_| ())
+    .map_err(|error| format!("清理空统计失败: {error}"))
+}
+
 #[tauri::command]
 pub fn db_load(db: State<Db>) -> Result<Snapshot, String> {
   let connection = lock(&db)?;
@@ -1132,15 +1171,7 @@ pub fn db_clear_wrong_book(db: State<Db>) -> Result<(), String> {
 pub fn db_add_history(db: State<Db>, entry: HistoryRecord) -> Result<(), String> {
   let mut connection = lock(&db)?;
   let tx = connection.transaction().map_err(|error| format!("开启事务失败: {error}"))?;
-  insert_history_tx(&tx, &entry)?;
-  tx.execute(
-    "INSERT INTO daily(date, answered, correct) VALUES(?1, ?2, ?3)
-     ON CONFLICT(date) DO UPDATE SET
-       answered = daily.answered + excluded.answered,
-       correct = daily.correct + excluded.correct",
-    params![entry.date_key, entry.answered, entry.correct],
-  )
-  .map_err(|error| format!("更新每日统计失败: {error}"))?;
+  add_history_tx(&tx, &entry)?;
   tx.execute(
     "DELETE FROM history WHERE id NOT IN (SELECT id FROM history ORDER BY finished_at DESC LIMIT ?1)",
     params![HISTORY_LIMIT],
@@ -1374,6 +1405,44 @@ mod tests {
     assert_eq!(loaded.bank_snapshots.len(), 1);
     assert_eq!(loaded.bank_snapshots[0].revision, 1);
     assert_eq!(loaded.bank_snapshots[0].bank.id, "bank");
+  }
+
+  #[test]
+  fn replaying_history_does_not_double_daily() {
+    let mut connection = memory();
+    let entry = HistoryRecord {
+      id: "replay".into(),
+      mode: "practice".into(),
+      collection_id: "bank".into(),
+      collection_title: "题库".into(),
+      domain_id: None,
+      answered: 10,
+      correct: 7,
+      wrong: 3,
+      skipped: 0,
+      total: 10,
+      accuracy: 70.0,
+      duration_sec: 120,
+      finished_at: 1000,
+      date_key: "2026-11-06".into(),
+    };
+    let tx = connection.transaction().unwrap();
+    add_history_tx(&tx, &entry).unwrap();
+    add_history_tx(&tx, &entry).unwrap();
+    tx.commit().unwrap();
+
+    let (answered, correct): (i64, i64) = connection
+      .query_row(
+        "SELECT answered, correct FROM daily WHERE date = ?1",
+        params!["2026-11-06"],
+        |row| Ok((row.get(0)?, row.get(1)?)),
+      )
+      .unwrap();
+    assert_eq!((answered, correct), (10, 7), "重放同一记录不能把每日统计加两遍");
+    let count: i64 = connection
+      .query_row("SELECT COUNT(*) FROM history", [], |row| row.get(0))
+      .unwrap();
+    assert_eq!(count, 1, "同一 id 只应保留一条记录");
   }
 
   #[test]

@@ -10,12 +10,13 @@ import type {
   PendingSession,
   WrongEntry,
 } from '../data/records'
-import { DEFAULT_SETTINGS, HISTORY_LIMIT, emptySnapshot } from '../services/repository'
+import { DEFAULT_SETTINGS, emptySnapshot } from '../services/repository'
 import { getRepository, setRepositoryForTest } from '../services/dataLayer'
 import type { Repository } from '../services/repository'
 import { resilientStorage } from '../lib/storage'
 import { nextBankSnapshots } from '../services/snapshotPolicy'
 import { gradeReview } from '../lib/review'
+import { mergeHistoryEntry } from '../lib/history'
 
 export type {
   AppSettings,
@@ -99,6 +100,39 @@ interface AppState {
 
 let repository: Repository | null = null
 
+/** 按操作键保存失败的写任务；同键新任务覆盖旧任务，避免重复堆积。 */
+type PersistTask = (repo: Repository) => Promise<void>
+const failedWrites = new Map<string, PersistTask>()
+
+export function hasPendingWrites(): boolean {
+  return failedWrites.size > 0
+}
+
+/**
+ * 重试所有失败的写操作。按进入队列的顺序执行；某个任务仍失败就停下，
+ * 剩下的任务继续留在队列里，等下一次重试。
+ */
+export async function retryPendingWrites(): Promise<boolean> {
+  if (!repository) {
+    useAppStore.setState({ persistenceError: '数据层尚未就绪，无法重试' })
+    return false
+  }
+  const entries = [...failedWrites.entries()]
+  for (const [key, task] of entries) {
+    if (failedWrites.get(key) !== task) continue
+    try {
+      await task(repository)
+      if (failedWrites.get(key) === task) failedWrites.delete(key)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      useAppStore.setState({ persistenceError: message })
+      return false
+    }
+  }
+  if (failedWrites.size === 0) useAppStore.setState({ persistenceError: null })
+  return true
+}
+
 /**
  * 写操作统一汇入此处：先更新内存状态让界面立刻响应，再异步落库。
  *
@@ -110,10 +144,10 @@ let repository: Repository | null = null
  * `{ rethrow: true }`，拿到 reject 后自己提示；错误同时写进
  * `persistenceError`，设置页始终可见。
  */
-type PersistOptions = { rethrow?: boolean }
+type PersistOptions = { rethrow?: boolean; retryKey?: string }
 
 function persist(
-  task: (repo: Repository) => Promise<void>,
+  task: PersistTask,
   options: PersistOptions = {},
 ): Promise<boolean> {
   const fail = (error: unknown): boolean => {
@@ -129,8 +163,15 @@ function persist(
   }
 
   return task(repository)
-    .then(() => true)
+    .then(() => {
+      if (options.retryKey) failedWrites.delete(options.retryKey)
+      if (failedWrites.size === 0) useAppStore.setState({ persistenceError: null })
+      return true
+    })
     .catch((error: unknown) => {
+      // 只留下带键的任务：备份恢复这类整库替换不能自动重放，
+      // 重试时内存状态和数据库必须由用户重新确认。
+      if (options.retryKey) failedWrites.set(options.retryKey, task)
       const ok = fail(error)
       if (options.rethrow) throw error
       return ok
@@ -175,7 +216,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
   setTheme: (theme) => {
     set((state) => ({ settings: { ...state.settings, theme } }))
-    persist((repo) => repo.saveSettings(get().settings))
+    persist((repo) => repo.saveSettings(get().settings), { retryKey: 'settings' })
   },
   toggleTheme: () => {
     set((state) => ({
@@ -184,23 +225,23 @@ export const useAppStore = create<AppState>()((set, get) => ({
         theme: state.settings.theme === 'light' ? 'dark' : 'light',
       },
     }))
-    persist((repo) => repo.saveSettings(get().settings))
+    persist((repo) => repo.saveSettings(get().settings), { retryKey: 'settings' })
   },
   setFontScale: (fontScale) => {
     set((state) => ({ settings: { ...state.settings, fontScale } }))
-    persist((repo) => repo.saveSettings(get().settings))
+    persist((repo) => repo.saveSettings(get().settings), { retryKey: 'settings' })
   },
   setAutoNext: (autoNext) => {
     set((state) => ({ settings: { ...state.settings, autoNext } }))
-    persist((repo) => repo.saveSettings(get().settings))
+    persist((repo) => repo.saveSettings(get().settings), { retryKey: 'settings' })
   },
   setShowSampleBanks: (showSampleBanks) => {
     set((state) => ({ settings: { ...state.settings, showSampleBanks } }))
-    persist((repo) => repo.saveSettings(get().settings))
+    persist((repo) => repo.saveSettings(get().settings), { retryKey: 'settings' })
   },
   setAllowRemoteImages: (allowRemoteImages) => {
     set((state) => ({ settings: { ...state.settings, allowRemoteImages } }))
-    persist((repo) => repo.saveSettings(get().settings))
+    persist((repo) => repo.saveSettings(get().settings), { retryKey: 'settings' })
   },
 
   toggleFavorite: (questionId) => {
@@ -210,11 +251,13 @@ export const useAppStore = create<AppState>()((set, get) => ({
         ? [...state.favorites, questionId]
         : state.favorites.filter((id) => id !== questionId),
     }))
-    persist((repo) => repo.setFavorite(questionId, favorite))
+    persist((repo) => repo.setFavorite(questionId, favorite), {
+      retryKey: `favorite:${questionId}`,
+    })
   },
   clearFavorites: () => {
     set({ favorites: [] })
-    persist((repo) => repo.clearFavorites())
+    persist((repo) => repo.clearFavorites(), { retryKey: 'favorites:clear' })
   },
 
   recordWrong: (entry) => {
@@ -230,7 +273,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     set((state) => ({
       wrongBook: { ...state.wrongBook, [entry.questionId]: next },
     }))
-    persist((repo) => repo.recordWrong(next))
+    persist((repo) => repo.recordWrong(next), { retryKey: `wrong:${next.questionId}` })
   },
   gradeCorrect: (questionId) => {
     const existing = get().wrongBook[questionId]
@@ -238,7 +281,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     const now = Date.now()
     const next: WrongEntry = { ...existing, fsrs: gradeReview(existing.fsrs, 'good', now) }
     set((state) => ({ wrongBook: { ...state.wrongBook, [questionId]: next } }))
-    persist((repo) => repo.recordWrong(next))
+    persist((repo) => repo.recordWrong(next), { retryKey: `wrong:${next.questionId}` })
   },
 
   removeWrong: (questionId) => {
@@ -247,52 +290,35 @@ export const useAppStore = create<AppState>()((set, get) => ({
       delete next[questionId]
       return { wrongBook: next }
     })
-    persist((repo) => repo.removeWrong(questionId))
+    persist((repo) => repo.removeWrong(questionId), { retryKey: `wrong:${questionId}` })
   },
   clearWrongBook: () => {
     set({ wrongBook: {} })
-    persist((repo) => repo.clearWrongBook())
+    persist((repo) => repo.clearWrongBook(), { retryKey: 'wrong:clear' })
   },
 
   addHistory: (entry) => {
-    set((state) => {
-      const current = state.daily[entry.dateKey] ?? {
-        date: entry.dateKey,
-        answered: 0,
-        correct: 0,
-      }
-      return {
-        history: [entry, ...state.history].slice(0, HISTORY_LIMIT),
-        daily: {
-          ...state.daily,
-          [entry.dateKey]: {
-            ...current,
-            answered: current.answered + entry.answered,
-            correct: current.correct + entry.correct,
-          },
-        },
-      }
-    })
-    persist((repo) => repo.addHistory(entry))
+    set((state) => mergeHistoryEntry(state.history, state.daily, entry))
+    persist((repo) => repo.addHistory(entry), { retryKey: `history:${entry.id}` })
   },
   clearHistory: () => {
     set({ history: [], daily: {} })
-    persist((repo) => repo.clearHistory())
+    persist((repo) => repo.clearHistory(), { retryKey: 'history:clear' })
   },
 
   setLastCollection: (collectionId) => {
     set({ lastCollectionId: collectionId })
-    persist((repo) => repo.setLastCollection(collectionId))
+    persist((repo) => repo.setLastCollection(collectionId), { retryKey: 'lastCollection' })
   },
 
   savePendingSession: (session) => {
     set({ pendingSession: session })
-    persist((repo) => repo.setPendingSession(session))
+    persist((repo) => repo.setPendingSession(session), { retryKey: 'pendingSession' })
   },
 
   clearPendingSession: () => {
     set({ pendingSession: null })
-    persist((repo) => repo.setPendingSession(null))
+    persist((repo) => repo.setPendingSession(null), { retryKey: 'pendingSession' })
   },
 
   archiveBankVersion: (bank) => {
@@ -313,7 +339,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     set((state) => ({
       bankSnapshots: nextBankSnapshots(state.bankSnapshots, snapshot),
     }))
-    persist((repo) => repo.addBankSnapshot(snapshot))
+    persist((repo) => repo.addBankSnapshot(snapshot), { retryKey: `snapshot:${snapshot.id}` })
     return snapshot
   },
 
@@ -327,14 +353,14 @@ export const useAppStore = create<AppState>()((set, get) => ({
     set((state) => ({
       bankSnapshots: state.bankSnapshots.filter((item) => item.id !== snapshotId),
     }))
-    persist((repo) => repo.removeBankSnapshot(snapshotId))
+    persist((repo) => repo.removeBankSnapshot(snapshotId), { retryKey: `snapshot:${snapshotId}` })
   },
 
   removeBankSnapshot: (snapshotId) => {
     set((state) => ({
       bankSnapshots: state.bankSnapshots.filter((item) => item.id !== snapshotId),
     }))
-    persist((repo) => repo.removeBankSnapshot(snapshotId))
+    persist((repo) => repo.removeBankSnapshot(snapshotId), { retryKey: `snapshot:${snapshotId}` })
   },
 
   addBank: (bank) => {
@@ -342,7 +368,10 @@ export const useAppStore = create<AppState>()((set, get) => ({
       banks: [...state.banks.filter((item) => item.id !== bank.id), bank],
       banksVersion: state.banksVersion + 1,
     }))
-    return persist((repo) => repo.upsertBank(bank), { rethrow: true })
+    return persist((repo) => repo.upsertBank(bank), {
+      rethrow: true,
+      retryKey: `bank:${bank.id}`,
+    })
   },
 
   removeBank: (bankId) => {
@@ -362,24 +391,24 @@ export const useAppStore = create<AppState>()((set, get) => ({
         banksVersion: state.banksVersion + 1,
       }
     })
-    persist((repo) => repo.deleteBank(bankId))
+    persist((repo) => repo.deleteBank(bankId), { retryKey: `bank:${bankId}:delete` })
     // 题库没了，它的历史版本也没有意义，留着只占空间。
     set((state) => ({
       bankSnapshots: state.bankSnapshots.filter((item) => item.bankId !== bankId),
     }))
-    persist((repo) => repo.clearBankSnapshots(bankId))
+    persist((repo) => repo.clearBankSnapshots(bankId), { retryKey: `snapshots:${bankId}` })
   },
 
   addPaper: (paper) => {
     set((state) => ({
       papers: [paper, ...state.papers.filter((item) => item.id !== paper.id)].slice(0, 20),
     }))
-    persist((repo) => repo.addPaper(paper))
+    persist((repo) => repo.addPaper(paper), { retryKey: `paper:${paper.id}` })
   },
 
   removePaper: (paperId) => {
     set((state) => ({ papers: state.papers.filter((item) => item.id !== paperId) }))
-    persist((repo) => repo.removePaper(paperId))
+    persist((repo) => repo.removePaper(paperId), { retryKey: `paper:${paperId}` })
   },
 
   resetProgress: () => {
@@ -393,7 +422,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
       // 一个已经被清空进度的练习里。
       pendingSession: null,
     })
-    persist((repo) => repo.resetProgress())
+    persist((repo) => repo.resetProgress(), { retryKey: 'resetProgress' })
   },
 
   restoreBackup: async (data) => {
