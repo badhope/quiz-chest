@@ -185,16 +185,27 @@ export function createIndexedDbRepository(): Repository {
     async addHistory(entry: HistoryEntry): Promise<void> {
       const db = await database()
       const tx = db.transaction(['history', 'daily'], 'readwrite')
-      await tx.objectStore('history').put(entry)
-      const current = await tx.objectStore('daily').get(entry.dateKey)
-      await tx.objectStore('daily').put({
-        date: entry.dateKey,
-        answered: (current?.answered ?? 0) + entry.answered,
-        correct: (current?.correct ?? 0) + entry.correct,
-      })
-      const all = await tx.objectStore('history').getAll()
+      const historyStore = tx.objectStore('history')
+      const dailyStore = tx.objectStore('daily')
+      const adjust = async (dateKey: string, answered: number, correct: number) => {
+        const current = await dailyStore.get(dateKey)
+        const nextAnswered = Math.max(0, (current?.answered ?? 0) + answered)
+        const nextCorrect = Math.max(0, (current?.correct ?? 0) + correct)
+        if (nextAnswered === 0 && nextCorrect === 0) await dailyStore.delete(dateKey)
+        else await dailyStore.put({ date: dateKey, answered: nextAnswered, correct: nextCorrect })
+      }
+
+      // 同一 id 重放：先回退旧记录的统计，再写入新记录，避免重试翻倍。
+      const previous = await historyStore.get(entry.id)
+      if (previous) {
+        await adjust(previous.dateKey, -previous.answered, -previous.correct)
+      }
+      await historyStore.put(entry)
+      await adjust(entry.dateKey, entry.answered, entry.correct)
+
+      const all = await historyStore.getAll()
       const kept = new Set(trimByDate(all, HISTORY_LIMIT, (value) => value.finishedAt).map((value) => value.id))
-      for (const value of all) if (!kept.has(value.id)) await tx.objectStore('history').delete(value.id)
+      for (const value of all) if (!kept.has(value.id)) await historyStore.delete(value.id)
       await tx.done
     },
 

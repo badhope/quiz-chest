@@ -7,7 +7,6 @@ import type {
   WrongEntry,
 } from '../data/records'
 import {
-  HISTORY_LIMIT,
   PAPER_LIMIT,
   emptySnapshot,
   toDaily,
@@ -15,6 +14,7 @@ import {
   type Repository,
 } from './repository'
 import { nextBankSnapshots } from './snapshotPolicy'
+import { mergeHistoryEntry } from '../lib/history'
 import { createIndexedDbRepository } from './indexedDbRepository'
 import { createSqliteRepository, rebuildDatabase as rebuildSqlite, sqliteLocation } from './sqliteRepository'
 
@@ -126,20 +126,9 @@ export function createMemoryRepository(): Repository {
       snapshot.wrongBook = {}
     },
     async addHistory(entry: HistoryEntry) {
-      // 与 IndexedDB / SQLite 的 put + 按完成时间裁剪对齐：
-      // 同 id 覆盖而不是追加，乱序补录也按 finishedAt 归位。
-      snapshot.history = [entry, ...snapshot.history.filter((item) => item.id !== entry.id)]
-        .sort((a, b) => b.finishedAt - a.finishedAt)
-        .slice(0, HISTORY_LIMIT)
-      const current = snapshot.daily[entry.dateKey]
-      snapshot.daily = {
-        ...snapshot.daily,
-        [entry.dateKey]: {
-          date: entry.dateKey,
-          answered: (current?.answered ?? 0) + entry.answered,
-          correct: (current?.correct ?? 0) + entry.correct,
-        },
-      }
+      const merged = mergeHistoryEntry(snapshot.history, snapshot.daily, entry)
+      snapshot.history = merged.history
+      snapshot.daily = merged.daily
     },
     async clearHistory() {
       snapshot.history = []

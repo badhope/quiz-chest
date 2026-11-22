@@ -1,5 +1,6 @@
 import { useStorageHealth } from '../../hooks/useStorageHealth'
-import { useAppStore } from '../../store/useAppStore'
+import { useState } from 'react'
+import { hasPendingWrites, retryPendingWrites, useAppStore } from '../../store/useAppStore'
 import { useDataLayer } from '../../hooks/useDataLayer'
 import { CircleAlert } from '../ui/icons'
 
@@ -13,6 +14,17 @@ export function StorageBanner() {
   const { health, message } = useStorageHealth()
   const dataLayer = useDataLayer()
   const persistenceError = useAppStore((state) => state.persistenceError)
+  const [retrying, setRetrying] = useState(false)
+  const canRetry = hasPendingWrites()
+
+  const retry = async () => {
+    setRetrying(true)
+    try {
+      await retryPendingWrites()
+    } finally {
+      setRetrying(false)
+    }
+  }
 
   const detail =
     health !== 'ok'
@@ -28,6 +40,16 @@ export function StorageBanner() {
     <div className="storage-banner" role="status" aria-live="polite">
       <CircleAlert className="storage-banner-icon" />
       <p>{detail}</p>
+      {canRetry ? (
+        <button
+          type="button"
+          className="storage-banner-action"
+          onClick={() => void retry()}
+          disabled={retrying}
+        >
+          {retrying ? '重试中…' : '重试'}
+        </button>
+      ) : null}
     </div>
   )
 }
