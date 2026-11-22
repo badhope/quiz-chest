@@ -1,8 +1,8 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useAppStore } from '../store/useAppStore'
-import { lastNDays, streakFromDates } from '../lib/datetime'
-import { percent } from '../lib/quiz'
+import { lastNDays } from '../lib/datetime'
+import { summarizeDaily, summarizeHistory } from '../lib/stats'
 import { getLibraryCollections } from '../lib/library'
 import { domains } from '../data/taxonomy'
 import { EChart } from '../components/charts/EChart'
@@ -40,22 +40,19 @@ export function StatsPage() {
 
   const days = lastNDays(7)
   const dailySeries = days.map((day) => daily[day] ?? { date: day, answered: 0, correct: 0 })
-  const totalAnswered = Object.values(daily).reduce((sum, item) => sum + item.answered, 0)
-  const totalCorrect = Object.values(daily).reduce((sum, item) => sum + item.correct, 0)
-  const accuracy = percent(totalCorrect, totalAnswered)
-  const streak = streakFromDates(Object.keys(daily))
-  const totalMinutes = Math.round(
-    history.reduce((sum, entry) => sum + entry.durationSec, 0) / 60,
-  )
+  const { totalAnswered, totalCorrect, accuracy, streak } = summarizeDaily(daily)
+  const { totalMinutes } = summarizeHistory(history)
 
   const domainStats = useMemo(() => {
+    const library = getLibraryCollections()
+    const byId = new Map(library.map((collection) => [collection.id, collection]))
     const counts = new Map<string, number>()
     const accentOf = new Map<string, string>()
-    for (const collection of getLibraryCollections()) {
+    for (const collection of library) {
       accentOf.set(collection.domainId, collection.accent)
     }
     for (const entry of history) {
-      const collection = getLibraryCollections().find((item) => item.id === entry.collectionId)
+      const collection = byId.get(entry.collectionId)
       if (!collection) continue
       counts.set(collection.domainId, (counts.get(collection.domainId) ?? 0) + entry.answered)
     }
