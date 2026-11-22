@@ -103,6 +103,7 @@ let repository: Repository | null = null
 /** 按操作键保存失败的写任务；同键新任务覆盖旧任务，避免重复堆积。 */
 type PersistTask = (repo: Repository) => Promise<void>
 const failedWrites = new Map<string, PersistTask>()
+let retryInFlight: Promise<boolean> | null = null
 
 export function hasPendingWrites(): boolean {
   return failedWrites.size > 0
@@ -112,7 +113,17 @@ export function hasPendingWrites(): boolean {
  * 重试所有失败的写操作。按进入队列的顺序执行；某个任务仍失败就停下，
  * 剩下的任务继续留在队列里，等下一次重试。
  */
-export async function retryPendingWrites(): Promise<boolean> {
+export function retryPendingWrites(): Promise<boolean> {
+  // 用户连点或提示条与其他入口同时触发时，只跑一轮；
+  // 否则同一批任务可能被并发重放两遍。
+  if (retryInFlight) return retryInFlight
+  retryInFlight = runPendingWrites().finally(() => {
+    retryInFlight = null
+  })
+  return retryInFlight
+}
+
+async function runPendingWrites(): Promise<boolean> {
   if (!repository) {
     useAppStore.setState({ persistenceError: '数据层尚未就绪，无法重试' })
     return false
@@ -130,7 +141,7 @@ export async function retryPendingWrites(): Promise<boolean> {
     }
   }
   if (failedWrites.size === 0) useAppStore.setState({ persistenceError: null })
-  return true
+  return failedWrites.size === 0
 }
 
 /**
@@ -498,11 +509,15 @@ async function migrateLegacyStorage(
 /** 仅供测试：注入假仓储并重置内存状态。 */
 export function attachRepositoryForTest(repo: Repository | null): void {
   repository = repo
+  failedWrites.clear()
+  retryInFlight = null
   setRepositoryForTest(repo)
 }
 
 export function resetStoreForTest(): void {
   repository = null
+  failedWrites.clear()
+  retryInFlight = null
   setRepositoryForTest(null)
   useAppStore.setState({ ...emptySnapshot(), banksVersion: 0, hydration: 'idle' })
 }
