@@ -53,9 +53,9 @@ beforeAll(() => {
   }).catch(() => {})
 })
 
-afterAll(() => {
-  useAppStore.getState().removeBank('paper-a')
-  useAppStore.getState().removeBank('paper-b')
+afterAll(async () => {
+  await useAppStore.getState().removeBank('paper-a')
+  await useAppStore.getState().removeBank('paper-b')
 })
 
 describe('clamp helpers', () => {

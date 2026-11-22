@@ -138,7 +138,7 @@ describe('题库历史版本', () => {
       label: '快照落库',
     })
 
-    useAppStore.getState().removeBank('gone')
+    await useAppStore.getState().removeBank('gone')
     await waitUntil(async () => (await repo.load()).bankSnapshots.length === 0, {
       label: '删库清快照',
     })

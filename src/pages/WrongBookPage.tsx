@@ -5,6 +5,7 @@ import { useAppStore } from '../store/useAppStore'
 import { useLibraryCollections } from '../lib/library'
 import { LETTERS, typeLabel } from '../lib/quiz'
 import { compareByDue, dueCount, dueLabel } from '../lib/review'
+import { AsyncButton } from '../components/ui/AsyncButton'
 import { Badge, EmptyState } from '../components/ui/primitives'
 import { PageHeader } from '../components/ui/sections'
 import { ArrowRight, Bookmark, Target, RotateCcw, Trash2 } from '../components/ui/icons'
@@ -92,14 +93,13 @@ export function WrongBookPage() {
               出错最多
             </button>
           </div>
-          <button
-            className="button button-ghost button-sm"
-            onClick={() => {
-              if (window.confirm('清空全部错题？该操作不可撤销。')) clearWrongBook()
-            }}
+          <AsyncButton
+            confirmText="清空全部错题？该操作不可撤销。"
+            busyLabel="清空中…"
+            action={() => clearWrongBook()}
           >
             <Trash2 /> 清空
-          </button>
+          </AsyncButton>
           </div>
         }
       />

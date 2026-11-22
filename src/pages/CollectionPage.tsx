@@ -4,6 +4,7 @@ import { domains } from '../data/taxonomy'
 import { useAppStore } from '../store/useAppStore'
 import { useLibraryCollections, type LibraryCollection } from '../lib/library'
 import { downloadBankPackage } from '../lib/exporter'
+import { AsyncButton } from '../components/ui/AsyncButton'
 import { Badge, EmptyState, ProgressBar } from '../components/ui/primitives'
 import { DomainIcon } from '../components/ui/icons'
 import { SectionHeader } from '../components/ui/sections'
@@ -179,16 +180,14 @@ export function CollectionPage() {
                 >
                   <Download /> 导出备份
                 </button>
-                <button
+                <AsyncButton
                   className="button button-ghost library-delete"
-                  onClick={() => {
-                    if (window.confirm(`删除「${collection.title}」？该题库与其练习记录关联将失效。`)) {
-                      removeBank(collection.id)
-                    }
-                  }}
+                  confirmText={`删除「${collection.title}」？该题库与其练习记录关联将失效。`}
+                  busyLabel="删除中…"
+                  action={() => removeBank(collection.id)}
                 >
                   <Trash2 /> 删除题库
-                </button>
+                </AsyncButton>
               </>
             ) : null}
           </div>

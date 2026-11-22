@@ -58,14 +58,17 @@ interface AppState {
   setShowSampleBanks: (value: boolean) => void
   setAllowRemoteImages: (value: boolean) => void
   toggleFavorite: (questionId: string) => void
-  clearFavorites: () => void
+  /** 破坏性清空：先落库成功再清内存，失败返回 false。 */
+  clearFavorites: () => Promise<boolean>
   recordWrong: (entry: Omit<WrongEntry, 'wrongCount' | 'lastWrongAt' | 'fsrs'>) => void
   /** 复习答对：按 FSRS 延后到期时间，不直接把题移出错题本。 */
   gradeCorrect: (questionId: string) => void
   removeWrong: (questionId: string) => void
-  clearWrongBook: () => void
+  /** 破坏性清空：先落库成功再清内存，失败返回 false。 */
+  clearWrongBook: () => Promise<boolean>
   addHistory: (entry: HistoryEntry) => void
-  clearHistory: () => void
+  /** 破坏性清空：先落库成功再清内存，失败返回 false。 */
+  clearHistory: () => Promise<boolean>
   setLastCollection: (collectionId: string) => void
   savePendingSession: (session: PendingSession) => void
   clearPendingSession: () => void
@@ -83,7 +86,8 @@ interface AppState {
    * 其余写操作是即发即忘的，只把错误写进 persistenceError。
    */
   addBank: (bank: ImportedBank) => Promise<boolean>
-  removeBank: (bankId: string) => void
+  /** 删除题库及其关联数据：先落库成功再清内存，失败返回 false。 */
+  removeBank: (bankId: string) => Promise<boolean>
   addPaper: (paper: PaperRecord) => void
   removePaper: (paperId: string) => void
   /**
@@ -270,9 +274,11 @@ export const useAppStore = create<AppState>()((set, get) => ({
       retryKey: `favorite:${questionId}`,
     })
   },
-  clearFavorites: () => {
+  clearFavorites: async () => {
+    const ok = await persist((repo) => repo.clearFavorites())
+    if (!ok) return false
     set({ favorites: [] })
-    persist((repo) => repo.clearFavorites(), { retryKey: 'favorites:clear' })
+    return true
   },
 
   recordWrong: (entry) => {
@@ -307,18 +313,22 @@ export const useAppStore = create<AppState>()((set, get) => ({
     })
     persist((repo) => repo.removeWrong(questionId), { retryKey: `wrong:${questionId}` })
   },
-  clearWrongBook: () => {
+  clearWrongBook: async () => {
+    const ok = await persist((repo) => repo.clearWrongBook())
+    if (!ok) return false
     set({ wrongBook: {} })
-    persist((repo) => repo.clearWrongBook(), { retryKey: 'wrong:clear' })
+    return true
   },
 
   addHistory: (entry) => {
     set((state) => mergeHistoryEntry(state.history, state.daily, entry))
     persist((repo) => repo.addHistory(entry), { retryKey: `history:${entry.id}` })
   },
-  clearHistory: () => {
+  clearHistory: async () => {
+    const ok = await persist((repo) => repo.clearHistory())
+    if (!ok) return false
     set({ history: [], daily: {} })
-    persist((repo) => repo.clearHistory(), { retryKey: 'history:clear' })
+    return true
   },
 
   setLastCollection: (collectionId) => {
@@ -389,29 +399,27 @@ export const useAppStore = create<AppState>()((set, get) => ({
     })
   },
 
-  removeBank: (bankId) => {
+  removeBank: async (bankId) => {
+    // 删除题库是不可撤销操作：数据库里的题库、错题、收藏、历史版本
+    // 必须一起成功；失败时界面保持原样，不能先消失再等重试。
+    const ok = await persist((repo) => repo.deleteBank(bankId))
+    if (!ok) return false
     set((state) => {
-      // 题库删了，指向它的错题与收藏必须一起清，否则设置页的计数
-      // 会把数据库里已无对应的孤儿记录也算进去，越攒越多。
+      // deleteBank 已级联清理数据库里的错题、收藏与快照，这里同步内存。
       const wrongBook = { ...state.wrongBook }
       for (const entry of Object.values(wrongBook)) {
         if (entry.collectionId === bankId) delete wrongBook[entry.questionId]
       }
       const prefix = `${bankId}-`
-      const favorites = state.favorites.filter((id) => !id.startsWith(prefix))
       return {
         banks: state.banks.filter((item) => item.id !== bankId),
         wrongBook,
-        favorites,
+        favorites: state.favorites.filter((id) => !id.startsWith(prefix)),
+        bankSnapshots: state.bankSnapshots.filter((item) => item.bankId !== bankId),
         banksVersion: state.banksVersion + 1,
       }
     })
-    persist((repo) => repo.deleteBank(bankId), { retryKey: `bank:${bankId}:delete` })
-    // 题库没了，它的历史版本也没有意义，留着只占空间。
-    set((state) => ({
-      bankSnapshots: state.bankSnapshots.filter((item) => item.bankId !== bankId),
-    }))
-    persist((repo) => repo.clearBankSnapshots(bankId), { retryKey: `snapshots:${bankId}` })
+    return true
   },
 
   addPaper: (paper) => {

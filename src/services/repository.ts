@@ -68,6 +68,7 @@ export interface Repository {
   addHistory(entry: HistoryEntry): Promise<void>
   clearHistory(): Promise<void>
   upsertBank(bank: ImportedBank): Promise<void>
+  /** 删除题库，并级联清理它的错题、收藏前缀与历史版本。 */
   deleteBank(bankId: string): Promise<void>
   addPaper(paper: PaperRecord): Promise<void>
   removePaper(paperId: string): Promise<void>
