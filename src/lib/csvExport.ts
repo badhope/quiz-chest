@@ -1,4 +1,6 @@
 import type { HistoryEntry, WrongEntry } from '../store/useAppStore'
+import { formatDateTime } from './datetime'
+import { sessionModeLabel } from './quiz'
 
 export function toCsv(headers: string[], rows: Array<Array<string | number>>): string {
   const escape = (value: string | number): string => {
@@ -29,17 +31,11 @@ export function downloadCsv(fileName: string, csv: string): void {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
-const MODE_LABEL: Record<string, string> = {
-  practice: '顺序练习',
-  exam: '模拟考试',
-  review: '错题重练',
-}
-
 export function historyToCsv(history: HistoryEntry[]): string {
   const headers = ['完成时间', '模式', '题库', '作答', '答对', '答错', '跳过', '总题数', '正确率%', '用时秒']
   const rows = [...history].reverse().map((entry) => [
-    new Date(entry.finishedAt).toLocaleString('zh-CN', { hour12: false }),
-    MODE_LABEL[entry.mode] ?? entry.mode,
+    formatDateTime(entry.finishedAt),
+    sessionModeLabel(entry.mode),
     entry.collectionTitle,
     entry.answered,
     entry.correct,

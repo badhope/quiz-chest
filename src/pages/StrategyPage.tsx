@@ -4,6 +4,7 @@ import { useAppStore } from '../store/useAppStore'
 import { buildPlan, strategyCatalog, type StrategyKind } from '../lib/strategy'
 import { getCollection } from '../data'
 import { Badge, EmptyState, ProgressBar } from '../components/ui/primitives'
+import { SectionHeader } from '../components/ui/sections'
 import {
   ArrowLeft,
   ArrowRight,
@@ -113,12 +114,7 @@ export function StrategyPage() {
       ) : (
         <>
           <section className="strategy-composition">
-            <div className="section-head">
-              <div>
-                <span className="eyebrow">配题构成</span>
-                <h2 className="section-title serif">这次会练到哪些题库</h2>
-              </div>
-            </div>
+            <SectionHeader eyebrow="配题构成" title="这次会练到哪些题库" />
             <div className="strategy-composition-list">
               {grouped.map(({ collection, count }) => {
                 if (!collection) return null
@@ -175,12 +171,7 @@ export function StrategyPage() {
       )}
 
       <section className="strategy-others">
-        <div className="section-head">
-          <div>
-            <span className="eyebrow">其他策略</span>
-            <h2 className="section-title serif">换一种练法</h2>
-          </div>
-        </div>
+        <SectionHeader eyebrow="其他策略" title="换一种练法" />
         <div className="strategy-mini-grid">
           {strategyCatalog
             .filter((item) => item.kind !== validKind)

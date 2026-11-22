@@ -7,6 +7,8 @@ import { downloadBankPackage } from '../lib/exporter'
 import { Badge, EmptyState, ProgressBar } from '../components/ui/primitives'
 import { DomainIcon } from '../components/ui/icons'
 import { SectionHeader } from '../components/ui/sections'
+import { formatDate } from '../lib/datetime'
+import { sessionModeLabel } from '../lib/quiz'
 import {
   ArrowLeft,
   Bookmark,
@@ -276,14 +278,14 @@ export function CollectionPage() {
             {records.slice(0, 5).map((entry) => (
               <div className="record-row" key={entry.id}>
                 <span className="record-mode">
-                  {entry.mode === 'exam' ? '模拟考试' : entry.mode === 'review' ? '错题重练' : '顺序练习'}
+                  {sessionModeLabel(entry.mode)}
                 </span>
                 <span className="record-score mono">{entry.accuracy}%</span>
                 <span className="record-detail">
                   对 {entry.correct} · 错 {entry.wrong} · 跳过 {entry.skipped}
                 </span>
                 <span className="record-date">
-                  {new Date(entry.finishedAt).toLocaleDateString('zh-CN')}
+                  {formatDate(entry.finishedAt)}
                 </span>
               </div>
             ))}

@@ -3,6 +3,7 @@ import { useParams, useSearchParams } from 'react-router-dom'
 import { useAppStore } from '../store/useAppStore'
 import { buildPlan, strategyCatalog, type StrategyKind } from '../lib/strategy'
 import { PracticeRunner } from '../components/question/PracticeRunner'
+import { parseSessionMode } from '../lib/quiz'
 
 export function PlanPracticePage() {
   const { kind = 'daily' } = useParams()
@@ -13,8 +14,10 @@ export function PlanPracticePage() {
   const validKind = strategyCatalog.some((item) => item.kind === kind)
     ? (kind as StrategyKind)
     : 'daily'
-  const modeParam = searchParams.get('mode')
-  const mode = modeParam === 'exam' ? 'exam' : validKind === 'wrong' ? 'review' : 'practice'
+  const mode = parseSessionMode(
+    searchParams.get('mode'),
+    validKind === 'wrong' ? 'review' : 'practice',
+  )
 
   const plan = useMemo(
     () => buildPlan(validKind, { history, wrongBook }),

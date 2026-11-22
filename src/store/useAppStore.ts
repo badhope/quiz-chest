@@ -10,7 +10,7 @@ import type {
   PendingSession,
   WrongEntry,
 } from '../data/records'
-import { DEFAULT_SETTINGS, emptySnapshot } from '../services/repository'
+import { DEFAULT_SETTINGS, HISTORY_LIMIT, emptySnapshot } from '../services/repository'
 import { getRepository, setRepositoryForTest } from '../services/dataLayer'
 import type { Repository } from '../services/repository'
 import { resilientStorage } from '../lib/storage'
@@ -262,7 +262,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
         correct: 0,
       }
       return {
-        history: [entry, ...state.history].slice(0, 100),
+        history: [entry, ...state.history].slice(0, HISTORY_LIMIT),
         daily: {
           ...state.daily,
           [entry.dateKey]: {

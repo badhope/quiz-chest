@@ -16,6 +16,7 @@ import {
 import type { CustomPaperSpec } from '../lib/customPaper'
 import { formatRelativeTime } from '../lib/quiz'
 import { EmptyState } from '../components/ui/primitives'
+import { PageHeader, SectionHeader } from '../components/ui/sections'
 import { DomainIcon } from '../components/ui/icons'
 import { ArrowRight, BookOpen, CircleCheck, CircleX, Layers, Printer, RotateCcw, Trash2, Trophy } from '../components/ui/icons'
 
@@ -85,10 +86,7 @@ export function ComposePage() {
   if (noBanks) {
     return (
       <div className="compose-page">
-        <header className="page-head">
-          <span className="eyebrow">自定义组卷</span>
-          <h1 className="page-title serif">从自己的题库里抽一组</h1>
-        </header>
+        <PageHeader eyebrow="自定义组卷" title="从自己的题库里抽一组" />
         <EmptyState
           icon={<Layers />}
           title="还没有可用的题库"
@@ -105,17 +103,17 @@ export function ComposePage() {
 
   return (
     <div className="compose-page">
-      <header className="page-head">
-        <span className="eyebrow">自定义组卷</span>
-        <h1 className="page-title serif">从自己的题库里抽一组</h1>
-        <p className="page-sub">选题库、定题量与时长，生成一次专属练习或模拟考试。</p>
-      </header>
+      <PageHeader
+        eyebrow="自定义组卷"
+        title="从自己的题库里抽一组"
+        subtitle="选题库、定题量与时长，生成一次专属练习或模拟考试。"
+      />
 
       <section className="compose-section">
-        <div className="section-head">
-          <h2 className="section-title serif">第一步 · 选题库</h2>
-          <span>{selected.length > 0 ? `已选 ${selected.length} 个 · 共 ${available} 题` : '至少选一个'}</span>
-        </div>
+        <SectionHeader
+          title="第一步 · 选题库"
+          aside={<span>{selected.length > 0 ? `已选 ${selected.length} 个 · 共 ${available} 题` : '至少选一个'}</span>}
+        />
         <div className="compose-banks">
           {banks.map((bank) => {
             const active = selected.includes(bank.id)
@@ -141,10 +139,10 @@ export function ComposePage() {
       </section>
 
       <section className="compose-section">
-        <div className="section-head">
-          <h2 className="section-title serif">第二步 · 定题量</h2>
-          <span>1-{COUNT_MAX} 题{available > 0 ? ` · 当前可选 ${available} 题` : ''}</span>
-        </div>
+        <SectionHeader
+          title="第二步 · 定题量"
+          aside={<span>1-{COUNT_MAX} 题{available > 0 ? ` · 当前可选 ${available} 题` : ''}</span>}
+        />
         <div className="compose-presets">
           {COUNT_PRESETS.map((preset) => (
             <button
@@ -169,10 +167,10 @@ export function ComposePage() {
       </section>
 
       <section className="compose-section">
-        <div className="section-head">
-          <h2 className="section-title serif">第三步 · 定时长与顺序</h2>
-          <span>{DURATION_MIN}-{DURATION_MAX} 分钟</span>
-        </div>
+        <SectionHeader
+          title="第三步 · 定时长与顺序"
+          aside={<span>{DURATION_MIN}-{DURATION_MAX} 分钟</span>}
+        />
         <div className="compose-presets">
           {DURATION_PRESETS.map((preset) => (
             <button
@@ -237,10 +235,10 @@ export function ComposePage() {
 
       {papers.length > 0 ? (
         <section className="compose-history">
-          <div className="section-head">
-            <h2 className="section-title serif">最近组卷</h2>
-            <span>最多保留 20 条，点「重开」恢复同一配置</span>
-          </div>
+          <SectionHeader
+            title="最近组卷"
+            aside={<span>最多保留 20 条，点「重开」恢复同一配置</span>}
+          />
           <div className="compose-history-list">
             {papers.map((record) => (
               <div className="compose-history-row" key={record.id}>

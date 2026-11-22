@@ -16,6 +16,9 @@ const SCHEMA_VERSION: i64 = 4;
 /// 每个题库保留的历史版本数上限。与前端 src/services/snapshotPolicy.ts 保持一致；
 /// 两端都强制，任何一端漏掉都不会导致无限增长。
 const BANK_SNAPSHOT_LIMIT: i64 = 20;
+/// 与前端 src/services/repository.ts 的 HISTORY_LIMIT / PAPER_LIMIT 保持一致。
+const HISTORY_LIMIT: i64 = 100;
+const PAPER_LIMIT: i64 = 20;
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -616,11 +619,11 @@ fn load_snapshot(connection: &Connection) -> Result<Snapshot, String> {
       .prepare(
         "SELECT id, mode, collection_id, collection_title, domain_id, answered, correct, wrong,
                 skipped, total, accuracy, duration_sec, finished_at, date_key
-         FROM history ORDER BY finished_at DESC LIMIT 100",
+         FROM history ORDER BY finished_at DESC LIMIT ?1",
       )
       .map_err(|error| format!("读取练习记录失败: {error}"))?;
     let rows = statement
-      .query_map([], |row| {
+      .query_map(params![HISTORY_LIMIT], |row| {
         Ok(HistoryRecord {
           id: row.get(0)?,
           mode: row.get(1)?,
@@ -664,11 +667,11 @@ fn load_snapshot(connection: &Connection) -> Result<Snapshot, String> {
     let mut statement = connection
       .prepare(
         "SELECT id, title, collection_ids, count, duration_min, \"order\", created_at
-         FROM papers ORDER BY created_at DESC LIMIT 20",
+         FROM papers ORDER BY created_at DESC LIMIT ?1",
       )
       .map_err(|error| format!("读取组卷失败: {error}"))?;
     let rows = statement
-      .query_map([], |row| {
+      .query_map(params![PAPER_LIMIT], |row| {
         Ok(PaperRecord {
           id: row.get(0)?,
           title: row.get(1)?,
@@ -842,19 +845,7 @@ fn replace_all(connection: &mut Connection, snapshot: &Snapshot) -> Result<(), S
     upsert_bank(&tx, bank)?;
   }
   for wrong in &snapshot.wrong_book {
-    tx.execute(
-      "INSERT INTO wrong_book(question_id, collection_id, wrong_count, last_wrong_at, last_selection, fsrs)
-       VALUES(?1, ?2, ?3, ?4, ?5, ?6)",
-      params![
-        wrong.question_id,
-        wrong.collection_id,
-        wrong.wrong_count,
-        wrong.last_wrong_at,
-        json(&wrong.last_selection),
-        wrong.fsrs.as_ref().map(|value| value.to_string()).unwrap_or_default()
-      ],
-    )
-    .map_err(|error| format!("写入错题失败: {error}"))?;
+    upsert_wrong_row(&tx, wrong)?;
   }
   for entry in &snapshot.history {
     insert_history_tx(&tx, entry)?;
@@ -882,20 +873,7 @@ fn replace_all(connection: &mut Connection, snapshot: &Snapshot) -> Result<(), S
     .map_err(|error| format!("写入题库快照失败: {error}"))?;
   }
   for paper in &snapshot.papers {
-    tx.execute(
-      "INSERT INTO papers(id, title, collection_ids, count, duration_min, \"order\", created_at)
-       VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-      params![
-        paper.id,
-        paper.title,
-        json(&paper.collection_ids),
-        paper.count,
-        paper.duration_min,
-        paper.order,
-        paper.created_at
-      ],
-    )
-    .map_err(|error| format!("写入组卷失败: {error}"))?;
+    upsert_paper_row(&tx, paper)?;
   }
   tx.commit().map_err(|error| format!("提交事务失败: {error}"))
 }
@@ -953,6 +931,49 @@ fn insert_history_tx(tx: &Transaction, entry: &HistoryRecord) -> Result<(), Stri
   )
   .map(|_| ())
   .map_err(|error| format!("写入练习记录失败: {error}"))
+}
+
+fn upsert_wrong_row(connection: &Connection, wrong: &WrongRecord) -> Result<(), String> {
+  connection
+    .execute(
+      "INSERT INTO wrong_book(question_id, collection_id, wrong_count, last_wrong_at, last_selection, fsrs)
+       VALUES(?1, ?2, ?3, ?4, ?5, ?6)
+       ON CONFLICT(question_id) DO UPDATE SET
+         collection_id = excluded.collection_id, wrong_count = excluded.wrong_count,
+         last_wrong_at = excluded.last_wrong_at, last_selection = excluded.last_selection,
+         fsrs = excluded.fsrs",
+      params![
+        wrong.question_id,
+        wrong.collection_id,
+        wrong.wrong_count,
+        wrong.last_wrong_at,
+        json(&wrong.last_selection),
+        wrong.fsrs.as_ref().map(|value| value.to_string()).unwrap_or_default()
+      ],
+    )
+    .map(|_| ())
+    .map_err(|error| format!("写入错题失败: {error}"))
+}
+
+fn upsert_paper_row(connection: &Connection, paper: &PaperRecord) -> Result<(), String> {
+  connection
+    .execute(
+      "INSERT INTO papers(id, title, collection_ids, count, duration_min, \"order\", created_at)
+       VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)
+       ON CONFLICT(id) DO UPDATE SET title = excluded.title, collection_ids = excluded.collection_ids,
+         count = excluded.count, duration_min = excluded.duration_min, \"order\" = excluded.\"order\"",
+      params![
+        paper.id,
+        paper.title,
+        json(&paper.collection_ids),
+        paper.count,
+        paper.duration_min,
+        paper.order,
+        paper.created_at
+      ],
+    )
+    .map(|_| ())
+    .map_err(|error| format!("写入组卷失败: {error}"))
 }
 
 #[tauri::command]
@@ -1086,25 +1107,7 @@ pub fn db_clear_favorites(db: State<Db>) -> Result<(), String> {
 #[tauri::command]
 pub fn db_record_wrong(db: State<Db>, entry: WrongRecord) -> Result<(), String> {
   let connection = lock(&db)?;
-  connection
-    .execute(
-      "INSERT INTO wrong_book(question_id, collection_id, wrong_count, last_wrong_at, last_selection, fsrs)
-       VALUES(?1, ?2, ?3, ?4, ?5, ?6)
-       ON CONFLICT(question_id) DO UPDATE SET
-         collection_id = excluded.collection_id, wrong_count = excluded.wrong_count,
-         last_wrong_at = excluded.last_wrong_at, last_selection = excluded.last_selection,
-         fsrs = excluded.fsrs",
-      params![
-        entry.question_id,
-        entry.collection_id,
-        entry.wrong_count,
-        entry.last_wrong_at,
-        json(&entry.last_selection),
-        entry.fsrs.as_ref().map(|value| value.to_string()).unwrap_or_default()
-      ],
-    )
-    .map(|_| ())
-    .map_err(|error| format!("写入错题失败: {error}"))
+  upsert_wrong_row(&connection, &entry)
 }
 
 #[tauri::command]
@@ -1139,8 +1142,8 @@ pub fn db_add_history(db: State<Db>, entry: HistoryRecord) -> Result<(), String>
   )
   .map_err(|error| format!("更新每日统计失败: {error}"))?;
   tx.execute(
-    "DELETE FROM history WHERE id NOT IN (SELECT id FROM history ORDER BY finished_at DESC LIMIT 100)",
-    [],
+    "DELETE FROM history WHERE id NOT IN (SELECT id FROM history ORDER BY finished_at DESC LIMIT ?1)",
+    params![HISTORY_LIMIT],
   )
   .map_err(|error| format!("裁剪历史记录失败: {error}"))?;
   tx.commit().map_err(|error| format!("提交失败: {error}"))
@@ -1194,25 +1197,10 @@ fn delete_bank(connection: &mut Connection, bank_id: &str) -> Result<(), String>
 pub fn db_add_paper(db: State<Db>, paper: PaperRecord) -> Result<(), String> {
   let mut connection = lock(&db)?;
   let tx = connection.transaction().map_err(|error| format!("开启事务失败: {error}"))?;
+  upsert_paper_row(&tx, &paper)?;
   tx.execute(
-    "INSERT INTO papers(id, title, collection_ids, count, duration_min, \"order\", created_at)
-     VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)
-     ON CONFLICT(id) DO UPDATE SET title = excluded.title, collection_ids = excluded.collection_ids,
-       count = excluded.count, duration_min = excluded.duration_min, \"order\" = excluded.\"order\"",
-    params![
-      paper.id,
-      paper.title,
-      json(&paper.collection_ids),
-      paper.count,
-      paper.duration_min,
-      paper.order,
-      paper.created_at
-    ],
-  )
-  .map_err(|error| format!("写入组卷失败: {error}"))?;
-  tx.execute(
-    "DELETE FROM papers WHERE id NOT IN (SELECT id FROM papers ORDER BY created_at DESC LIMIT 20)",
-    [],
+    "DELETE FROM papers WHERE id NOT IN (SELECT id FROM papers ORDER BY created_at DESC LIMIT ?1)",
+    params![PAPER_LIMIT],
   )
   .map_err(|error| format!("裁剪组卷历史失败: {error}"))?;
   tx.commit().map_err(|error| format!("提交失败: {error}"))

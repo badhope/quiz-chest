@@ -21,6 +21,14 @@ export function dateStamp(timestamp: number = Date.now()): string {
   return dayjs(timestamp).format('YYYYMMDD')
 }
 
+export function formatDate(timestamp: number): string {
+  return dayjs(timestamp).format('YYYY-MM-DD')
+}
+
+export function formatDateTime(timestamp: number): string {
+  return dayjs(timestamp).format('YYYY-MM-DD HH:mm')
+}
+
 export function formatRelativeTime(timestamp: number, now: number = Date.now()): string {
   return dayjs(timestamp).from(dayjs(now))
 }
