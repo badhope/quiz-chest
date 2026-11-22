@@ -1,6 +1,8 @@
-import { useParams, useSearchParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { getCollection } from '../data'
 import { PracticeRunner } from '../components/question/PracticeRunner'
+import { EmptyState } from '../components/ui/primitives'
+import { Layers } from '../components/ui/icons'
 import { parseSessionMode } from '../lib/quiz'
 
 export function PracticePage() {
@@ -13,7 +15,16 @@ export function PracticePage() {
   if (!collection) {
     return (
       <div className="practice-missing">
-        <h1>题库不存在</h1>
+        <EmptyState
+          icon={<Layers />}
+          title="题库不存在"
+          description="链接可能已过期，或这个题库已经被删除。"
+          action={
+            <Link to="/catalog" className="button button-primary button-sm">
+              返回题库总览
+            </Link>
+          }
+        />
       </div>
     )
   }

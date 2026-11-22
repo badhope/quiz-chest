@@ -1,6 +1,7 @@
 import type { ImportedBank } from '../store/useAppStore'
 import type { ImportBankInput } from './importer'
 import { dateKey } from './datetime'
+import { downloadBlob } from './download'
 
 export const BANK_PACKAGE_FORMAT = 'tixing-bank'
 export const BANK_PACKAGE_VERSION = 2
@@ -55,15 +56,7 @@ export function exportFileName(bank: ImportedBank): string {
 
 export function downloadBankPackage(bank: ImportedBank): void {
   const payload = JSON.stringify(buildExportPackage(bank), null, 2)
-  const blob = new Blob([payload], { type: 'application/json;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = exportFileName(bank)
-  document.body.appendChild(anchor)
-  anchor.click()
-  anchor.remove()
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+  downloadBlob(exportFileName(bank), new Blob([payload], { type: 'application/json;charset=utf-8' }))
 }
 
 /** v1 → v2：补齐 v2 引入的可选字段，保持旧包可读。 */

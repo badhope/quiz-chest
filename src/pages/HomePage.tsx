@@ -3,8 +3,8 @@ import { collections, domains } from '../data/taxonomy'
 import { totalQuestions, getCollection } from '../data'
 import { goals } from '../data/goals'
 import { useAppStore } from '../store/useAppStore'
-import { dateKey, streakFromDates } from '../lib/datetime'
-import { percent } from '../lib/quiz'
+import { dateKey } from '../lib/datetime'
+import { summarizeDaily } from '../lib/stats'
 import { buildDailyPlan } from '../lib/strategy'
 import {
   ArrowRight,
@@ -76,10 +76,7 @@ export function HomePage() {
   const lastCollection = lastCollectionId ? getCollection(lastCollectionId) : undefined
   const pendingSession = useAppStore((state) => state.pendingSession)
 
-  const streak = streakFromDates(Object.keys(daily))
-  const totalAnswered = Object.values(daily).reduce((sum, item) => sum + item.answered, 0)
-  const totalCorrect = Object.values(daily).reduce((sum, item) => sum + item.correct, 0)
-  const accuracy = percent(totalCorrect, totalAnswered)
+  const { streak, totalAnswered, accuracy } = summarizeDaily(daily)
   const todayAnswered = daily[TODAY_KEY]?.answered ?? 0
 
   const plan = buildDailyPlan({ history })
