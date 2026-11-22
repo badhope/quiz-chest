@@ -159,6 +159,18 @@ describe('IndexedDB 仓储', () => {
     expect(snapshot.history[0].id).toBe('h104')
   })
 
+  it('同一历史记录重放不会把每日统计加两遍', async () => {
+    await repo.addHistory(history('h1', 1000))
+    await repo.addHistory(history('h1', 1000))
+    const snapshot = await repo.load()
+    expect(snapshot.history).toHaveLength(1)
+    expect(snapshot.daily['2026-11-06']).toEqual({
+      date: '2026-11-06',
+      answered: 10,
+      correct: 7,
+    })
+  })
+
   it('组卷只保留最近 20 条', async () => {
     for (let index = 0; index < 25; index += 1) {
       await repo.addPaper({ ...paper, id: `p${index}`, createdAt: index })
@@ -305,6 +317,20 @@ describe('内存仓储', () => {
     await repo.addPaper({ ...paper, id: 'early-paper', createdAt: 10 })
     snapshot = await repo.load()
     expect(snapshot.papers.map((item) => item.id)).toEqual(['late-paper', 'early-paper'])
+    await repo.close()
+  })
+
+  it('同一历史记录重放不会把每日统计加两遍', async () => {
+    const repo = createMemoryRepository()
+    await repo.addHistory(history('h1', 1000))
+    await repo.addHistory(history('h1', 1000))
+    const snapshot = await repo.load()
+    expect(snapshot.history).toHaveLength(1)
+    expect(snapshot.daily['2026-11-06']).toEqual({
+      date: '2026-11-06',
+      answered: 10,
+      correct: 7,
+    })
     await repo.close()
   })
 
