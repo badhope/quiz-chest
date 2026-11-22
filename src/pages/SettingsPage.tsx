@@ -48,6 +48,24 @@ export function SettingsPage() {
   const backupInputRef = useRef<HTMLInputElement>(null)
   const [backupMessage, setBackupMessage] = useState('')
   const [restoring, setRestoring] = useState(false)
+  const [resetting, setResetting] = useState(false)
+  const [resetMessage, setResetMessage] = useState('')
+
+  const onResetProgress = async () => {
+    if (!window.confirm('确定重置全部学习数据？该操作不可撤销。')) return
+    setResetting(true)
+    setResetMessage('')
+    try {
+      await resetProgress()
+      setResetMessage('已重置收藏、错题、练习记录与每日统计。')
+    } catch (error) {
+      setResetMessage(
+        `重置失败：${error instanceof Error ? error.message : String(error)}。原数据未被改动，可重试。`,
+      )
+    } finally {
+      setResetting(false)
+    }
+  }
 
   const onExportBackup = () => {
     const payload = buildBackup({
@@ -371,14 +389,18 @@ export function SettingsPage() {
           <div>
             <strong>重置学习数据</strong>
             <p>清空收藏、错题、练习记录与每日统计，设置保持不变。</p>
+            {resetMessage ? (
+              <p className="settings-inline-note" role="status">
+                {resetMessage}
+              </p>
+            ) : null}
           </div>
           <button
             className="button button-ghost button-sm"
-            onClick={() => {
-              if (window.confirm('确定重置全部学习数据？该操作不可撤销。')) resetProgress()
-            }}
+            onClick={() => void onResetProgress()}
+            disabled={resetting}
           >
-            <RotateCcw /> 重置
+            <RotateCcw /> {resetting ? '重置中…' : '重置'}
           </button>
         </div>
       </section>
