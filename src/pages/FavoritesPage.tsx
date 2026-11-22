@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { getCollection, getQuestion } from '../data'
 import { useAppStore } from '../store/useAppStore'
@@ -13,10 +14,24 @@ export function FavoritesPage() {
   const clearFavorites = useAppStore((state) => state.clearFavorites)
   const history = useAppStore((state) => state.history)
 
-  const questions = favorites
-    .map((id) => getQuestion(id))
-    .filter((question): question is NonNullable<typeof question> => Boolean(question))
-    .reverse()
+  const questions = useMemo(
+    () =>
+      favorites
+        .map((id) => getQuestion(id))
+        .filter((question): question is NonNullable<typeof question> => Boolean(question))
+        .reverse(),
+    [favorites],
+  )
+  const latestByCollection = useMemo(() => {
+    const latest = new Map<string, number>()
+    for (const entry of history) {
+      const current = latest.get(entry.collectionId)
+      if (current === undefined || entry.finishedAt > current) {
+        latest.set(entry.collectionId, entry.finishedAt)
+      }
+    }
+    return latest
+  }, [history])
 
   if (questions.length === 0) {
     return (
@@ -56,14 +71,14 @@ export function FavoritesPage() {
       <div className="favorite-list">
         {questions.map((question) => {
           const collection = getCollection(question.collectionId)
-          const related = history.filter((entry) => entry.collectionId === question.collectionId)[0]
+          const finishedAt = latestByCollection.get(question.collectionId)
           return (
             <article className="favorite-item" key={question.id}>
               <div className="favorite-head">
                 <div className="favorite-meta">
                   <Badge tone="neutral">{collection?.title ?? '未知题库'}</Badge>
                   <span className="favorite-time">
-                    <Clock /> {related ? formatRelativeTime(related.finishedAt) : '最近收藏'}
+                    <Clock /> {finishedAt ? formatRelativeTime(finishedAt) : '最近收藏'}
                   </span>
                 </div>
                 <button
