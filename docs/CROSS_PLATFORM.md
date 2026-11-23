@@ -108,28 +108,22 @@ Windows 推荐在 Git Bash 中执行 `scripts/build-desktop.cmd`：脚本会自�
 
 ## 四、Android（Capacitor 8）
 
-前置（本机已按此路径安装）：
-
-| 组件 | 路径 | 版本 |
-| --- | --- | --- |
-| Android SDK | `C:\Dev\android-sdk` | cmdline-tools 12.0 / platform 35 + 36 / build-tools 35.0.0 |
-| JDK | `C:\Dev\jdk-21` | OpenJDK 21.0.2 |
-| Gradle | `C:\Dev\gradle-8.14.3\gradle-8.14.3` | 8.14.3（镜像下载） |
-| Gradle 用户目录 | `C:\Dev\gradle-home` | 含阿里云镜像 init 脚本 |
-
-构建命令（本机实测通过）：
+前置：JDK 21、Android SDK（`platforms/android-36` + `build-tools;36.0.0`）。Capacitor 8 的 Java 源码按 21 编译，JDK 17 会报 `invalid source release: 21`。
 
 ```bash
-export ANDROID_HOME='C:\Dev\android-sdk'
-export JAVA_HOME='C:\Dev\jdk-21'
-export GRADLE_USER_HOME='C:\Dev\gradle-home'
-pnpm build:native
-npx cap sync android
-cd android && "C:/Dev/gradle-8.14.3/gradle-8.14.3/bin/gradle" assembleDebug --no-daemon
+export ANDROID_HOME=/path/to/android-sdk
+export JAVA_HOME=/path/to/jdk-21
+pnpm build:apk
 ```
 
-产物：`android/app/build/outputs/apk/debug/app-debug.apk`（约 4.4 MB），已复制到
-`artifacts/quizchest-<version>-debug.apk`（当前为 `quizchest-1.8.0-debug.apk`）。
+`pnpm build:apk` 会依次执行 native 前端构建、`cap sync android`、Gradle
+`assembleDebug`，把 `android/app/build/outputs/apk/debug/app-debug.apk` 复制到
+`artifacts/quizchest-<version>-debug.apk`，再跑资源完整性校验。SDK 与 JDK 未显式指定时，
+脚本会在 `~/android-sdk`、`~/Android/Sdk`、`/usr/lib/android-sdk` 等常见目录里寻找；
+JDK 21 也会在 `~/tools` 与 `/usr/lib/jvm` 下探测。
+
+产物约 4.4 MB。Linux 云主机与 Windows 本机均已实测通过；Windows 也可继续使用
+`android/gradlew.bat` 或本地 Gradle 8.14.3。
 
 `app/build.gradle` 中的 `versionName` / `versionCode` 由 `scripts/sync-version.mjs`
 统一维护，`versionCode` 按 `major*1_000_000 + minor*1_000 + patch` 推导，
@@ -297,8 +291,14 @@ Android 运行时验证的原理：宿主无硬件虚拟化，模拟器不可用
 | Windows 桌面（MSI） | `QuizChest_1.4.0_x64_en-US.msi` (5.00 MiB) | 构建成功，未单独安装验证 |
 | Android（debug） | `quizchest-1.4.0-debug.apk` (4.4 MB) | `versionName=1.4.0`、`versionCode=1004000`；`verify-apk.mjs` 通过（453 条目、4 个引用资源全部存在、无 `sw.js`）；解包后由 WebView 加载真实资源，hash 路由与 IndexedDB 均正常 |
 
-APK 资源完整性检查已成为构建步骤：`pnpm build:apk` 会在同步后自动跑
+APK 资源完整性检查已成为构建步骤：`pnpm build:apk` 会在 Gradle 编译后自动跑
 `scripts/verify-apk.mjs`，缺少 JS/CSS 或混入 PWA 产物都会直接失败。
+
+### v1.9.0 验证记录
+
+| 端 | 产物 | 已核验 |
+| --- | --- | --- |
+| Android（debug） | `quizchest-1.9.0-debug.apk` (4.4 MB) | Linux + JDK 21.0.9 + Android SDK 36 实际编译成功；`versionName=1.9.0`、`versionCode=1009000`；`verify-apk` 通过（462 条目、4 个引用资源、14 个 JS、1 个 CSS，无 PWA 残留）。未在模拟器跑运行时 E2E |
 
 ### v1.3.1 验证记录
 
