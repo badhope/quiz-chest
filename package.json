@@ -16,7 +16,7 @@
     "test:e2e:apk": "playwright test --config playwright.apk.config.ts",
     "check": "node scripts/check-all.mjs",
     "build:native": "tsc -b && vite build --mode native",
-    "build:apk": "pnpm build:native && cap sync android && node scripts/verify-apk.mjs artifacts/quizchest-$(node -p \"require('./package.json').version\")-debug.apk",
+    "build:apk": "pnpm build:native && cap sync android && node scripts/build-apk.mjs",
     "verify:apk": "node scripts/verify-apk.mjs",
     "tauri": "tauri",
     "desktop:dev": "tauri dev",
