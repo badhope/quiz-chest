@@ -59,7 +59,18 @@ git push origin main --tags
 - **Web / PWA**：`pnpm build`，产物在 `dist/`；CI 还会额外跑 `pnpm build:native`，
   确认原生壳的 native mode 与 hash 路由资产能正常产出。
 - **桌面**：`pnpm desktop:build`；Tauri `bundle.targets` 为 `all`，在哪个系统构建就产出该系统可用的安装包（Windows nsis/msi、macOS app/dmg、Linux deb/AppImage）。
-- **Android**：`pnpm build:apk` 生成 debug APK 供验收。需要 JDK 21（Capacitor 8 的 Java 源码按 21 编译，JDK 17 会报 `invalid source release: 21`）与含 `platforms/android-36` 的 Android SDK；脚本会自动寻找常见安装目录，也可用 `JAVA_HOME` / `ANDROID_HOME` 指定。Release APK 需要先在 `android/keystore.properties` 填签名信息（模板见 `android/keystore.properties.example`）；该文件与 `*.jks` 已被 `.gitignore` 排除，禁止提交。
+- **Android（debug）**：`pnpm build:apk` 生成 debug APK 供验收。需要 JDK 21（Capacitor 8 的 Java 源码按 21 编译，JDK 17 会报 `invalid source release: 21`）与含 `platforms/android-36` 的 Android SDK；脚本会自动寻找常见安装目录，也可用 `JAVA_HOME` / `ANDROID_HOME` 指定。
+- **Android（release）**：先准备签名材料，再按需构建 APK 或 AAB。
+  ```bash
+  cp android/keystore.properties.example android/keystore.properties
+  # 编辑 android/keystore.properties，填入 keystore 路径与口令
+  pnpm build:apk:release   # → artifacts/tixing-<version>-release.apk
+  pnpm build:aab:release   # → artifacts/tixing-<version>-release.aab
+  ```
+  `android/keystore.properties` 与 `*.jks` 已被 `.gitignore` 排除，禁止提交。默认示例指向项目根目录的 `keystore/tixing-release.jks`；keystore 本身要离线备份，丢失后无法给已安装用户推送同签名的升级包。
+  两个脚本都会调用 `scripts/verify-signature.mjs`：APK 走 `apksigner verify --print-certs`，AAB 走 `jarsigner -verify`。签名无效会直接让构建失败，避免“Gradle 成功但其实没签”的产物进入分发。
+
+分发、安装与商店资料见 [docs/DISTRIBUTION.md](DISTRIBUTION.md)。
 
 ## 四、版本号档位约定
 

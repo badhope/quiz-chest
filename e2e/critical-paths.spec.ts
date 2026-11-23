@@ -396,3 +396,30 @@ test('编辑题库会生成历史版本，可回滚', async ({ page }) => {
     ),
   ).toBe(true)
 })
+
+test('分享题库生成加密包，重新导入时必须输入口令', async ({ page }) => {
+  await importCsv(page, CSV, 'E2E 题库')
+  await openBank(page)
+  await page.getByRole('button', { name: /分享题库/ }).click()
+
+  const dialog = page.getByRole('dialog', { name: /分享「E2E 题库」/ })
+  await expect(dialog).toBeVisible()
+  const password = (await dialog.locator('.share-password code').textContent())?.trim() ?? ''
+  expect(password.length).toBeGreaterThanOrEqual(8)
+
+  const downloadPromise = page.waitForEvent('download')
+  await dialog.getByRole('button', { name: /下载加密题库包/ }).click()
+  const download = await downloadPromise
+  const path = await download.path()
+  expect(path).toBeTruthy()
+  await expect(dialog.getByText(/PBKDF2-SHA256/)).toBeVisible()
+
+  await dialog.getByRole('button', { name: '关闭分享' }).click()
+  await page.goto('/import')
+  await page.setInputFiles('input[type="file"]', path!)
+  await expect(page.getByRole('heading', { name: '输入分享口令' })).toBeVisible()
+
+  await page.getByLabel('分享口令').fill(password)
+  await page.getByRole('button', { name: /解密并预览/ }).click()
+  await expect(page.getByRole('heading', { name: 'E2E 题库' })).toBeVisible()
+})

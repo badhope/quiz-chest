@@ -1,7 +1,7 @@
-import { useMemo, useRef, useState } from 'react'
+import { useDeferredValue, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { domains } from '../../data/taxonomy'
-import { searchCatalog } from '../../lib/search'
+import { collectionTitleOf, searchCatalog } from '../../lib/search'
 import * as Dialog from '@radix-ui/react-dialog'
 import { Chip } from './Chip'
 import { DomainIcon, Search, X } from '../ui/icons'
@@ -13,7 +13,9 @@ export function SearchDialog({ onClose }: { onClose: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
 
-  const results = useMemo(() => searchCatalog(query), [query])
+  const deferredQuery = useDeferredValue(query)
+  const results = useMemo(() => searchCatalog(deferredQuery), [deferredQuery])
+  const searching = query !== deferredQuery
 
   const go = (path: string) => {
     onClose()
@@ -123,9 +125,7 @@ export function SearchDialog({ onClose }: { onClose: () => void }) {
                 <div className="search-section">
                   <span className="search-label">题目</span>
                   {results.questions.map((question) => {
-                    const collection = results.collections.find(
-                      (item) => item.id === question.collectionId,
-                    )
+                    const collectionTitle = collectionTitleOf(question.collectionId)
                     return (
                       <button
                         key={question.id}
@@ -137,7 +137,7 @@ export function SearchDialog({ onClose }: { onClose: () => void }) {
                         </span>
                         <span className="search-result-text">
                           <strong>{question.stem}</strong>
-                          <small>{collection?.title}</small>
+                          <small>{collectionTitle}</small>
                         </span>
                       </button>
                     )
@@ -154,6 +154,7 @@ export function SearchDialog({ onClose }: { onClose: () => void }) {
         </div>
         <div className="search-foot">
           <span>
+            {searching ? '索引中… ' : null}
             <kbd>Enter</kbd> 打开首个结果
           </span>
           <span>

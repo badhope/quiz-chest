@@ -7,10 +7,6 @@ export interface SearchResult {
   questions: Question[]
 }
 
-function currentBanks(): LibraryCollection[] {
-  return getLibraryCollections()
-}
-
 const aliases: Record<string, string[]> = {
   calculus: ['高数', '微积分', '高等数学'],
   'linear-algebra': ['线代', '线性代数'],
@@ -46,44 +42,234 @@ const aliases: Record<string, string[]> = {
   arts: ['文学艺术', '艺术', '文学'],
 }
 
-export function searchCatalog(rawQuery: string, limit = 12): SearchResult {
-  const query = rawQuery.trim().toLowerCase()
+function normalize(value: string): string {
+  return value.normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim()
+}
+
+function latinWords(value: string): string[] {
+  return [...value.matchAll(/[a-z0-9]+/g)].map((match) => match[0])
+}
+
+function cjkRuns(value: string): string[] {
+  return [...value.matchAll(/\p{Script=Han}+/gu)].map((match) => match[0])
+}
+
+function bigrams(value: string): string[] {
+  if (value.length < 2) return []
+  const result: string[] = []
+  for (let index = 0; index < value.length - 1; index += 1) {
+    result.push(value.slice(index, index + 2))
+  }
+  return result
+}
+
+/**
+ * 轻量倒排索引。
+ *
+ * 为什么不用 `includes` 全表扫：搜索框每按一个键都会触发一次，
+ * 一万道题的题干、选项、标签加起来是几十万字符；每次重新扫一遍，
+ * 在手机上会把输入延迟放大到肉眼可见。
+ *
+ * 中文以二元组、英文/数字以词前缀建索引，查询时取交集，
+ * 最后再用原文 `includes` 做一次精确过滤，保证不会因为分词漏掉结果。
+ */
+class TextIndex<T> {
+  private entries: { normalized: string; item: T }[] = []
+  private postings = new Map<string, number[]>()
+  private latinTokens = new Set<string>()
+  private sortedTokens: string[] | null = null
+
+  add(text: string, item: T): void {
+    const normalized = normalize(text)
+    const index = this.entries.length
+    this.entries.push({ normalized, item })
+
+    const tokens = new Set<string>()
+    for (const word of latinWords(normalized)) {
+      if (word.length >= 2) {
+        tokens.add(word)
+        if (!this.latinTokens.has(word)) {
+          this.latinTokens.add(word)
+          this.sortedTokens = null
+        }
+      }
+    }
+    for (const run of cjkRuns(normalized)) {
+      for (const gram of bigrams(run)) tokens.add(gram)
+    }
+    for (const token of tokens) {
+      const list = this.postings.get(token)
+      if (list) list.push(index)
+      else this.postings.set(token, [index])
+    }
+  }
+
+  private prefixPostings(prefix: string): number[] | null {
+    if (prefix.length < 2) {
+      return this.entries
+        .map((entry, index) => (entry.normalized.includes(prefix) ? index : -1))
+        .filter((index) => index >= 0)
+    }
+    if (!this.sortedTokens) this.sortedTokens = [...this.latinTokens].sort()
+    const tokens = this.sortedTokens
+    let low = 0
+    let high = tokens.length
+    while (low < high) {
+      const middle = (low + high) >> 1
+      if (tokens[middle] < prefix) low = middle + 1
+      else high = middle
+    }
+    const result = new Set<number>()
+    for (let index = low; index < tokens.length && tokens[index].startsWith(prefix); index += 1) {
+      for (const entry of this.postings.get(tokens[index]) ?? []) result.add(entry)
+    }
+    if (result.size === 0) return null
+    return [...result].sort((a, b) => a - b)
+  }
+
+  private intersect(lists: number[][]): number[] {
+    if (lists.length === 0) return []
+    const sorted = [...lists].sort((a, b) => a.length - b.length)
+    let result = sorted[0]
+    for (const list of sorted.slice(1)) {
+      const next: number[] = []
+      let left = 0
+      let right = 0
+      while (left < result.length && right < list.length) {
+        if (result[left] === list[right]) {
+          next.push(result[left])
+          left += 1
+          right += 1
+        } else if (result[left] < list[right]) left += 1
+        else right += 1
+      }
+      result = next
+      if (result.length === 0) return []
+    }
+    return result
+  }
+
+  search(rawQuery: string): T[] {
+    const normalized = normalize(rawQuery)
+    if (!normalized) return []
+    const words = latinWords(normalized)
+    const runs = cjkRuns(normalized)
+    const parts = [...words, ...runs]
+    // 单字查询没有二元组可查，直接退回原文过滤；它只影响极短输入，
+    // 不会成为大列表的主要开销。
+    if (parts.length === 0 || parts.every((part) => part.length < 2)) {
+      return this.entries
+        .filter((entry) => entry.normalized.includes(normalized))
+        .map((entry) => entry.item)
+    }
+
+    const lists: number[][] = []
+    for (const word of words) {
+      const list = this.prefixPostings(word)
+      if (!list) return []
+      lists.push(list)
+    }
+    for (const run of runs) {
+      if (run.length < 2) {
+        lists.push(
+          this.entries
+            .map((entry, index) => (entry.normalized.includes(run) ? index : -1))
+            .filter((index) => index >= 0),
+        )
+        continue
+      }
+      for (const gram of bigrams(run)) {
+        const list = this.postings.get(gram)
+        if (!list) return []
+        lists.push(list)
+      }
+    }
+
+    const hits = this.intersect(lists)
+    if (hits.length === 0) return []
+    return hits
+      .map((index) => this.entries[index])
+      .filter((entry) => parts.every((part) => entry.normalized.includes(part)))
+      .map((entry) => entry.item)
+  }
+}
+
+function collectionHaystack(collection: LibraryCollection): string {
+  const domainName = domains.find((domain) => domain.id === collection.domainId)?.name ?? ''
+  return [
+    collection.title,
+    collection.subtitle,
+    collection.description,
+    collection.exam,
+    domainName,
+    ...collection.tags,
+    ...(aliases[collection.id] ?? []),
+  ].join(' ')
+}
+
+function questionHaystack(question: Question): string {
+  return [question.stem, ...question.tags, ...question.options].join(' ')
+}
+
+const collectionIndexCache = new WeakMap<LibraryCollection[], TextIndex<LibraryCollection>>()
+const questionIndexCache = new WeakMap<LibraryCollection[], TextIndex<{ question: Question }>>()
+
+function buildCollectionIndex(library: LibraryCollection[]): TextIndex<LibraryCollection> {
+  const cached = collectionIndexCache.get(library)
+  if (cached) return cached
+  const index = new TextIndex<LibraryCollection>()
+  for (const collection of library) index.add(collectionHaystack(collection), collection)
+  collectionIndexCache.set(library, index)
+  return index
+}
+
+function buildQuestionIndex(library: LibraryCollection[]): TextIndex<{ question: Question }> {
+  const cached = questionIndexCache.get(library)
+  if (cached) return cached
+  const index = new TextIndex<{ question: Question }>()
+  for (const collection of library) {
+    for (const question of collection.questions) index.add(questionHaystack(question), { question })
+  }
+  questionIndexCache.set(library, index)
+  return index
+}
+
+/** 纯函数入口，测试可以直接喂一份题库，不依赖 store。 */
+export function searchLibrary(
+  library: LibraryCollection[],
+  rawQuery: string,
+  limit = 12,
+): SearchResult {
+  const query = rawQuery.trim()
   if (!query) return { collections: [], questions: [] }
 
-  const bank = currentBanks()
-  const domainNameById = new Map(domains.map((domain) => [domain.id, domain.name]))
-
-  const collectionResults = bank
-    .filter((collection) => {
-      const haystack = [
-        collection.title,
-        collection.subtitle,
-        collection.description,
-        collection.exam,
-        domainNameById.get(collection.domainId) ?? '',
-        ...collection.tags,
-        ...(aliases[collection.id] ?? []),
-      ]
-        .join(' ')
-        .toLowerCase()
-      return haystack.includes(query)
-    })
+  const collections = buildCollectionIndex(library)
+    .search(query)
     .sort((a, b) => b.heat - a.heat)
     .slice(0, 6)
-
-  const questionResults = bank
-    .flatMap((collection) => collection.questions)
-    .filter((question) => {
-      const haystack = [question.stem, ...question.tags, ...question.options].join(' ').toLowerCase()
-      return haystack.includes(query)
-    })
+  const questions = buildQuestionIndex(library)
+    .search(query)
     .slice(0, limit)
+    .map((entry) => entry.question)
 
-  return { collections: collectionResults, questions: questionResults }
+  return { collections, questions }
+}
+
+export function searchCatalog(rawQuery: string, limit = 12): SearchResult {
+  return searchLibrary(getLibraryCollections(), rawQuery, limit)
+}
+
+/** 给题库筛选页用：只要题库，不截断，交由调用方按领域/学段再过滤。 */
+export function searchCollections(
+  library: LibraryCollection[],
+  rawQuery: string,
+): LibraryCollection[] {
+  if (!rawQuery.trim()) return []
+  return buildCollectionIndex(library).search(rawQuery)
 }
 
 export function collectionTitleOf(collectionId: string): string {
-  const imported = currentBanks().find((collection) => collection.id === collectionId)
+  const imported = getLibraryCollections().find((collection) => collection.id === collectionId)
   if (imported) return imported.title
   return collections.find((collection) => collection.id === collectionId)?.title ?? ''
 }

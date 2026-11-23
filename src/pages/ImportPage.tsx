@@ -12,12 +12,13 @@ import {
   type ParseResult,
 } from '../lib/importer'
 import { looksLikeExportPackage, parseExportPackage } from '../lib/exporter'
+import { decryptBankPackage, isEncryptedBankPackage } from '../lib/securePackage'
 import { parseWorkbookFile } from '../services/xlsxImport'
 import { Badge, EmptyState } from '../components/ui/primitives'
 import { PageHeader, SectionHeader } from '../components/ui/sections'
 import { ArrowRight, BookOpen, CircleCheck, CircleX, Library, Upload } from '../components/ui/icons'
 
-type Step = 'input' | 'review' | 'done'
+type Step = 'input' | 'unlock' | 'review' | 'done'
 
 /**
  * 单文件体积上限。
@@ -48,6 +49,9 @@ export function ImportPage() {
   const [savedId, setSavedId] = useState('')
   const [saving, setSaving] = useState(false)
   const [overwriteBankId, setOverwriteBankId] = useState<string | null>(null)
+  const [encryptedText, setEncryptedText] = useState('')
+  const [password, setPassword] = useState('')
+  const [unlocking, setUnlocking] = useState(false)
   const [domainId, setDomainId] = useState('')
   const [trackName, setTrackName] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
@@ -56,6 +60,12 @@ export function ImportPage() {
     setError('')
     setResult(null)
     setOverwriteBankId(null)
+    if (isEncryptedBankPackage(text)) {
+      setEncryptedText(text)
+      setPassword('')
+      setStep('unlock')
+      return
+    }
     if (looksLikeExportPackage(text)) {
       const pkg = parseExportPackage(text)
       if (pkg.bank) {
@@ -136,6 +146,23 @@ export function ImportPage() {
     reader.readAsText(file, 'utf-8')
   }
 
+  const unlock = async () => {
+    if (unlocking) return
+    setUnlocking(true)
+    setError('')
+    try {
+      const plaintext = await decryptBankPackage(encryptedText, password)
+      setEncryptedText('')
+      setPassword('')
+      setRawText(plaintext)
+      runParse(plaintext, '解密的题库.tixing.json')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setUnlocking(false)
+    }
+  }
+
   const onPaste = () => {
     // 粘贴内容没有文件名，按内容嗅探格式，避免 CSV 被当作 JSON 解析。
     const format = detectFormatFromContent(rawText)
@@ -183,6 +210,59 @@ export function ImportPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  if (step === 'unlock') {
+    return (
+      <div className="import-page">
+        <PageHeader
+          eyebrow="导入题库 · 加密包"
+          title="输入分享口令"
+          subtitle="这是一个加密题库包。口令只在本机用于解密，不会上传，也不会写入日志。"
+        />
+        <section className="import-unlock">
+          <label>
+            <span>分享口令</span>
+            <input
+              type="password"
+              value={password}
+              autoComplete="off"
+              onChange={(event) => setPassword(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') void unlock()
+              }}
+              placeholder="至少 8 位"
+              aria-label="分享口令"
+            />
+          </label>
+          {error ? (
+            <p className="import-error" role="alert">
+              <CircleX /> {error}
+            </p>
+          ) : null}
+          <div className="import-actions">
+            <button
+              className="button button-ghost"
+              onClick={() => {
+                setStep('input')
+                setEncryptedText('')
+                setPassword('')
+                setError('')
+              }}
+            >
+              取消
+            </button>
+            <button
+              className="button button-primary"
+              onClick={() => void unlock()}
+              disabled={unlocking || password.length < 8}
+            >
+              {unlocking ? '解密中…' : '解密并预览'} <ArrowRight />
+            </button>
+          </div>
+        </section>
+      </div>
+    )
   }
 
   if (step === 'done') {
@@ -341,7 +421,7 @@ export function ImportPage() {
         title="把你自己的题目带进来"
         subtitle={
           <>
-            支持 JSON 与 CSV 两种格式，逐行校验后才会入库。数据只保存在本机数据库。
+            支持 JSON、CSV、Excel 与题小星题库包（含加密包），逐行校验后才会入库。数据只保存在本机数据库。
             {existingCount > 0 ? ` 已有 ${existingCount} 个导入题库。` : ''}
           </>
         }
@@ -365,7 +445,7 @@ export function ImportPage() {
         >
           <Upload />
           <strong>点击选择，或把 .xlsx / .csv / .json 文件拖到这里</strong>
-          <span>Excel 与 CSV 用同一套列名；单次最多 2000 题，超过 6 个选项请用 JSON 格式</span>
+          <span>Excel 与 CSV 用同一套列名；单次最多 2000 题，超过 6 个选项请用 JSON 格式。加密包会自动要求输入口令。</span>
         </div>
         <input
           ref={fileRef}

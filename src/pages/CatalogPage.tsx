@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useDeferredValue, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { libraryTracksOfDomain, useLibraryCollections, useLibraryDomains } from '../lib/library'
 import { domains, tracksOfDomain } from '../data/taxonomy'
@@ -7,6 +7,8 @@ import { DomainIcon } from '../components/ui/icons'
 import { Badge, EmptyState } from '../components/ui/primitives'
 import { MissingPage } from '../components/ui/MissingPage'
 import { ChevronRight, Clock, Library, Search, Upload } from '../components/ui/icons'
+import { ProgressiveGrid } from '../components/ui/ProgressiveGrid'
+import { searchCollections } from '../lib/search'
 
 export function CatalogPage() {
   const library = useLibraryCollections()
@@ -21,35 +23,26 @@ export function CatalogPage() {
     domains[0]
   const domainId = domain.id
   const tracks = useMemo(() => libraryTracksOfDomain(library, domainId), [library, domainId])
-  const keyword = query.trim().toLowerCase()
+  const deferredQuery = useDeferredValue(query)
+  const keyword = deferredQuery.trim()
 
+  const searchHits = useMemo(
+    () =>
+      keyword
+        ? searchCollections(library, keyword)
+            .sort((a, b) => b.heat - a.heat)
+            .slice(0, 8)
+        : [],
+    [library, keyword],
+  )
   const matched = useMemo(
     () =>
       library.filter((collection) => {
         if (collection.domainId !== domainId) return false
         if (trackFilter !== 'all' && collection.trackId !== trackFilter) return false
-        if (!keyword) return true
-        return [collection.title, collection.subtitle, collection.exam, ...collection.tags]
-          .join(' ')
-          .toLowerCase()
-          .includes(keyword)
+        return true
       }),
-    [library, domainId, trackFilter, keyword],
-  )
-
-  const searchHits = useMemo(
-    () =>
-      !keyword
-        ? []
-        : library
-            .filter((collection) =>
-              [collection.title, collection.subtitle, collection.exam, ...collection.tags]
-                .join(' ')
-                .toLowerCase()
-                .includes(keyword),
-            )
-            .slice(0, 8),
-    [library, keyword],
+    [library, domainId, trackFilter],
   )
 
   const trackCounts = useMemo(() => {
@@ -61,6 +54,13 @@ export function CatalogPage() {
     return counts
   }, [library, domainId])
   const countOfTrack = (trackId: string) => trackCounts.get(trackId) ?? 0
+  const domainCounts = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const item of library) {
+      counts.set(item.domainId, (counts.get(item.domainId) ?? 0) + 1)
+    }
+    return counts
+  }, [library])
 
   return (
     <div className="tree-page">
@@ -135,7 +135,7 @@ export function CatalogPage() {
             <span className="tree-nav-label">领域</span>
             {libraryDomains.map((item) => {
               const active = item.id === domain.id
-              const owned = library.filter((collection) => collection.domainId === item.id)
+              const count = domainCounts.get(item.id) ?? 0
               return (
                 <div key={item.id} className="tree-group">
                   <button
@@ -148,7 +148,7 @@ export function CatalogPage() {
                   >
                     <DomainIcon name={item.icon} />
                     <span>{item.name}</span>
-                    <span className="tree-count mono">{owned.length}</span>
+                    <span className="tree-count mono">{count}</span>
                   </button>
                   {active ? (
                     <div className="tree-tracks">
@@ -157,7 +157,7 @@ export function CatalogPage() {
                         onClick={() => setTrackFilter('all')}
                       >
                         全部
-                        <span className="mono">{owned.length}</span>
+                        <span className="mono">{count}</span>
                       </button>
                       {libraryTracksOfDomain(library, item.id).map((track) => (
                         <button
@@ -211,13 +211,16 @@ export function CatalogPage() {
                 }
               />
             ) : (
-              <div className="tree-collections">
-                {matched.map((collection) => {
+              <ProgressiveGrid
+                items={matched}
+                getKey={(collection) => collection.id}
+                resetKey={`${domainId}:${trackFilter}`}
+                className="tree-collections"
+                renderItem={(collection) => {
                   const track = tracks.find((item) => item.id === collection.trackId)
                   const trackLabel = collection.trackName ?? track?.name
                   return (
                     <Link
-                      key={collection.id}
                       to={`/collection/${collection.id}`}
                       className="tree-collection"
                       style={{ '--card-accent': domain.accent } as React.CSSProperties}
@@ -247,8 +250,8 @@ export function CatalogPage() {
                       </div>
                     </Link>
                   )
-                })}
-              </div>
+                }}
+              />
             )}
           </section>
         </div>
@@ -335,10 +338,13 @@ export function DomainPage() {
               <span>{track.description}</span>
               <span className="mono">{inTrack.length} 个题库</span>
             </div>
-            <div className="collection-grid">
-              {inTrack.map((collection) => (
+            <ProgressiveGrid
+              items={inTrack}
+              getKey={(collection) => collection.id}
+              resetKey={`${domain.id}:${track.id}`}
+              className="collection-grid"
+              renderItem={(collection) => (
                 <Link
-                  key={collection.id}
                   to={`/collection/${collection.id}`}
                   className="collection-card"
                   style={{ '--card-accent': domain.accent } as React.CSSProperties}
@@ -373,8 +379,8 @@ export function DomainPage() {
                     </span>
                   </div>
                 </Link>
-              ))}
-            </div>
+              )}
+            />
           </section>
         )
       })}

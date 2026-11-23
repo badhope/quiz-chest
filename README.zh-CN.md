@@ -20,6 +20,8 @@
 | **导入格式够宽容** | 支持 Excel（.xlsx）、JSON、CSV 与可移植的 `.tixing.json` 题库包；同一条行管线逐题校验，确认后才入库。 |
 | **三条找题路径** | 跟目标路线走、按领域逐层钻取，或交给策略自动配题。 |
 | **完整练习闭环** | 单选、多选、判断；练习模式即时批改，考试模式倒计时并到时自动交卷。 |
+| **不经过云的分享** | 导出 AES-256-GCM 加密的 `.tixing.enc.json`，或在桌面端起一个一次性局域网下载链接；口令与文件分开，不需要账号，也不走中继。 |
+| **大题库不卡** | 搜索走倒排索引（中文二元组 + 英文前缀），题库卡片渐进渲染，不会一次把几千张卡全挂到 DOM。 |
 | **做错的题不会丢** | 答错自动进错题本；答对后由 FSRS 间隔重复安排下次复习，真正掌握后再标记移出，不再「答对一次就消失」。 |
 | **导错了能改** | 导入的题库可直接编辑：题干、选项、答案、解析就地修改，题目编号保持稳定，错题引用不断。 |
 | **改错了能撤回** | 每次保存前自动存档旧版本，可回滚到最近 20 个版本中的任意一个；回滚本身也能再撤回。 |
@@ -59,6 +61,8 @@ pnpm preview      # 预览 dist/，http://localhost:4173
 pnpm build                  # Web / PWA，把 dist/ 部署到任意静态托管
 pnpm desktop:build          # 桌面安装包，需要 Rust 与 MSVC
 pnpm build:native && npx cap sync android   # 再在 android/ 里用 Gradle 构建
+pnpm build:apk:release      # 签名 APK，需要 android/keystore.properties
+pnpm build:aab:release      # 签名 AAB，用于支持 AAB 的商店
 ```
 
 原生壳使用 hash 路由并关闭 Service Worker，Web 构建使用浏览器 history 路由。

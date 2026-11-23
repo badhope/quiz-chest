@@ -30,6 +30,8 @@ fully functional practice bank in under a second, and everything stays on your m
 | **Numbers that mean something** | Streaks, accuracy trend, per-domain distribution and a 7-day volume chart. |
 | **Print a real paper** | Build a custom paper, then print it: A4 layout with name and score lines, optional answer key, navigation hidden automatically. |
 | **Runs everywhere you do** | Web/PWA, Windows/macOS/Linux desktop (Tauri 2), Android (Capacitor 8). Same codebase, same data model. |
+| **Share without a cloud** | Export an AES-256-GCM encrypted `.tixing.enc.json`, or start a one-time LAN download link from the desktop app. The password is separate from the file; there is no account or relay. |
+| **Stays fast on big banks** | Search uses an inverted index (CJK bigrams + Latin prefixes), and bank grids render progressively instead of mounting every card at once. |
 
 ## Screenshots
 
@@ -62,6 +64,8 @@ pnpm build                  # Web / PWA — deploy dist/ to any static host
 pnpm desktop:build          # native installer for the current OS (Windows / macOS / Linux)
 scripts/build-desktop.sh    # Linux/macOS helper; scripts/build-desktop.cmd on Windows
 pnpm build:native && npx cap sync android   # then build in android/ with Gradle
+pnpm build:apk:release      # signed APK, requires android/keystore.properties
+pnpm build:aab:release      # signed AAB for stores that accept it
 ```
 
 Native shells use hash routing and disable the service worker; the web build uses

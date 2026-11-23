@@ -19,6 +19,8 @@ android/local.properties
 android/hs_err_pid*.log
 .gradle-home/
 artifacts/*.apk
+artifacts/*.aab
+artifacts/*.txt
 artifacts/*.exe
 artifacts/*.msi
 .aqg/
@@ -30,5 +32,6 @@ blob-report/
 
 # Android release 签名口令与私钥，永远不进仓库
 android/keystore.properties
+keystore/
 *.jks
 *.keystore

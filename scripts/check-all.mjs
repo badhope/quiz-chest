@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { join } from 'node:path'
+import { homedir } from 'node:os'
+import { delimiter, join } from 'node:path'
 
 /**
  * 统一质量门禁。顺序有意设计：越便宜、越早能抓到问题的检查越靠前，
@@ -20,7 +21,17 @@ const steps = [
 ]
 
 const rustManifest = join('src-tauri', 'Cargo.toml')
-const hasCargo = spawnSync('cargo', ['--version'], { shell: true, stdio: 'ignore' }).status === 0
+// rustup 默认装到 ~/.cargo/bin，但非登录 shell 的 PATH 未必包含它。
+// 不补这一层，本机门禁会静默跳过 Rust 测试，而 CI 却能跑到。
+const cargoEnv = {
+  ...process.env,
+  PATH: `${join(homedir(), '.cargo', 'bin')}${delimiter}${process.env.PATH ?? ''}`,
+}
+const hasCargo = spawnSync('cargo', ['--version'], {
+  shell: true,
+  stdio: 'ignore',
+  env: cargoEnv,
+}).status === 0
 
 let failed = false
 for (const [name, cmd, args] of steps) {
@@ -43,7 +54,7 @@ if (!failed) {
     const result = spawnSync(
       'cargo',
       ['test', '--manifest-path', rustManifest, '--quiet'],
-      { stdio: 'inherit', shell: true },
+      { stdio: 'inherit', shell: true, env: cargoEnv },
     )
     if (result.status !== 0) {
       failed = true
