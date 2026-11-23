@@ -1,6 +1,6 @@
 [package]
 name = "tiyu-desktop"
-version = "1.9.0"
+version = "1.9.1"
 description = "题匣 · QuizChest desktop application"
 authors = ["QuizChest"]
 license = "MIT"

@@ -294,6 +294,16 @@ Android 运行时验证的原理：宿主无硬件虚拟化，模拟器不可用
 APK 资源完整性检查已成为构建步骤：`pnpm build:apk` 会在 Gradle 编译后自动跑
 `scripts/verify-apk.mjs`，缺少 JS/CSS 或混入 PWA 产物都会直接失败。
 
+### v1.9.1 验证记录
+
+| 端 | 产物 | 已核验 |
+| --- | --- | --- |
+| Android（release APK） | `quizchest-1.9.1-release.apk` (3.5 MB) | Linux + JDK 21.0.9 + Android SDK 36 实际编译；`versionName=1.9.1`、`versionCode=1009001`；`verify-apk` 通过（459 条目、4 个引用资源、14 个 JS、1 个 CSS）；`apksigner verify --print-certs` 通过，证书 SHA-256 `faf20b56…1ef5` |
+| Android（release AAB） | `quizchest-1.9.1-release.aab` (3.3 MB) | `bundleRelease` + `jarsigner -verify` 通过；用于 Google Play / 支持 AAB 的商店 |
+| 桌面（Tauri） | 未打包 | 本机安装 webkit2gtk 后 `cargo check`、`cargo test`（14 项，含局域网 HTTP 文件服务）与 `tauri build --no-bundle` 通过；未在本机打 AppImage/deb 包 |
+
+未做 Android 真机/模拟器运行时安装验证：宿主没有硬件虚拟化，也没有连接真机。APK 的 Web 资源已由 `verify-apk` 校验，签名已由 `apksigner` 校验；运行时长链路仍以主 E2E 的 Android 资源加载场景为准。
+
 ### v1.9.0 验证记录
 
 | 端 | 产物 | 已核验 |

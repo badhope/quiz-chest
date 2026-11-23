@@ -1,9 +1,10 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { domains } from '../data/taxonomy'
-import { useAppStore } from '../store/useAppStore'
+import { useAppStore, type ImportedBank } from '../store/useAppStore'
 import { useLibraryCollections, type LibraryCollection } from '../lib/library'
 import { downloadBankPackage } from '../lib/exporter'
+import { ShareBankDialog } from '../components/share/ShareBankDialog'
 import { AsyncButton } from '../components/ui/AsyncButton'
 import { Badge, EmptyState, ProgressBar } from '../components/ui/primitives'
 import { MissingPage } from '../components/ui/MissingPage'
@@ -22,6 +23,7 @@ import {
   Download,
   PenLine,
   RotateCcw,
+  Share2,
   Trash2,
   Target,
   TrendingUp,
@@ -40,6 +42,7 @@ export function CollectionPage() {
   const favorites = useAppStore((state) => state.favorites)
   const banks = useAppStore((state) => state.banks)
   const removeBank = useAppStore((state) => state.removeBank)
+  const [shareBank, setShareBank] = useState<ImportedBank | null>(null)
 
   const records = useMemo(
     () => history.filter((entry) => entry.collectionId === collectionId),
@@ -74,6 +77,7 @@ export function CollectionPage() {
   }
 
   return (
+    <>
     <div className="collection-page" style={{ '--domain-accent': domain?.accent } as React.CSSProperties}>
       <nav className="breadcrumb" aria-label="面包屑">
         <Link to="/catalog">题库总览</Link>
@@ -169,6 +173,15 @@ export function CollectionPage() {
                   <PenLine />
                   编辑题库
                 </Link>
+                <button
+                  className="button button-ghost"
+                  onClick={() => {
+                    const bank = banks.find((item) => item.id === collection.id)
+                    if (bank) setShareBank(bank)
+                  }}
+                >
+                  <Share2 /> 分享题库
+                </button>
                 <button
                   className="button button-ghost"
                   onClick={() => {
@@ -294,5 +307,7 @@ export function CollectionPage() {
         <ArrowLeft /> 返回题库总览
       </Link>
     </div>
+    {shareBank ? <ShareBankDialog bank={shareBank} onClose={() => setShareBank(null)} /> : null}
+    </>
   )
 }

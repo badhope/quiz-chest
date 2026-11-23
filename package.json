@@ -1,7 +1,7 @@
 {
   "name": "quiz-chest",
   "private": true,
-  "version": "1.9.0",
+  "version": "1.9.1",
   "type": "module",
   "description": "题匣 · QuizChest — 本地优先的自有题库练习应用",
   "scripts": {
@@ -21,7 +21,10 @@
     "tauri": "tauri",
     "desktop:dev": "tauri dev",
     "desktop:build": "tauri build",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "build:apk:release": "pnpm build:native && cap sync android && node scripts/build-apk.mjs --release",
+    "build:aab:release": "pnpm build:native && cap sync android && node scripts/build-apk.mjs --release --aab",
+    "verify:signature": "node scripts/verify-signature.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.3",
@@ -38,6 +41,7 @@
     "lucide-react": "1.63.0",
     "nanoid": "^6.0.2",
     "papaparse": "^5.7.1",
+    "qrcode-generator": "^2.0.4",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "react-router-dom": "7.18.5",

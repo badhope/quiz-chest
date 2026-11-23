@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAppStore } from '../store/useAppStore'
 import { lastNDays } from '../lib/datetime'
 import { summarizeDaily, summarizeHistory } from '../lib/stats'
-import { getLibraryCollections } from '../lib/library'
+import { useLibraryCollections } from '../lib/library'
 import { domains } from '../data/taxonomy'
 import { EChart } from '../components/charts/EChart'
 import { EmptyState, ProgressBar, Stat } from '../components/ui/primitives'
@@ -37,6 +37,7 @@ export function StatsPage() {
   const favorites = useAppStore((state) => state.favorites)
   const theme = useAppStore((state) => state.settings.theme)
   const colors = palette[theme]
+  const library = useLibraryCollections()
 
   const days = useMemo(() => lastNDays(7), [])
   // 每天渲染都新建数组会让 barOption 的 useMemo 失效，图表跟着重算。
@@ -51,7 +52,6 @@ export function StatsPage() {
   const { totalMinutes } = useMemo(() => summarizeHistory(history), [history])
 
   const domainStats = useMemo(() => {
-    const library = getLibraryCollections()
     const byId = new Map(library.map((collection) => [collection.id, collection]))
     const counts = new Map<string, number>()
     const accentOf = new Map<string, string>()
@@ -75,7 +75,7 @@ export function StatsPage() {
       rows.unshift({ name: '我的题库', value: importedCount, color: accentOf.get('imported') ?? '#7A5C2E' })
     }
     return rows
-  }, [history])
+  }, [history, library])
 
   const accuracySeries = useMemo(() => {
     return [...history]

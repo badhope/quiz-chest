@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 /**
- * Android debug APK 构建。
+ * Android APK / AAB 构建。
+ *
+ * 默认 debug APK；`--release` 使用 android/keystore.properties 签名，
+ * `--aab` 产出上架用的 Android App Bundle。
  *
  * `cap sync` 只负责把 dist/ 和插件同步进 android/，真正编译 APK 的是 Gradle。
  * 这个脚本把两件事接起来，避免 `build:apk` 只是同步完就去找一个并不存在的旧产物。
@@ -19,6 +22,12 @@ import { fileURLToPath } from 'node:url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const isWindows = process.platform === 'win32'
+const release = process.argv.includes('--release')
+const bundle = process.argv.includes('--aab')
+if (bundle && !release) {
+  console.error('--aab 需要同时传 --release（AAB 只有签名版本才有意义）')
+  process.exit(1)
+}
 
 function javaMajor(home) {
   const release = join(home, 'release')
@@ -89,6 +98,17 @@ if (!isWindows && existsSync(gradlew)) {
   }
 }
 
+if (release) {
+  const keystoreProperties = join(androidDir, 'keystore.properties')
+  if (!existsSync(keystoreProperties)) {
+    console.error(
+      `release 构建需要签名配置：${keystoreProperties}\n` +
+        '复制 android/keystore.properties.example 并填入真实口令；该文件被 .gitignore 忽略。',
+    )
+    process.exit(1)
+  }
+}
+
 const env = {
   ...process.env,
   JAVA_HOME: javaHome,
@@ -99,10 +119,11 @@ const env = {
 
 console.log(`JDK：${javaHome}`)
 console.log(`Android SDK：${androidHome}`)
-console.log('\n=== gradle assembleDebug ===\n')
+const task = bundle ? 'bundleRelease' : release ? 'assembleRelease' : 'assembleDebug'
+console.log(`\n=== gradle ${task} ===\n`)
 
 try {
-  execFileSync(gradlew, ['assembleDebug', '--no-daemon'], {
+  execFileSync(gradlew, [task, '--no-daemon'], {
     cwd: androidDir,
     env,
     stdio: 'inherit',
@@ -112,18 +133,39 @@ try {
 }
 
 const version = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version
-const source = join(androidDir, 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk')
+const source = bundle
+  ? join(androidDir, 'app', 'build', 'outputs', 'bundle', 'release', 'app-release.aab')
+  : join(
+      androidDir,
+      'app',
+      'build',
+      'outputs',
+      'apk',
+      release ? 'release' : 'debug',
+      release ? 'app-release.apk' : 'app-debug.apk',
+    )
 if (!existsSync(source)) {
-  console.error(`Gradle 结束但找不到 APK：${source}`)
+  console.error(`Gradle 结束但找不到产物：${source}`)
   process.exit(1)
 }
 
 const artifactsDir = join(root, 'artifacts')
 mkdirSync(artifactsDir, { recursive: true })
-const target = join(artifactsDir, `quizchest-${version}-debug.apk`)
+const extension = bundle ? 'aab' : 'apk'
+const flavor = release ? 'release' : 'debug'
+const target = join(artifactsDir, `quizchest-${version}-${flavor}.${extension}`)
 copyFileSync(source, target)
-console.log(`\nAPK 已归档：${target}（${(statSync(target).size / 1024 / 1024).toFixed(1)} MB）`)
+console.log(`\n产物已归档：${target}（${(statSync(target).size / 1024 / 1024).toFixed(1)} MB）`)
 
-execFileSync(process.execPath, [join(root, 'scripts', 'verify-apk.mjs'), target], {
-  stdio: 'inherit',
-})
+if (!bundle) {
+  execFileSync(process.execPath, [join(root, 'scripts', 'verify-apk.mjs'), target], {
+    stdio: 'inherit',
+  })
+}
+if (release) {
+  execFileSync(
+    process.execPath,
+    [join(root, 'scripts', 'verify-signature.mjs'), target, androidHome, javaHome],
+    { stdio: 'inherit' },
+  )
+}

@@ -1,4 +1,5 @@
 mod db;
+mod share;
 
 use tauri::Manager;
 
@@ -23,6 +24,7 @@ pub fn run() {
         std::sync::Mutex::new(connection),
         std::sync::Mutex::new(open_error),
       ));
+      app.manage(share::ShareState::default());
       Ok(())
     })
     .invoke_handler(tauri::generate_handler![
@@ -48,6 +50,8 @@ pub fn run() {
       db::db_remove_paper,
       db::db_reset_progress,
       db::db_replace_all,
+      share::share_start,
+      share::share_stop,
     ])
     .run(tauri::generate_context!())
     .expect("error while building tauri application");

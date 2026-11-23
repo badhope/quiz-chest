@@ -6,6 +6,56 @@
 版本号唯一来源是 `package.json`，由 `node scripts/sync-version.mjs set <version>`
 传播到 Tauri、Cargo 与 Android 构建清单。发布流程见 [docs/RELEASING.md](docs/RELEASING.md)。
 
+## [1.9.1] - 2026-11-24
+
+把「本地题库工具」补成可以分发、可以分享、扛得住大题库的工作台。
+
+### Added
+
+- **Android release 分发链路。** 新增 `pnpm build:apk:release` 与
+  `pnpm build:aab:release`：Gradle 读取 `android/keystore.properties` 签名，
+  产物归档到 `artifacts/`；构建结束自动跑 `apksigner` / `jarsigner` 验签。
+  debug 构建仍走 `pnpm build:apk`，不碰签名材料
+- **加密题库包。** 导出 `.tiyu.enc.json`：PBKDF2-SHA256（310,000 次）派生
+  AES-256-GCM 密钥，每个包独立 salt/IV；版本、KDF 参数与算法名进入 AAD，
+  篡改信封会直接解密失败。导入页识别加密包后要求输入口令，解密完仍走同一套
+  valibot 校验
+- **局域网一次性分享。** 桌面端从题库详情生成 20 位口令，起一个只监听局域网的
+  临时 HTTP 服务（随机路径 token、10 分钟自动退出），手机扫码下载加密包；
+  不引入账号、云和中继。口令与文件分开传递
+- **大题库检索索引。** 搜索框改为倒排索引：中文二元组、英文/数字前缀，
+  查询取交集后再用原文 `includes` 精确过滤；按题库数组引用缓存，题库版本不变
+  时复用索引。搜索框加 `useDeferredValue`，输入不被全量扫描拖慢
+- **渐进渲染。** 题库总览/领域页首屏只挂 48 张卡片，接近底部再追加；
+  配合 `content-visibility: auto` 跳过视口外布局与绘制。没有用固定行高虚拟化：
+  卡片高度随标题/标签变化，硬裁会掉字
+- **统计页跟随题库快照。** 导入/删除题库后，领域分布不再停留在旧数据
+
+### Changed
+
+- 版本升到 `1.9.1`（Android `versionCode=1009001`）。Web、桌面、Android 共用
+  同一份 `package.json` 版本源
+- 搜索结果的「所属题库」改从完整题库表取标题，不再只查前 6 个命中题库
+
+### Fixed
+
+- 清空收藏/错题/记录、删除题库改为先 `await` 仓储成功再清内存；三种仓储的
+  `deleteBank` 级联清理题库快照
+- 题库查询缓存、策略生成单次快照、首页/统计 `useMemo`，避免每次渲染重建数组
+- GitHub Actions 升到 v7/v6，CI 增加 `pnpm build:native`；pnpm overrides 迁到
+  `pnpm-workspace.yaml`，依赖审计 0 条
+- `pnpm build:apk` 之前只同步不编译；新脚本自动探测 JDK21 / Android SDK、
+  执行 Gradle、归档并校验资源完整性
+- 领域页 Hook 顺序、`CatalogPage` 每 render 全量过滤、`DomainPage` 汇总重复计算
+
+### Verified
+
+- 单元测试：34 个文件、216 项通过（含加密包 6 项、搜索索引 6 项、渐进渲染 2 项）
+- Rust：`cargo test` 14 项通过（含 HTTP 文件服务 200/404、路径 token、文件名净化）
+- Android：release APK 459 条目、`apksigner` 验签通过；AAB `jarsigner` 验签通过
+- 构建：`tsc -b`、`eslint .`、`pnpm build:native`、`pnpm build` 通过
+- E2E：17 项通过（含加密包下载→重新导入时强制输入口令）
+
 ## [1.8.0] - 2026-11-08
 
 企业采购常问的一条：改了题库能不能撤回。
