@@ -1,6 +1,7 @@
 import { collections } from './taxonomy'
 import { makeQuestions } from './types'
-import type { CollectionWithQuestions, Question } from './types'
+import type { CollectionWithQuestions, Question, QuestionSeed } from './types'
+import { extraSeeds } from './questions/extra'
 import { k12Seeds } from './questions/k12'
 import { universitySeeds } from './questions/university'
 import { careerSeeds } from './questions/career'
@@ -42,17 +43,30 @@ function lookupImportedQuestion(id: string): Question | undefined {
  */
 const BARE_CONTENT = import.meta.env.VITE_BARE_CONTENT === '1'
 
-const seeds: Record<string, Parameters<typeof makeQuestions>[1]> = BARE_CONTENT
-  ? {}
-  : {
-      ...k12Seeds,
-      ...universitySeeds,
-      ...careerSeeds,
-      ...languageSeeds,
-      ...codingSeeds,
-      ...publicSeeds,
-      ...generalSeeds,
+function mergeSeeds(...sources: Record<string, QuestionSeed[]>[]): Record<string, QuestionSeed[]> {
+  const merged: Record<string, QuestionSeed[]> = {}
+  for (const source of sources) {
+    for (const [id, questions] of Object.entries(source)) {
+      merged[id] = [...(merged[id] ?? []), ...questions]
     }
+  }
+  return merged
+}
+
+const seeds: Record<string, QuestionSeed[]> = BARE_CONTENT
+  ? {}
+  : mergeSeeds(
+      {
+        ...k12Seeds,
+        ...universitySeeds,
+        ...careerSeeds,
+        ...languageSeeds,
+        ...codingSeeds,
+        ...publicSeeds,
+        ...generalSeeds,
+      },
+      extraSeeds,
+    )
 
 /** 裸内容构建下不产出任何内置题库；分类树保留，用于给导入的题库归类。 */
 export const builtinQuestionBank: CollectionWithQuestions[] = BARE_CONTENT

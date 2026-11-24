@@ -40,24 +40,24 @@ if (href) {
   await page.waitForSelector('.analysis')
   await page.screenshot({ path: `${out}/practice.png` })
 
-  // 走完 6 道示例题，让统计页有真实作答记录；第 2 题起按正确答案选，
-  // 第 1 题故意点错，方便练习页展示解析与错题状态。
-  const correctOptions = [1, 3, 1, 2, 1, 0]
-  for (let index = 0; index < 6; index += 1) {
+  // 把当前题库做完再提交，避免题库题量变化后脚本还按固定的 6 题硬走。
+  // 每题都点第一个选项，统计页只需要真实作答记录，不追求全对。
+  for (let index = 0; index < 40; index += 1) {
     if (index > 0) {
-      await page.locator('.option').nth(correctOptions[index]).click()
+      await page.locator('.option').first().click()
       await page.locator('button', { hasText: '确认答案' }).click()
       await page.waitForSelector('.analysis')
     }
-    const isLast = index === 5
-    await page.locator('button', { hasText: isLast ? '完成练习' : '下一题' }).click()
-    if (isLast) {
+    const finishButton = page.locator('button', { hasText: '完成练习' })
+    if (await finishButton.count()) {
+      await finishButton.click()
       await page.waitForSelector('.confirm-card')
       await page.locator('button', { hasText: '提交并查看结果' }).click()
       await page.waitForSelector('.result-page')
-    } else {
-      await page.waitForTimeout(150)
+      break
     }
+    await page.locator('button', { hasText: '下一题' }).click()
+    await page.waitForTimeout(150)
   }
 }
 

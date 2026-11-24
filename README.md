@@ -24,6 +24,12 @@ If you later attach a local model (Ollama, llama.cpp server, or an on-device And
 keep it as an explanation layer. Grading, wrong-book archiving and FSRS scheduling must stay
 deterministic. See [docs/LOCAL_AI.md](docs/LOCAL_AI.md).
 
+## Built-in question banks
+
+The app ships with **32 collections and 463 questions** across seven domains: K12, university, professional certificates, languages, coding, public fundamentals and general knowledge. Every collection has at least 12 questions, so the app is usable immediately without importing anything.
+
+These are bundled practice questions, not a hosted bank for sale. You can hide them in Settings, or strip them from the bundle at build time with `VITE_BARE_CONTENT=1`; white-label and corporate builds then contain no sample stems at all.
+
 ## What it does
 
 | | |
@@ -121,7 +127,7 @@ These are from the actual migration, not a generic checklist:
    different objects. Do not do this on a shared branch without coordinating, and ordinary
    renames do not need it.
 5. **Changing an alias keeps the certificate; changing the brand does not.** The release
-   certificate still said `CN=QuizChest`, so 2.0.0 uses a regenerated keystore. Its SHA-256 is
+   certificate still said `CN=QuizChest`, so 2.0.1 uses a regenerated keystore. Its SHA-256 is
    `98e19402…999e`; the old one is backed up outside the repo. Keep the new keystore and
    passwords offline.
 6. **The IndexedDB name changed.** Old WebView data belongs to a different database and app
