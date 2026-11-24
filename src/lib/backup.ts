@@ -11,18 +11,8 @@ import {
   WrongSchema,
 } from '../data/schemas'
 
-/**
- * 全量备份包。
- *
- * 为什么需要它：这是本地优先应用，数据存放在设备数据库（桌面 SQLite / Web
- * IndexedDB），无法跨设备同步。用户换设备、卸载重装或清库前，备份包是
- * 唯一的完整迁移路径。
- *
- * 设计约束：
- *   - 只包含数据，不包含任何凭据或环境信息
- *   - `format` 与 `version` 显式声明，未来升级可迁移
- *   - 导入时逐字段校验，坏数据不会写入状态
- */
+// 全量备份。本地数据库没有云同步，换机、卸载、清库前只能靠这个文件。
+// 只放数据，不带 token/路径；format/version 写死，升级时按版本迁移。
 
 export const BACKUP_FORMAT = 'tixing-backup'
 export const BACKUP_VERSION = 2
@@ -92,13 +82,8 @@ export function backupFileName(now: Date = new Date()): string {
   return `tixing-backup-${dateStamp(now.getTime())}-${time}.json`
 }
 
-/**
- * 解析并校验备份包。
- *
- * 结构校验交给 valibot：字段类型、嵌套题库、题目、错题、记录一次定义，
- * 备份与题库包导入共用 `data/schemas.ts`。之前只检查顶层数组，`banks:[null]`
- * 能过关并在渲染时崩掉；现在坏一份就整包拒绝，绝不做「半份导入」。
- */
+// 备份和题库包共用 schemas.ts。之前只查顶层数组，banks:[null] 能混过去，
+// 渲染时才崩；现在坏一份就整包拒绝，不半份导入。
 const PayloadSchema = v.object({
   settings: SettingsSchema,
   favorites: v.array(v.string()),

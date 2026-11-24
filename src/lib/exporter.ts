@@ -61,7 +61,8 @@ export function downloadBankPackage(bank: ImportedBank): void {
   downloadBlob(exportFileName(bank), new Blob([payload], { type: 'application/json;charset=utf-8' }))
 }
 
-/** v1 → v2：补齐 v2 引入的可选字段，保持旧包可读。 */
+// v1 包缺 description/tags/icon/level/durationMin，按默认值补齐再走 valibot。
+// 不直接拒绝：老题库包还在用户手里，能读就尽量读。
 function migrateV1ToV2(bank: Record<string, unknown>, warnings: string[]): Record<string, unknown> {
   const next = { ...bank }
   if (next.description === undefined) next.description = ''

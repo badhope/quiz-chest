@@ -56,6 +56,12 @@ describe('parseImportJson', () => {
     expect(result.bank?.accent).toMatch(/^#[0-9a-fA-F]{6}$/)
   })
 
+  it('tolerates a UTF-8 BOM from Windows editors', () => {
+    const result = parseImportJson(`\uFEFF${JSON.stringify(validBank)}`)
+    expect(result.bank?.questions).toHaveLength(3)
+    expect(result.issues).toHaveLength(0)
+  })
+
   it('reports invalid JSON with a parse error', () => {
     const result = parseImportJson('{ not json')
     expect(result.bank).toBeNull()

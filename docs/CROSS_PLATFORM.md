@@ -221,7 +221,7 @@ VITE_BARE_CONTENT=1 VITE_BRAND_NAME="某某内训" pnpm build
 
 启动流程：`src/Root.tsx` 先 `hydrate()` 从数据库加载，成功后才渲染路由；失败给出重试出口。
 写操作先更新内存让界面立即响应，再异步落库；失败写入 `persistenceError` 并在设置页显示。
-旧版 `localStorage`（`tixing-store-v1`）在数据库为空时自动迁移并删除旧键。
+旧版浏览器 `localStorage` 数据不再自动迁移；需要旧数据时先用旧版导出完整备份，再到新版恢复。
 
 后续若要接真正的服务端（多端同步、教师端批量导入）：
 
@@ -293,6 +293,16 @@ Android 运行时验证的原理：宿主无硬件虚拟化，模拟器不可用
 
 APK 资源完整性检查已成为构建步骤：`pnpm build:apk` 会在 Gradle 编译后自动跑
 `scripts/verify-apk.mjs`，缺少 JS/CSS 或混入 PWA 产物都会直接失败。
+
+### v2.0.0 验证记录
+
+| 端 | 产物 | 已核验 |
+| --- | --- | --- |
+| Android（release APK） | `tixing-2.0.0-release.apk` (3.5 MB) | Linux + JDK 21 + Android SDK 36 实际编译；`aapt dump badging` 包名 `com.tixing.offline.ai`、`versionName=2.0.0`、`versionCode=2000000`；`verify-apk` 通过（459 条目、4 个引用资源、14 个 JS、1 个 CSS）；`apksigner` 通过，证书 DN `CN=TiXing`，SHA-256 `98e19402…999e` |
+| Android（release AAB） | `tixing-2.0.0-release.aab` (3.4 MB) | `bundleRelease` + `jarsigner -verify` 通过；`keytool -printcert` 的 DN 与指纹和 APK 一致 |
+| Web / 桌面测试 | `dist/`、`src-tauri/` | `pnpm test` 34 个文件、216 项；`pnpm test:e2e` 17 项；`cargo test` 14 项；typecheck、lint、Web build 通过；本机未打 Tauri 安装包 |
+
+本轮 APK/AAB 使用重新生成的 release 证书，旧证书和 1.9.1 产物已移到仓库外的 `backups/`。
 
 ### v1.9.1 验证记录
 

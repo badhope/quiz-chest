@@ -234,7 +234,12 @@ export function StatsPage() {
       <section className="stat-strip">
         <Stat label="累计作答" value={totalAnswered} hint="全部练习" icon={<BarChart3 />} />
         <Stat label="平均正确率" value={`${accuracy}%`} hint={`答对 ${totalCorrect} 题`} icon={<TrendingUp />} />
-        <Stat label="累计时长" value={`${totalMinutes} 分钟`} hint="练习与考试" icon={<Clock />} />
+        <Stat
+          label="累计时长"
+          value={totalMinutes === 0 ? '不到 1 分钟' : `${totalMinutes} 分钟`}
+          hint="练习与考试"
+          icon={<Clock />}
+        />
         <Stat label="连续练习" value={`${streak} 天`} hint="按自然日计算" icon={<Flame />} />
       </section>
 

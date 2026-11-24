@@ -128,7 +128,7 @@ stem,optionA,optionB,answer,explanation
 ## 数据存储与删除
 
 - 导入的题库存放在设备数据库：桌面端写入 `banks` / `questions` 表，Web 端写入 IndexedDB 的同名对象仓库。
-- 旧版本的 `localStorage` 数据（键 `tixing-store-v1`）会在首次启动时自动迁移进数据库并清理旧键。
+- 旧版浏览器 `localStorage` 数据不再自动迁移；需要旧数据时先用旧版导出完整备份，再到新版恢复。
 - 删除题库：「我的题库」→ 题库卡「删除」。学习记录不随之删除，但题目引用会失效。
 - 「设置 → 显示示例题库」可隐藏内置示例内容，只显示你自己的题库。
 

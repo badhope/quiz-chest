@@ -1,17 +1,9 @@
 import type { ImportedBank } from '../store/useAppStore'
 import { buildExportPackage, exportFileName } from './exporter'
 
-/**
- * 加密题库包。
- *
- * 目的不是“加个密码看起来安全”，而是让题库在离开设备后仍然只有持有口令的人
- * 能读。方案固定为 PBKDF2-SHA256 + AES-256-GCM：
- *   - 每个包独立随机 salt 与 IV，绝不复用；
- *   - 版本、KDF 参数与算法名一起进入 AAD，篡改信封元数据会直接解密失败；
- *   - 口令不进入派生结果之外的任何字段，也不写入日志。
- *
- * 这是 WebCrypto 标准能力，浏览器、Android WebView、Tauri 共用同一实现。
- */
+// 加密题库包用 WebCrypto 做，三端共用。PBKDF2-SHA256 310k 次派生 AES-256-GCM，
+// 每包独立 salt/IV；版本、KDF 参数和算法名都进 AAD，改信封元数据会直接解不开。
+// 口令只用于派生 key，不落日志、不进文件名。
 
 export const ENCRYPTED_BANK_FORMAT = 'tixing-bank-encrypted'
 export const ENCRYPTED_BANK_VERSION = 2

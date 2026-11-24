@@ -10,20 +10,8 @@ import type {
   WrongEntry,
 } from '../data/records'
 
-/**
- * 应用内数据层。
- *
- * 目标：把「持久化」从 localStorage 升级为设备内数据库，同时让 Web、
- * 桌面（Tauri）与 Android（Capacitor WebView）共用同一套调用接口。
- *
- * 三种实现：
- *   - `sqlite`     Tauri 桌面端，Rust `rusqlite` 命令（`src-tauri/src/db.rs`）
- *   - `indexeddb`  Web / PWA / Android WebView，浏览器原生数据库
- *   - `memory`     测试与极端降级，进程内 Map
- *
- * 约定：所有方法返回 Promise，写操作落库失败必须抛出，由调用方决定提示方式；
- * 不允许静默吞掉写入错误，否则用户会以为数据已保存。
- */
+// 数据层接口。页面只认这个文件，底下换 SQLite / IndexedDB / 内存都不改调用方。
+// 写方法失败必须 throw；吞掉写入错误比慢更糟，用户会以为已经保存了。
 
 export type DriverName = 'sqlite' | 'indexeddb' | 'memory'
 
@@ -49,18 +37,12 @@ export interface Repository {
   removeBankSnapshot(snapshotId: string): Promise<void>
   /** 清空某个题库的全部历史（删除题库时调用）。 */
   clearBankSnapshots(bankId: string): Promise<void>
-  /**
-   * 清空学习数据（收藏/错题/记录/统计/未完成会话），保留题库与设置。
-   * 实现必须把 pendingSession 也清掉，否则「继续上次」会指向已清空的练习。
-   */
+  /** 收藏状态按题 ID 单条写。 */
   setFavorite(questionId: string, favorite: boolean): Promise<void>
   clearFavorites(): Promise<void>
   /**
-   * 整条写入错题记录（调用方已算好累计次数）。
-   *
-   * 刻意不提供「在数据库里自增」的变体：本应用只有一个本地写入者，
-   * 自增放在 store 里能保证界面与数据库看到同一个数字；若两边各算一次，
-   * 失败重试或多端写入时会翻倍。
+   * 整条写入错题记录。wrongCount 在 store 里算好，仓储不再自增；
+   * 否则失败重试一次，数据库里的错误次数会翻倍。
    */
   recordWrong(entry: WrongEntry): Promise<void>
   removeWrong(questionId: string): Promise<void>

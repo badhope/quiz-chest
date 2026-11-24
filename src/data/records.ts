@@ -1,12 +1,7 @@
 import type { DomainId, QuestionSeed } from './types'
 
-/**
- * 复习卡片状态（FSRS）。
- *
- * 这里用纯数字/时间戳而不是 `Date`：同一份结构要经过 JSON、SQLite 与
- * IndexedDB 三层序列化，Date 在跨层后会变成字符串，读写两端的形状就对不上。
- * 换算集中在 `src/lib/review.ts`，其余模块只认这个平面结构。
- */
+// FSRS 卡片状态。全部用数字和时间戳，别塞 Date：这结构要过 JSON、
+// SQLite、IndexedDB 三层，Date 跨层会变字符串，形状就对不上。
 export interface ReviewState {
   /** 下次到期时间（epoch ms）。 */
   due: number
@@ -25,15 +20,8 @@ export interface ReviewState {
 /** 判分模式，与 `src/lib/quiz.ts` 的 SessionMode 保持同源。 */
 export type RecordMode = 'practice' | 'exam' | 'review'
 
-/**
- * 数据记录类型。
- *
- * 这些类型同时是三层的数据契约：SQLite 表结构（`src-tauri/src/db.rs`）、
- * IndexedDB 对象仓库（`src/services/repository.ts`）与前端状态
- * （`src/store/useAppStore.ts`）。任何一层改字段，其余两层必须同步。
- *
- * 所有时间戳均为毫秒级 epoch，所有 ID 均为字符串，避免跨端序列化差异。
- */
+// 这些类型同时是 SQLite 表、IndexedDB 对象仓库和前端 store 的契约。
+// 任何一层加字段，另外两层要一起改；时间统一用毫秒时间戳。
 
 export interface ImportedBank {
   id: string
@@ -47,12 +35,8 @@ export interface ImportedBank {
   durationMin: number
   tags: string[]
   importedAt: number
-  /**
-   * 导入时指定的领域；缺省表示落在「我的题库」。
-   *
-   * 这个字段是让导入题库从「一个扁平垃圾桶」变成一等公民的关键：
-   * 一旦有领域，目录树、目标路线、薄弱项统计都能正常引用它。
-   */
+  // 导入时挂到哪个领域；不填就落在「我的题库」。有它目录树和薄弱项统计
+  // 才能把这批题当一等公民，而不是一个扁平垃圾桶。
   domainId?: DomainId
   /** 用户自定义的学段/分组；同一 trackId 的题库在目录里会归到一组。 */
   trackId?: string
@@ -108,27 +92,13 @@ export interface AppSettings {
   fontScale: 'normal' | 'large'
   autoNext: boolean
   showSampleBanks: boolean
-  /**
-   * 是否允许题目里的 http(s) 外链图片联网加载。
-   *
-   * 默认关闭：应用对外宣称「数据不离开本机」，而外链图片会在渲染时
-   * 把本机 IP 与 Referer 送给第三方。需要外链图的用户可以在设置里显式开启，
-   * 内嵌 data:image 不受影响。
-   */
+  // 外链图默认关：应用对外说数据不出本机，但 http 图片会把 IP/Referer 送出去。
+  // 用户要在设置里自己打开；data:image 不受影响。
   allowRemoteImages: boolean
 }
 
-/** 数据库中的完整状态，用于启动加载与整库替换。 */
-/**
- * 未做完的练习会话。
- *
- * 为什么必须持久化到数据库而不是内存/sessionStorage：用户常在手机上做半套题
- * 就切走，系统可能随时回收进程；只在内存里等于「离开就重来」，
- * 这是刷题类应用最伤人的体验缺陷。
- *
- * 只存一份：同一时间只保留最近一次未完成的会话，开始新练习会覆盖它。
- * 完成的会话走 HistoryEntry，不在这里留痕。
- */
+// 未完成会话只留一份，开始新练习会覆盖旧的。手机切后台随时可能被系统杀，
+// 存内存等于「离开就重来」，所以必须落库。
 export interface PendingSession {
   /** 由调用方生成，用于区分「同一次会话」的多次保存。 */
   id: string
@@ -149,17 +119,10 @@ export interface PendingSession {
   title: string
 }
 
-/**
- * 题库的历史版本。
- *
- * 只存「被覆盖掉的旧版本」，不存当前版本——当前版本就是 banks 里的那份，
- * 再存一遍纯属冗余。编辑题库时把旧内容压进这里，用户可回滚。
- *
- * 体积控制：快照含完整题目，体积随题库大小线性增长。每库最多保留
- * 最近 N 份（见 BANK_SNAPSHOT_LIMIT），超出按时间淘汰最旧的。
- */
+// 只存被覆盖掉的旧版本，当前版本仍在 banks 里。快照含完整题目，
+// 每库限保留最近几份（BANK_SNAPSHOT_LIMIT），否则大题库会把库撑爆。
 export interface BankSnapshot {
-  /** `{bankId}:{savedAt}`，同一毫秒同一库不会重复。 */
+  /** `${bankId}:r${revision}`。以前用过时间戳，同一毫秒连点两次会撞 ID。 */
   id: string
   bankId: string
   /** 存档时间（= 被替换前那份内容的「最后修改时间」上限）。 */
@@ -170,6 +133,7 @@ export interface BankSnapshot {
   bank: ImportedBank
 }
 
+// 启动加载和整库替换都用这份完整状态；字段增删要同时改三层实现。
 export interface DataSnapshot {
   settings: AppSettings
   favorites: string[]

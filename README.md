@@ -1,9 +1,10 @@
-# TiXing
+# TiXing · 题小星
 
-**A local-first question bank you actually own.**
+A local-first question-bank workbench that runs without a network.
 
-Import your own question sets, then practise offline, run timed mock exams, drill your
-mistakes and watch your accuracy climb — no account, no server, no telemetry.
+Bring your own Excel, CSV or JSON files, then practise, run timed exams, review mistakes,
+build printable papers and move a full backup between devices. No account, no hosted bank,
+no telemetry.
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
@@ -11,29 +12,34 @@ mistakes and watch your accuracy climb — no account, no server, no telemetry.
   <img src="docs/screenshots/home.webp" alt="TiXing home screen" width="900">
 </p>
 
-## What it does
+## What “AI” means here
 
-TiXing is built around one idea: **your question bank should not be trapped in
-someone else's platform.** You bring a JSON or CSV file, TiXing turns it into a
-fully functional practice bank in under a second, and everything stays on your machine.
+This build does **not** ship a language model and does not send questions to a cloud API.
+
+The “小星建议” box on the home screen is a local study-coach engine: it reads practice
+history, due wrong questions and today’s volume, then suggests what to do next. It lives in
+`src/lib/coach.ts`, runs offline, and can explain every recommendation.
+
+If you later attach a local model (Ollama, llama.cpp server, or an on-device Android model),
+keep it as an explanation layer. Grading, wrong-book archiving and FSRS scheduling must stay
+deterministic. See [docs/LOCAL_AI.md](docs/LOCAL_AI.md).
+
+## What it does
 
 | | |
 | --- | --- |
-| **Import anything reasonable** | Excel (`.xlsx`), JSON, CSV, or a portable `.tixing.json` bank package — all validated by the same row pipeline, with a preview before anything is saved. |
-| **Three ways to find what to study** | Follow a goal track, drill down domain → stage → bank, or let a strategy pick for you. |
-| **A complete practice loop** | Single choice, multiple choice and true/false. Instant feedback in practice mode, countdown and auto-submit in exam mode. |
-| **Nothing you get wrong is lost** | Mistakes auto-collect into a wrong-book. Correct answers are scheduled by FSRS (spaced repetition) instead of vanishing; mark a question mastered when it truly sticks. |
-| **Edit what you imported** | Fix a typo without re-importing: stems, options, answers and explanations are editable in place; question IDs stay stable so wrong-book references never break. |
-| **Undo a bad edit** | Every save archives the previous version first. Roll back to any of the last 20 revisions; a rollback itself is reversible. |
-| **Pick up where you stopped** | Progress is written to the database as you answer. Close the app mid-session and the home screen offers to resume exactly where you left off. |
-| **Questions can have images** | Diagram, geometry and reading-comprehension questions work: import a stem image or per-option images. Embedded data URIs always render; remote http(s) images stay blocked until you opt in. |
-| **Numbers that mean something** | Streaks, accuracy trend, per-domain distribution and a 7-day volume chart. |
-| **Print a real paper** | Build a custom paper, then print it: A4 layout with name and score lines, optional answer key, navigation hidden automatically. |
-| **Runs everywhere you do** | Web/PWA, Windows/macOS/Linux desktop (Tauri 2), Android (Capacitor 8). Same codebase, same data model. |
-| **Share without a cloud** | Export an AES-256-GCM encrypted `.tixing.enc.json`, or start a one-time LAN download link from the desktop app. The password is separate from the file; there is no account or relay. |
-| **Stays fast on big banks** | Search uses an inverted index (CJK bigrams + Latin prefixes), and bank grids render progressively instead of mounting every card at once. |
+| **Tolerant import** | Excel (`.xlsx`), JSON, CSV and `.tixing.json` packages. CSV handles BOMs, unquoted `B,D` answers and data URIs split by commas. |
+| **Three ways to find questions** | Follow a goal track, drill down by domain, or let the strategy pick from weak areas. |
+| **A complete practice loop** | Single choice, multiple choice and true/false. Instant feedback in practice mode; countdown and auto-submit in exam mode. |
+| **Mistakes do not vanish after one correct answer** | Wrong answers enter the wrong-book; FSRS schedules the next review. Due questions come first. |
+| **Local study coach** | The home screen says what to do today: weak domain, due mistakes, or keep the current pace. |
+| **Edit and roll back** | Edit stems, options, answers and explanations in place. Every save archives the previous version; the last 20 revisions are kept. |
+| **Share without a cloud** | Export a password-protected `.tixing.enc.json`, or start a one-time LAN download from the desktop app. No account, no relay. |
+| **Stays fast on big banks** | Inverted search index plus progressive card rendering, so a few thousand cards do not hit the DOM at once. |
+| **Print a real paper** | A4 layout with name/score fields and optional answers; navigation hides when printing. |
+| **One codebase, three shells** | Web/PWA, desktop (Tauri 2) and Android (Capacitor 8) share the same data model. |
 
-## Screenshots
+## Screens
 
 <table>
 <tr>
@@ -57,25 +63,21 @@ pnpm build        # production build with PWA manifest and service worker
 pnpm preview      # serve dist/ at http://localhost:4173
 ```
 
-### Build for every platform
+### Build for every shell
 
 ```bash
 pnpm build                  # Web / PWA — deploy dist/ to any static host
-pnpm desktop:build          # native installer for the current OS (Windows / macOS / Linux)
-scripts/build-desktop.sh    # Linux/macOS helper; scripts/build-desktop.cmd on Windows
-pnpm build:native && npx cap sync android   # then build in android/ with Gradle
-pnpm build:apk:release      # signed APK, requires android/keystore.properties
+pnpm desktop:build          # native installer; needs Rust and platform toolchain
+pnpm build:apk:release      # signed APK; needs android/keystore.properties
 pnpm build:aab:release      # signed AAB for stores that accept it
 ```
 
-Native shells use hash routing and disable the service worker; the web build uses
-browser history routing. All three share one data-layer interface
-(`src/services/repository.ts`), so the engine underneath can change without
-touching the callers.
+Native shells use hash routing and disable the service worker; the web build uses browser
+history routing. All shells depend on the same `src/services/repository.ts` interface.
 
 ## Import formats
 
-The fastest path is a CSV with five required columns:
+The shortest path is a CSV with five required columns:
 
 ```csv
 title,stem,optionA,optionB,optionC,optionD,answer,explanation,type
@@ -83,49 +85,65 @@ title,stem,optionA,optionB,optionC,optionD,answer,explanation,type
 小学数学,下列哪些是偶数,1,2,3,4,B;D,能被 2 整除的整数是偶数,multiple
 ```
 
-Accepted answer syntax: `B`, `BC`, `B;D`, `B,D`, `B、D`, `B/D`, or 1-based indexes
-like `1,3`. Only `stem`, `optionA`, `optionB`, `answer` and `explanation` are mandatory.
+Accepted answers: `B`, `BC`, `B;D`, `B,D`, `B、D`, `B/D`, or 1-based indexes like `1,3`.
+Only `stem`, `optionA`, `optionB`, `answer` and `explanation` are required.
 
 Full field reference: [docs/IMPORT_FORMAT.md](docs/IMPORT_FORMAT.md).
 
-## Your data
-
-TiXing ships its own on-device database. There is no server, and no data ever
-leaves the machine:
+## Where the data lives
 
 | Runtime | Engine | Location |
 | --- | --- | --- |
 | Desktop (Tauri 2) | SQLite via Rust `rusqlite` | app data dir, `com.tixing.offline.ai/tixing.db` |
 | Web / PWA / Android (Capacitor) | IndexedDB | site storage, database `tixing` |
 
-The desktop database is a plain SQLite file — open it with any SQLite tool. Settings
-→ *Local database* shows the live driver and the exact path.
+The desktop file is a plain SQLite database. Settings → *Local database* shows the live driver
+and exact path.
 
-**Back up before you clean.** Settings → *Full backup and restore* exports a single
-JSON file containing every bank, mistake, favourite, session, paper and preference.
-Restore it on any device to pick up exactly where you left off.
+**Back up before cleaning browser data or uninstalling.** Settings → *Full backup and restore*
+exports one JSON containing banks, mistakes, favourites, sessions, papers and preferences.
 
-If the database is unavailable (private mode, restricted permissions), TiXing keeps
-working from memory for the session and says so explicitly rather than silently losing
-writes. Legacy `localStorage` data is migrated into the database on first launch and the
-old key is removed.
+## Rebrand notes and pitfalls
 
-## Built-in sample content
+These are from the actual migration, not a generic checklist:
 
-Seven domains, 20 stages, 32 banks and 195 questions ship with the app **to demonstrate
-the product structure**. Every sample bank is labelled and holds only 6–7 questions.
-They are not study material. Hide them in Settings and import your own.
+1. **`namespace` is not `applicationId`.** `namespace` only controls the Java/Kotlin package and
+   resource namespace; `applicationId` is the install identity. This build uses a new
+   `applicationId`, so old app data is not inherited. The two packages can coexist on one phone.
+   Export a backup before switching.
+2. **Changing the Tauri `identifier` moves the SQLite directory.** The database does not follow
+   automatically; treat it as a new app-data directory.
+3. **`android/app/src/main/assets/capacitor.config.json` is generated.** It is ignored by
+   `android/.gitignore` and will be overwritten by `npx cap sync android`. Edit the root
+   `capacitor.config.ts`, then sync.
+4. **History rewriting breaks PR and tag references.** All old-brand names in this repository’s
+   history were replaced, so every commit hash changed; old PR commit links and tags point to
+   different objects. Do not do this on a shared branch without coordinating, and ordinary
+   renames do not need it.
+5. **Changing an alias keeps the certificate; changing the brand does not.** The release
+   certificate still said `CN=QuizChest`, so 2.0.0 uses a regenerated keystore. Its SHA-256 is
+   `98e19402…999e`; the old one is backed up outside the repo. Keep the new keystore and
+   passwords offline.
+6. **The IndexedDB name changed.** Old WebView data belongs to a different database and app
+   identity; export from the old build and import into this one if you need it.
 
-The current release deliberately has no accounts, no cloud sync, no admin backend and
-no hosted question service.
+## Platform notes
+
+- Android `minSdk 24` (7.0), `targetSdk 36`; this environment compiled and verified the APK with
+  Linux + JDK 21 + Android SDK 36, but **did not run a real-device first launch**.
+- Web critical paths are tested in Playwright Chromium; Safari/iOS WebView is untested.
+- Desktop was checked with `cargo check`, `cargo test` and `tauri build --no-bundle` on Linux;
+  Windows NSIS/MSI installers need a Windows build host.
+- Keep a single import under 2,000 questions. Larger banks still work, but preview and first
+  index build get noticeably slower.
 
 ## Architecture
 
 ```
 src/
 ├─ data/        taxonomy, sample banks, question seeds, record types
-├─ services/    data layer: SQLite / IndexedDB / memory drivers and selection
-├─ lib/         grading, stats, import/export, strategy, paper building
+├─ services/    data layer: SQLite / IndexedDB / memory drivers
+├─ lib/         grading, stats, import/export, strategy, papers, coach
 ├─ hooks/       session state, timers, brand, service worker, data-layer status
 ├─ store/       Zustand state with startup hydrate and async persistence
 ├─ components/  layout, question runner, charts, UI primitives
@@ -133,20 +151,19 @@ src/
 └─ styles/      design tokens, layout, page and practice styles
 ```
 
-Design decisions worth knowing:
+A few decisions:
 
-- **Logic is separated from rendering.** All session rules live in
-  `usePracticeSession`; `PracticeRunner` only maps state to markup. That is why the
-  practice flow can be unit-tested without a browser.
-- **The data layer is swappable.** Pages depend only on `src/services/repository.ts`;
-  desktop runs SQLite, web runs IndexedDB, and changing engines does not touch screens.
-- **Failed writes are visible.** A write updates memory first so the UI stays
-  responsive, then persists; a failure lands in `persistenceError` and is shown in
-  Settings instead of pretending the save succeeded.
-- **Failures are contained.** A route-level `ErrorBoundary` keeps a broken page from
-  taking down the shell.
-- **Charts are lazy.** ECharts loads only on `/stats`, keeping the initial bundle at
-  roughly 138 kB gzipped.
+- **Grading and scheduling are pure functions.** `src/lib/quiz.ts` only sees questions and
+  selections; `src/lib/review.ts` only sees FSRS state. Unit tests do not need a browser.
+- **Failed writes stay visible.** Writes update memory first, then persist; a failure lands in
+  `persistenceError` and appears in the top banner and Settings. The UI never pretends a save
+  succeeded.
+- **The data layer is swappable.** Pages depend on the `Repository` interface; desktop uses
+  SQLite, Web/Android use IndexedDB, tests use memory.
+- **Search indexes are cached by bank-array identity.** A `WeakMap` drops the index automatically
+  when the bank snapshot changes.
+
+More migration and build notes: [docs/DEVLOG.md](docs/DEVLOG.md).
 
 ## Quality gates
 
@@ -156,29 +173,15 @@ pnpm test:e2e     # Playwright, real browser, critical paths
 pnpm test:e2e:apk # Playwright against the real APK assets, Pixel 5 viewport
 ```
 
-`pnpm check` covers question-bank integrity, grading, session summaries, strategies,
-import/export round-trips, CSV export, both data-layer drivers, store-to-database
-persistence, FSRS review scheduling and the practice component. It also runs
-`cargo test` for the Rust data layer (skipped with an explicit notice if cargo is
-absent) and `scripts/audit-deps.mjs`, which fails on high/critical vulnerabilities in
-runtime dependencies. Build-only toolchain advisories are reported separately, since
-they never reach the shipped artifact.
+Unit tests cover grading, import/export, backup restore, FSRS, strategies, search, both
+repository drivers, store persistence and component behaviour. `pnpm check` also runs the Rust
+data-layer tests and dependency audit.
 
-`pnpm test:e2e` drives a real Chromium against a dev server and proves the paths unit
-tests cannot: imported banks survive a reload from IndexedDB, wrong answers reach the
-wrong book while correct ones do not, submitting a session records history, and a
-backup survives reset-and-restore. Kept out of `pnpm check` because it starts a server
-and takes ~25 s; CI runs both.
+## Project
 
-## Project management
-
-- Versioning: [SemVer](https://semver.org/), single source in `package.json`,
-  propagated by `scripts/sync-version.mjs`.
-- History: [CHANGELOG.md](CHANGELOG.md).
-- Release procedure: [docs/RELEASING.md](docs/RELEASING.md).
-- Contribution guide: [CONTRIBUTING.md](CONTRIBUTING.md).
-- Security policy: [SECURITY.md](SECURITY.md).
-
-## License
-
-[MIT](LICENSE)
+- Version source: `package.json`, propagated by `scripts/sync-version.mjs`.
+- Changelog: [CHANGELOG.md](CHANGELOG.md)
+- Release process: [docs/RELEASING.md](docs/RELEASING.md)
+- Contributing: [CONTRIBUTING.md](CONTRIBUTING.md)
+- Security: [SECURITY.md](SECURITY.md)
+- License: [MIT](LICENSE.md)

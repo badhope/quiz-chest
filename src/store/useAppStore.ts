@@ -13,7 +13,6 @@ import type {
 import { DEFAULT_SETTINGS, emptySnapshot } from '../services/repository'
 import { getRepository, setRepositoryForTest } from '../services/dataLayer'
 import type { Repository } from '../services/repository'
-import { resilientStorage } from '../lib/storage'
 import { nextBankSnapshots } from '../services/snapshotPolicy'
 import { gradeReview } from '../lib/review'
 import { mergeHistoryEntry } from '../lib/history'
@@ -26,9 +25,6 @@ export type {
   PaperRecord,
   WrongEntry,
 }
-
-/** 旧版 localStorage 键，仅用于一次性迁移。 */
-const LEGACY_STORAGE_KEY = 'tixing-store-v1'
 
 export type HydrationStatus = 'idle' | 'loading' | 'ready' | 'error'
 
@@ -51,6 +47,7 @@ interface AppState {
   persistenceError: string | null
 
   hydrate: () => Promise<void>
+  updateSettings: (patch: Partial<AppSettings>) => void
   setTheme: (theme: AppSettings['theme']) => void
   toggleTheme: () => void
   setFontScale: (scale: AppSettings['fontScale']) => void
@@ -77,14 +74,7 @@ interface AppState {
   /** 回滚到某个历史版本：当前版本会先被存档，不会丢。 */
   rollbackBankVersion: (snapshotId: string) => Promise<void>
   removeBankSnapshot: (snapshotId: string) => void
-  /**
-   * 返回 Promise 的操作是「用户会看到保存结果」的那几个。
-   * 界面必须 await 后再提示成功，落库失败要能报出来。
-   */
-  /**
-   * 这两个操作会 reject：用户明确点了「保存/恢复」，失败必须报出来。
-   * 其余写操作是即发即忘的，只把错误写进 persistenceError。
-   */
+  // 需要用户看到保存结果的操作显式 await；其余写操作只记 persistenceError。
   addBank: (bank: ImportedBank) => Promise<boolean>
   /** 删除题库及其关联数据：先落库成功再清内存，失败返回 false。 */
   removeBank: (bankId: string) => Promise<boolean>
@@ -152,17 +142,9 @@ async function runPendingWrites(): Promise<boolean> {
   return failedWrites.size === 0
 }
 
-/**
- * 写操作统一汇入此处：先更新内存状态让界面立刻响应，再异步落库。
- *
- * 返回 Promise，但**默认不 reject**：绝大多数调用点（改主题、收藏、记录错题）
- * 是即发即忘的，让它们产生未处理 rejection 会在浏览器里刷出 40 条
- * "Uncaught (in promise)"，既污染控制台也可能触发全局错误上报。
- *
- * 需要「保存失败必须让用户知道」的调用方（编辑器、备份恢复）传
- * `{ rethrow: true }`，拿到 reject 后自己提示；错误同时写进
- * `persistenceError`，设置页始终可见。
- */
+// 写操作统一走这里：先改内存，界面立刻有反馈；落库异步补。
+// 默认不 reject，否则收藏、改主题这些即发即忘的调用会刷一屏
+// Uncaught (in promise)。编辑器、恢复备份要明确报错，传 rethrow。
 type PersistOptions = { rethrow?: boolean; retryKey?: string }
 
 function persist(
@@ -219,10 +201,9 @@ export const useAppStore = create<AppState>()((set, get) => ({
     try {
       repository = await getRepository()
       const snapshot = await repository.load()
-      const migrated = await migrateLegacyStorage(snapshot)
       set({
-        ...migrated,
-        banksVersion: migrated.banksVersion,
+        ...snapshot,
+        banksVersion: 0,
         hydration: 'ready',
       })
     } catch (error) {
@@ -233,35 +214,19 @@ export const useAppStore = create<AppState>()((set, get) => ({
     }
   },
 
-  setTheme: (theme) => {
-    set((state) => ({ settings: { ...state.settings, theme } }))
-    persist((repo) => repo.saveSettings(get().settings), { retryKey: 'settings' })
+  updateSettings: (patch) => {
+    const next = { ...get().settings, ...patch }
+    set({ settings: next })
+    persist((repo) => repo.saveSettings(next), { retryKey: 'settings' })
   },
+  setTheme: (theme) => get().updateSettings({ theme }),
   toggleTheme: () => {
-    set((state) => ({
-      settings: {
-        ...state.settings,
-        theme: state.settings.theme === 'light' ? 'dark' : 'light',
-      },
-    }))
-    persist((repo) => repo.saveSettings(get().settings), { retryKey: 'settings' })
+    get().updateSettings({ theme: get().settings.theme === 'light' ? 'dark' : 'light' })
   },
-  setFontScale: (fontScale) => {
-    set((state) => ({ settings: { ...state.settings, fontScale } }))
-    persist((repo) => repo.saveSettings(get().settings), { retryKey: 'settings' })
-  },
-  setAutoNext: (autoNext) => {
-    set((state) => ({ settings: { ...state.settings, autoNext } }))
-    persist((repo) => repo.saveSettings(get().settings), { retryKey: 'settings' })
-  },
-  setShowSampleBanks: (showSampleBanks) => {
-    set((state) => ({ settings: { ...state.settings, showSampleBanks } }))
-    persist((repo) => repo.saveSettings(get().settings), { retryKey: 'settings' })
-  },
-  setAllowRemoteImages: (allowRemoteImages) => {
-    set((state) => ({ settings: { ...state.settings, allowRemoteImages } }))
-    persist((repo) => repo.saveSettings(get().settings), { retryKey: 'settings' })
-  },
+  setFontScale: (fontScale) => get().updateSettings({ fontScale }),
+  setAutoNext: (autoNext) => get().updateSettings({ autoNext }),
+  setShowSampleBanks: (showSampleBanks) => get().updateSettings({ showSampleBanks }),
+  setAllowRemoteImages: (allowRemoteImages) => get().updateSettings({ allowRemoteImages }),
 
   toggleFavorite: (questionId) => {
     const favorite = !get().favorites.includes(questionId)
@@ -473,53 +438,6 @@ export const useAppStore = create<AppState>()((set, get) => ({
     return ok
   },
 }))
-
-/**
- * 一次性迁移：旧版本把整个状态存在 localStorage 里。
- *
- * 只在数据库为空时执行，避免覆盖用户已经产生的新数据；
- * 迁移成功后删除旧键，防止重复导入。迁移失败则保留旧键，用户仍有原始数据。
- */
-async function migrateLegacyStorage(
-  snapshot: DataSnapshot,
-): Promise<DataSnapshot & { banksVersion: number }> {
-  const isEmpty =
-    snapshot.banks.length === 0 &&
-    snapshot.history.length === 0 &&
-    snapshot.favorites.length === 0 &&
-    snapshot.papers.length === 0 &&
-    Object.keys(snapshot.wrongBook).length === 0
-
-  if (!isEmpty || !repository) return { ...snapshot, banksVersion: 0 }
-
-  const raw = resilientStorage.getItem(LEGACY_STORAGE_KEY)
-  if (!raw) return { ...snapshot, banksVersion: 0 }
-
-  try {
-    const parsed = JSON.parse(raw) as { state?: Partial<DataSnapshot>; version?: number }
-    const legacy = parsed.state
-    if (!legacy) return { ...snapshot, banksVersion: 0 }
-
-    const merged: DataSnapshot = {
-      settings: { ...DEFAULT_SETTINGS, ...(legacy.settings ?? {}) },
-      favorites: legacy.favorites ?? [],
-      wrongBook: legacy.wrongBook ?? {},
-      history: legacy.history ?? [],
-      daily: legacy.daily ?? {},
-      lastCollectionId: legacy.lastCollectionId ?? null,
-      banks: legacy.banks ?? [],
-      papers: legacy.papers ?? [],
-      // 旧版没有会话续做，迁移时一律视为没有未完成会话。
-      pendingSession: null,
-      bankSnapshots: [],
-    }
-    await repository.replaceAll(merged)
-    resilientStorage.removeItem(LEGACY_STORAGE_KEY)
-    return { ...merged, banksVersion: 1 }
-  } catch {
-    return { ...snapshot, banksVersion: 0 }
-  }
-}
 
 /** 仅供测试：注入假仓储并重置内存状态。 */
 export function attachRepositoryForTest(repo: Repository | null): void {

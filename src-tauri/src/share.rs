@@ -244,7 +244,7 @@ mod tests {
   #[test]
   fn file_name_cannot_escape_share_directory() {
     assert_eq!(safe_file_name("../../etc/passwd"), ".._.._etc_passwd");
-    assert_eq!(safe_file_name("题小星.tixing.enc.json"), "__.tixing.enc.json");
+    assert_eq!(safe_file_name("题小星.tixing.enc.json"), "___.tixing.enc.json");
     assert_eq!(safe_file_name(""), "tixing-share.tixing.enc.json");
   }
 

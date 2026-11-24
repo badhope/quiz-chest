@@ -82,6 +82,18 @@ describe('daily plan', () => {
     })
     expect(new Set(plan.questions.map((q) => q.id)).size).toBe(plan.questions.length)
   })
+
+  it('skips recently answered questions when there are enough alternatives', () => {
+    const first = buildDailyPlan({ history: [], size: 10, random: seeded(21) })
+    const second = buildDailyPlan({
+      history: [],
+      size: 10,
+      recentQuestionIds: first.questions.map((question) => question.id),
+      random: seeded(22),
+    })
+    const recent = new Set(first.questions.map((question) => question.id))
+    expect(second.questions.every((question) => !recent.has(question.id))).toBe(true)
+  })
 })
 
 describe('weakness plan', () => {

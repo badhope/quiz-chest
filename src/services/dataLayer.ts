@@ -18,19 +18,8 @@ import { mergeHistoryEntry } from '../lib/history'
 import { createIndexedDbRepository } from './indexedDbRepository'
 import { createSqliteRepository, rebuildDatabase as rebuildSqlite, sqliteLocation } from './sqliteRepository'
 
-/**
- * 仓储入口：按运行环境选择实现。
- *
- * 判定顺序有意设计：
- *   1. Tauri 壳（`__TAURI_INTERNALS__`）→ SQLite，数据落在真实数据库文件
- *   2. Capacitor 安卓壳 → 仍是 WebView，走 IndexedDB（WebView 内的持久化数据库）
- *   3. 浏览器 / PWA → IndexedDB
- *   4. IndexedDB 不可用（隐私模式等）→ 内存仓储，并通过 onDataLayerHealth 暴露降级
- *
- * Web 端不谎称有 SQLite：IndexedDB 本身就满足「设备内持久化数据库」的要求，
- * 只是引擎不同，对外接口一致。
- */
-
+// 按运行环境挑仓储：Tauri 走 SQLite，Android/Web 走 IndexedDB，
+// 两者都开不了就退到内存并挂降级标记。Web 端不假装有 SQLite。
 export interface DataLayerHealth {
   driver: Repository['driver']
   location: string

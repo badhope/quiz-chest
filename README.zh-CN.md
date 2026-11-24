@@ -1,8 +1,9 @@
 # 题小星 · TiXing
 
-**真正属于你自己的本地题库。**
+一个不联网也能把题库跑起来的本地工作台。
 
-导入自有题库，离线练习、限时模拟考、错题重练、查看学习曲线——不注册、不联网、不上传。
+导入自己的 Excel、CSV 或 JSON，练题、限时考试、错题复习、组卷打印、备份迁移，数据全部留在设备上。
+题小星不卖题库、不做账号、不接云端，首页那个「小星建议」也是本地算出来的。
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
@@ -10,28 +11,30 @@
   <img src="docs/screenshots/home.webp" alt="题小星首页" width="900">
 </p>
 
-## 它能做什么
+## 先说明「AI」这件事
 
-题小星只围绕一件事设计：**题库不该被困在别人的平台里。** 你给一份 JSON 或 CSV，
-一秒内变成可练、可考、可统计的完整题库，数据始终留在本机。
+题小星当前**没有内置大模型权重**，也不会把题目发到云端 API。
+
+应用里的「小星建议」是一个纯本地学情引擎：读练习记录、错题到期时间、今日进度，给出「先补哪个领域、先清哪批错题、今天还差几题」这类可解释的建议。它跑在 `src/lib/coach.ts`，不联网、不占内存，也不假装懂题。
+
+以后如果要接本地模型（Ollama、llama.cpp server 或 Android 端的小模型），建议只把它当成「解析增强」，不要把判分、错题归档和复习调度交给模型。判分必须可复现，模型只做讲解和追问。设计边界写在 [docs/LOCAL_AI.md](docs/LOCAL_AI.md)。
+
+## 它能做什么
 
 | | |
 | --- | --- |
-| **导入格式够宽容** | 支持 Excel（.xlsx）、JSON、CSV 与可移植的 `.tixing.json` 题库包；同一条行管线逐题校验，确认后才入库。 |
-| **三条找题路径** | 跟目标路线走、按领域逐层钻取，或交给策略自动配题。 |
-| **完整练习闭环** | 单选、多选、判断；练习模式即时批改，考试模式倒计时并到时自动交卷。 |
-| **不经过云的分享** | 导出 AES-256-GCM 加密的 `.tixing.enc.json`，或在桌面端起一个一次性局域网下载链接；口令与文件分开，不需要账号，也不走中继。 |
-| **大题库不卡** | 搜索走倒排索引（中文二元组 + 英文前缀），题库卡片渐进渲染，不会一次把几千张卡全挂到 DOM。 |
-| **做错的题不会丢** | 答错自动进错题本；答对后由 FSRS 间隔重复安排下次复习，真正掌握后再标记移出，不再「答对一次就消失」。 |
-| **导错了能改** | 导入的题库可直接编辑：题干、选项、答案、解析就地修改，题目编号保持稳定，错题引用不断。 |
-| **改错了能撤回** | 每次保存前自动存档旧版本，可回滚到最近 20 个版本中的任意一个；回滚本身也能再撤回。 |
-| **离开也能接着做** | 答题进度实时落库，中途关掉应用，首页会提示「继续上次」，直接回到原来那道题。 |
-| **题目能带图** | 图表题、几何题、阅读理解都能用：支持题干配图与选项配图（外链或内嵌 data URI）。 |
-| **数据能说明问题** | 连续打卡、正确率走势、领域分布与近 7 天作答量。 |
-| **能印出真正的卷子** | 组好卷直接打印：A4 版式、姓名与得分栏、可选附带答案与解析，打印时自动隐藏导航。 |
-| **一套代码跑三端** | Web/PWA、桌面端（Tauri 2）、安卓（Capacitor 8），共用同一份数据模型。 |
+| **导入格式够宽容** | Excel（`.xlsx`）、JSON、CSV 与 `.tixing.json` 题库包；CSV 的 BOM、未加引号的 `B,D`、被逗号切开的 data URI 都做了兼容。 |
+| **三条找题路径** | 跟目标路线走、按领域逐层钻取，或让策略按薄弱项配题。 |
+| **完整练习闭环** | 单选、多选、判断；练习模式即时批改，考试模式倒计时并自动交卷。 |
+| **错题不会答对一次就消失** | 答错自动进错题本，FSRS 安排下次复习；到期题优先排，答对多次后再标记掌握。 |
+| **小星建议** | 首页直接告诉你今天先干什么：补薄弱领域、清到期错题，或保持节奏。 |
+| **题库能改、能回滚** | 题干、选项、答案、解析就地编辑；每次保存前存档，最多保留 20 个历史版本。 |
+| **不经过云的分享** | 导出口令加密的 `.tixing.enc.json`，或在桌面端起一次性局域网下载；没有账号和中继。 |
+| **大题库不卡** | 搜索走倒排索引，题库卡片渐进渲染，不会一次挂几千张卡到 DOM。 |
+| **能印出真正的卷子** | A4 版式、姓名/得分栏、可选答案解析，打印时自动隐藏导航。 |
+| **三端一套代码** | Web/PWA、桌面（Tauri 2）、Android（Capacitor 8），共用同一套数据模型。 |
 
-## 界面截图
+## 界面
 
 <table>
 <tr>
@@ -46,7 +49,7 @@
 
 ## 快速开始
 
-需要 **Node 20.19+ 或 22.12+**，包管理器使用 **pnpm**。
+需要 **Node 20.19+ 或 22.12+**，包管理器用 **pnpm**。
 
 ```bash
 pnpm install
@@ -59,14 +62,13 @@ pnpm preview      # 预览 dist/，http://localhost:4173
 
 ```bash
 pnpm build                  # Web / PWA，把 dist/ 部署到任意静态托管
-pnpm desktop:build          # 桌面安装包，需要 Rust 与 MSVC
-pnpm build:native && npx cap sync android   # 再在 android/ 里用 Gradle 构建
+pnpm desktop:build          # 桌面安装包，需要 Rust 与系统原生工具链
 pnpm build:apk:release      # 签名 APK，需要 android/keystore.properties
 pnpm build:aab:release      # 签名 AAB，用于支持 AAB 的商店
 ```
 
-原生壳使用 hash 路由并关闭 Service Worker，Web 构建使用浏览器 history 路由。
-三端共用同一套数据层接口（`src/services/repository.ts`），底下换引擎不换调用方。
+原生壳使用 hash 路由并关闭 Service Worker；Web 构建使用浏览器 history 路由。
+三端共用 `src/services/repository.ts` 这一层接口，换引擎不换页面。
 
 ## 导入格式
 
@@ -85,28 +87,34 @@ title,stem,optionA,optionB,optionC,optionD,answer,explanation,type
 
 ## 你的数据在哪
 
-题小星在设备上自带一个数据库，不需要服务器，数据也不经过网络：
+题小星在设备上自带数据库，不需要服务器：
 
 | 运行形态 | 数据库引擎 | 位置 |
 | --- | --- | --- |
 | 桌面（Tauri 2） | SQLite（Rust `rusqlite`） | 系统应用数据目录 `com.tixing.offline.ai/tixing.db` |
 | Web / PWA / Android（Capacitor） | IndexedDB | 浏览器站点数据 `tixing` |
 
-桌面端的数据库是一个标准 SQLite 文件，可以用任何 SQLite 工具直接打开查看。
-设置页「本地数据库」一栏会显示当前实际使用的驱动与完整路径。
+桌面端数据库是标准 SQLite 文件，可以用任意 SQLite 工具打开。设置页「本地数据库」会显示当前驱动与完整路径。
 
-**清理浏览器数据或卸载应用前请先备份。** 设置页的「完整备份与恢复」会导出一个 JSON 文件，
-包含全部题库、错题、收藏、练习记录、组卷历史与设置；在任意设备导入即可完整还原。
+**清浏览器数据或卸载前先备份。** 设置页「完整备份与恢复」会导出包含题库、错题、收藏、练习记录、组卷与设置的 JSON；换设备导入即可还原。
 
-数据库不可用（隐私模式、权限受限）时，题小星会用内存维持本次会话可用并明确提示，
-不会静默丢数据。旧版本的 `localStorage` 数据会在首次启动时自动迁移进数据库并清理旧键。
+## 踩坑记录
 
-## 内置示例内容
+这些是这次品牌迁移和 Android 打包过程中真踩到的，不是模板：
 
-应用自带 7 个领域、20 个学段、32 个题库、195 道题，**仅用于演示产品结构**。
-每个示例题库都带标注且只有 6–7 题，不是备考材料。可在设置中隐藏后导入自己的题库。
+1. **`namespace` 和 `applicationId` 不是一回事。** `namespace` 只决定 Java/Kotlin 包和资源命名空间；`applicationId` 才是安装身份。这次把 `applicationId` 改成了 `com.tixing.offline.ai`，旧包名的数据不会自动继承，两个包可以在同一台手机上共存。我们不打算做旧数据迁移，升级前请自己导出备份。
+2. **Tauri `identifier` 改了，SQLite 目录也会换。** 桌面端数据目录由 identifier 决定，`tixing.db` 不会从旧目录自己跑过来；换 identifier 等于换一个应用数据目录。
+3. **`android/app/src/main/assets/capacitor.config.json` 是生成物。** 它被 `android/.gitignore` 排除，直接改会在下一次 `npx cap sync android` 时被覆盖。要改 `appId`/`appName`，改根目录 `capacitor.config.ts`，再 sync。
+4. **Git 历史重写会打断 PR 和标签引用。** 这次把全部提交里的旧仓库名/旧包名替换了，commit hash 全变，PR #43 的旧提交关系失效，`v1.8.0`/`v1.9.1` 标签重新指向新历史。公开仓库做这件事之前先确认分支保护允许强推，或者临时关掉再恢复；普通品牌改名不需要重写历史。
+5. **改别名不会改证书，换证书要重新生成 keystore。** 这次为了让签名证书里的 `CN=QuizChest` 也换掉，重新生成了 `keystore/tixing-release.jks`；新证书 SHA-256 是 `98e19402…999e`，旧 keystore 已离线备份到 `backups/`。以后必须继续用这份新 keystore，丢了就没法发同签名升级包。
+6. **IndexedDB 库名换成了 `tixing`。** 旧库名和新包名都不是同一套身份，所以旧 WebView 数据不会自动出现。需要旧数据就先用旧版导出备份，再到新版导入。
 
-当前版本有意不包含账号体系、云端同步、后台管理与在线题库服务。
+## 机型与环境适配
+
+- Android `minSdk 24`（Android 7.0），`targetSdk 36`；当前只做了 Linux + JDK 21 + Android SDK 36 的编译和 APK 验签，**没有接真机跑首启**。
+- Web 端用 Playwright Chromium 跑关键链路；Safari / iOS WebView 未验证。
+- 桌面端在 Linux 上跑过 `cargo check` / `cargo test` / `tauri build --no-bundle`；Windows NSIS/MSI 安装包需要在 Windows 上构建。
+- 大题库建议 2000 题以内单包导入；超过这个量，导入预览和首次索引会明显变慢，但不会崩。
 
 ## 架构
 
@@ -114,7 +122,7 @@ title,stem,optionA,optionB,optionC,optionD,answer,explanation,type
 src/
 ├─ data/        分类体系、示例题库、题目种子、数据记录类型
 ├─ services/    数据层：SQLite / IndexedDB / 内存实现与环境选择
-├─ lib/         判分、统计、导入导出、策略、组卷
+├─ lib/         判分、统计、导入导出、策略、组卷、小星建议
 ├─ hooks/       会话状态、计时器、品牌、Service Worker、数据层状态
 ├─ store/       Zustand 状态 + 启动 hydrate 与异步落库
 ├─ components/  布局、答题器、图表、基础 UI
@@ -122,16 +130,14 @@ src/
 └─ styles/      设计变量、布局、页面与练习样式
 ```
 
-几个值得知道的设计取舍：
+几个取舍：
 
-- **逻辑与渲染分离。** 所有会话规则集中在 `usePracticeSession`，
-  `PracticeRunner` 只负责把状态映射成界面，因此练习流程可以在无浏览器环境下单测。
-- **数据层可替换。** 页面只依赖 `src/services/repository.ts` 的接口，
-  桌面走 SQLite、Web 走 IndexedDB，换引擎不改页面。
-- **落库失败必须可见。** 写操作先更新内存保证界面响应，失败时把错误写入
-  `persistenceError` 并在设置页显示，不会假装保存成功。
-- **故障被隔离。** 路由级 `ErrorBoundary` 保证单个页面崩了不会拖垮整个外壳。
-- **图表懒加载。** ECharts 只在 `/stats` 加载，首屏包体保持在 gzip 约 138 kB。
+- **判分和调度是纯函数。** `src/lib/quiz.ts` 只认题目和选项，`src/lib/review.ts` 只认 FSRS 状态；这样单测不需要浏览器，也不会因为界面改动把判分改坏。
+- **写库失败要看得见。** 写操作先更新内存保证界面响应，失败时把错误写进 `persistenceError`，顶部提示条和设置页都能看到，不假装保存成功。
+- **数据层可替换。** 页面只依赖 `Repository` 接口；桌面走 SQLite，Web/Android 走 IndexedDB，测试走内存。
+- **搜索索引按题库数组缓存。** 用 `WeakMap` 挂缓存，题库快照一换就自动失效，不用手动清。
+
+更多开发和迁移记录见 [docs/DEVLOG.md](docs/DEVLOG.md)。
 
 ## 质量门禁
 
@@ -141,25 +147,13 @@ pnpm test:e2e     # Playwright，真实浏览器，关键链路
 pnpm test:e2e:apk # Playwright 跑在 APK 真实资源上，Pixel 5 视口
 ```
 
-`pnpm check` 覆盖题库完整性、判分、会话统计、策略配题、导入导出往返、CSV 导出、
-两个数据层驱动、store 落库、对话框焦点管理与练习组件行为；末尾还会跑
-`cargo test` 验证 Rust 数据层（无 cargo 的环境会明确跳过并打印原因），
-以及 `scripts/audit-deps.mjs`——运行时依赖出现 high/critical 漏洞即失败，
-仅构建期的工具链告警单独列出，因为它们不会进入交付产物。
-
-`pnpm test:e2e` 用真实 Chromium 驱动 dev server，验证单测覆盖不到的链路：
-导入的题库刷新后仍从 IndexedDB 读得到、答错进错题本而答对不进、交卷生成记录、
-备份在重置后能完整恢复。它要起服务且约 25 秒，因此不放进 `pnpm check`，CI 两步都跑。
+单测覆盖判分、导入导出、备份恢复、FSRS、策略配题、搜索索引、两个仓储驱动、store 落库与组件行为；`pnpm check` 末尾会跑 Rust 数据层测试和依赖审计。
 
 ## 项目管理
 
-- 版本号：遵循 [SemVer](https://semver.org/lang/zh-CN/)，唯一来源为 `package.json`，
-  由 `scripts/sync-version.mjs` 传播到各构建清单。
-- 变更历史：[CHANGELOG.md](CHANGELOG.md)。
-- 发布流程：[docs/RELEASING.md](docs/RELEASING.md)。
-- 贡献指南：[CONTRIBUTING.md](CONTRIBUTING.md)。
-- 安全策略：[SECURITY.md](SECURITY.md)。
-
-## 许可证
-
-[MIT](LICENSE)
+- 版本号：`package.json` 是唯一来源，`scripts/sync-version.mjs` 传播到 Tauri、Cargo 与 Android。
+- 变更历史：[CHANGELOG.md](CHANGELOG.md)
+- 发布流程：[docs/RELEASING.md](docs/RELEASING.md)
+- 贡献指南：[CONTRIBUTING.md](CONTRIBUTING.md)
+- 安全策略：[SECURITY.md](SECURITY.md)
+- 许可证：[MIT](LICENSE.md)

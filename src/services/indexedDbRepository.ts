@@ -12,14 +12,8 @@ import type {
 import { DEFAULT_SETTINGS, HISTORY_LIMIT, PAPER_LIMIT, normalizeSnapshot, type Repository } from './repository'
 import { nextBankSnapshots } from './snapshotPolicy'
 
-/**
- * 浏览器仓储：IndexedDB。
- *
- * 以前这里是一整套手写的 `indexedDB.open` / onupgradeneeded / request → Promise
- * 包装，单文件 390 行，事务边界与游标回调全靠人记。现在改用 `idb`
- * （Jake Archibald 维护的 Promise 封装），只保留业务语义：
- * 哪个 store、怎么裁剪、哪些数据要一起清。事务由库负责。
- */
+// Web / Android WebView 的仓储。用 idb 包住原生 IndexedDB，事务边界仍然
+// 按业务来划：题库删除要连错题、收藏前缀、快照一起清，历史重放要先回退旧统计。
 const DB_NAME = 'tixing'
 const DB_VERSION = 1
 
