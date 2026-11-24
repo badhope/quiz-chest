@@ -10,6 +10,14 @@
 - 搜索从全表 `includes` 换成倒排索引，中文二元组、英文/数字前缀；查询取交集后再用原文过滤。
 - 单测 216 项、Rust 14 项、E2E 17 项；release APK/AAB 都做过验签。
 
+## 2026-11-24 · 内置题库补齐
+
+- 之前 32 个分类里只有 19 个题库有题，`calculus`、`probability`、`cet4`、`accounting`、`pharmacist`、`japanese`、`algorithms`、`sql`、`network`、`verbal`、`quantitative`、`essay`、`arts` 是空壳，打开就是 0 题。
+- 补了 `src/data/questions/extra.ts`，按 collection id 追加题目，不改已有题目 ID；`src/data/index.ts` 在运行时把基础种子和补充种子合并。
+- 现在 32 个题库全部有题，共 **463 道**，每个题库至少 12 题；`quiz.test.ts` 的下限从 190 道 / 每库 6 题提高到 460 道 / 每库 12 题，避免再出现空壳混过去。
+- README 增加了「内置题库」段落，明确这是随包练习内容，不是要卖的题库；`VITE_BARE_CONTENT=1` 仍然可以在构建期整体剥离。
+- 重新跑 `pnpm check`：34 个测试文件 / 216 项、Web build、`cargo test` 14 项、依赖审计 0 条全部通过；E2E 17 项通过。首页和题库总览截图重拍，数字与 463 道一致。
+
 ## 2026-11-24 · 题小星品牌迁移
 
 - 仓库名、根目录、Android `applicationId`、Java 包、Capacitor `appId`、Tauri `identifier` 全部换成题小星。

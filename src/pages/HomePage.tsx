@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { collections, domains } from '../data/taxonomy'
+import { collections } from '../data/taxonomy'
 import { totalQuestions, getCollection } from '../data'
 import { goals } from '../data/goals'
 import { useAppStore } from '../store/useAppStore'
@@ -53,7 +53,7 @@ const paths = [
     kicker: '路径二',
     title: '我想按领域找',
     copy: '先选大方向，再看学段与科目，一层层缩小范围。',
-    detail: `${domains.length} 个领域 · ${collections.length} 个题库`,
+    detail: `${collections.length} 个题库 · ${totalQuestions} 道题`,
     icon: Library,
     tone: 'browse',
   },

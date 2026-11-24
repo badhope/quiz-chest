@@ -8,11 +8,11 @@ Google Play、App Store 或国内应用商店的开发者账号，因此本仓�
 
 | 文件 | 用途 |
 | --- | --- |
-| `artifacts/tixing-2.0.0-release.apk` | 直接安装到 Android 手机；已用 release keystore 签名 |
-| `artifacts/tixing-2.0.0-release.aab` | 交给 Google Play 或支持 AAB 的商店；不能直接侧载 |
-| `artifacts/SHA256SUMS-2.0.0.txt` | 两个产物的 SHA-256，用于分发后校验 |
+| `artifacts/tixing-2.0.1-release.apk` | 直接安装到 Android 手机；已用 release keystore 签名 |
+| `artifacts/tixing-2.0.1-release.aab` | 交给 Google Play 或支持 AAB 的商店；不能直接侧载 |
+| `artifacts/SHA256SUMS-2.0.1.txt` | 两个产物的 SHA-256，用于分发后校验 |
 
-`versionName=2.0.0`，`versionCode=2000000`，`minSdk=24`，`targetSdk=36`。
+`versionName=2.0.1`，`versionCode=2000001`，`minSdk=24`，`targetSdk=36`。
 
 ## 二、Android 安装
 
@@ -25,7 +25,7 @@ Google Play、App Store 或国内应用商店的开发者账号，因此本仓�
 
 ## 三、商店与 AAB
 
-- Google Play 上传 `tixing-2.0.0-release.aab`，包名 `com.tixing.offline.ai`。
+- Google Play 上传 `tixing-2.0.1-release.aab`，包名 `com.tixing.offline.ai`。
 - 国内商店有各自的备案、资质与主体要求；这些不是构建脚本能替代的。
 - 首次上架后，后续版本必须使用同一份 keystore 签名，否则商店会拒绝升级。
 
@@ -50,13 +50,13 @@ release 签名材料位于本机：
 接收方可先核对哈希，再安装：
 
 ```bash
-sha256sum -c SHA256SUMS-2.0.0.txt
+sha256sum -c SHA256SUMS-2.0.1.txt
 ```
 
 构建方可复验签名：
 
 ```bash
-node scripts/verify-signature.mjs artifacts/tixing-2.0.0-release.apk \
+node scripts/verify-signature.mjs artifacts/tixing-2.0.1-release.apk \
   "$ANDROID_HOME" "$JAVA_HOME"
 ```
 

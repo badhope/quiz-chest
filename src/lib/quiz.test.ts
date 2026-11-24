@@ -28,9 +28,9 @@ describe('question bank integrity', () => {
   })
 
   it('has questions for every collection with valid answer indexes', () => {
-    expect(totalQuestions).toBeGreaterThanOrEqual(190)
+    expect(totalQuestions).toBeGreaterThanOrEqual(460)
     for (const collection of questionBank) {
-      expect(collection.questions.length, collection.id).toBeGreaterThanOrEqual(6)
+      expect(collection.questions.length, collection.id).toBeGreaterThanOrEqual(12)
       for (const question of collection.questions) {
         expect(question.options.length, question.id).toBeGreaterThanOrEqual(2)
         expect(question.answer.length, question.id).toBeGreaterThan(0)

@@ -61,12 +61,16 @@ export function CatalogPage() {
     }
     return counts
   }, [library])
+  const totalQuestions = useMemo(
+    () => library.reduce((sum, item) => sum + item.questions.length, 0),
+    [library],
+  )
 
   return (
     <div className="tree-page">
       <header className="tree-head">
         <div>
-          <span className="eyebrow">题库总览</span>
+          <span className="eyebrow">题库总览 · {library.length} 个题库 · {totalQuestions} 道题</span>
           <h1 className="page-title serif">先选领域，再选学段，最后挑题库</h1>
         </div>
         <div className="tree-head-actions">

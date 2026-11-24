@@ -294,6 +294,17 @@ Android 运行时验证的原理：宿主无硬件虚拟化，模拟器不可用
 APK 资源完整性检查已成为构建步骤：`pnpm build:apk` 会在 Gradle 编译后自动跑
 `scripts/verify-apk.mjs`，缺少 JS/CSS 或混入 PWA 产物都会直接失败。
 
+### v2.0.1 验证记录
+
+| 端 | 产物 | 已核验 |
+| --- | --- | --- |
+| Android（release APK） | `tixing-2.0.1-release.apk` (3,665,720 bytes) | Linux + JDK 21 + Android SDK 36 实际编译；`aapt dump badging` 包名 `com.tixing.offline.ai`、`versionName=2.0.1`、`versionCode=2000001`；`verify-apk` 通过（459 条目、4 个引用资源、14 个 JS、1 个 CSS）；`apksigner` 通过，证书 DN `CN=TiXing`，SHA-256 `98e19402…999e`；SHA-256 `a5ecd23b…a810` |
+| Android（release AAB） | `tixing-2.0.1-release.aab` (3,519,637 bytes) | `bundleRelease` + `jarsigner -verify` 通过；证书 DN 与 APK 一致；SHA-256 `586e1400…34bf` |
+| Web / 桌面测试 | `dist/`、`src-tauri/` | `pnpm check` 通过：版本五项、typecheck、lint、34 个测试文件 / 216 项、Web build、`cargo test` 14 项、依赖审计 0 条；`pnpm test:e2e` 17 项通过 |
+| 内置题库 | `src/data/questions/extra.ts` | 32 个题库全部有题，共 463 道；`quiz.test.ts` 校验每库至少 12 题、总数至少 460 道 |
+
+本轮只改题库与界面统计，不改题库包格式、数据库 schema 和包名。2.0.0 用户可覆盖升级。
+
 ### v2.0.0 验证记录
 
 | 端 | 产物 | 已核验 |

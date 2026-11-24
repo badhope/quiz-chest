@@ -6,6 +6,34 @@
 版本号唯一来源是 `package.json`，由 `node scripts/sync-version.mjs set <version>`
 传播到 Tauri、Cargo 与 Android 构建清单。发布流程见 [docs/RELEASING.md](docs/RELEASING.md)。
 
+## [2.0.1] - 2026-11-24
+
+内置题库补齐版。2.0.0 的 32 个分类里有 13 个是 0 题空壳，这次把每个题库都填到至少
+12 题，并给首页和题库总览加了总量显示。
+
+### Added
+
+- `src/data/questions/extra.ts`：按 collection id 追加题目，原有题目 ID 不变；
+  `src/data/index.ts` 在运行时合并基础种子与补充种子
+- 32 个题库全部有题，共 463 道；K12、大学、职业证书、语言、编程、公共基础、通识
+  七个领域都能直接开练
+- 首页路径二和题库总览显示「32 个题库 · 463 道题」，不再是只有分类没有题量
+- README 增加「内置题库」说明；`quiz.test.ts` 的下限提高到 460 道 / 每库 12 题
+
+### Changed
+
+- 版本升到 `2.0.1`，Android `versionCode=2000001`
+- 重拍首页、题库总览、练习、统计、设置五张 README 截图，截图数字与新题库一致
+- 截图脚本不再假设题库只有 6 题，改为做到「完成练习」出现再提交
+
+### Fixed
+
+- 补齐 `calculus`、`probability`、`cet4`、`accounting`、`pharmacist`、`japanese`、
+  `algorithms`、`sql`、`network`、`verbal`、`quantitative`、`essay`、`arts`
+  13 个空题库
+- `linear-algebra`、`teacher-cert`、`construction-law`、`toefl-listening`、
+  `life-science`、`ts-types` 题量不足 12 的题库一并补齐
+
 ## [2.0.0] - 2026-11-24
 
 题小星品牌迁移版。安装身份、题库包格式和数据库名都换了，不能当普通升级覆盖安装。
