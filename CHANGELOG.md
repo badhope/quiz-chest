@@ -6,6 +6,44 @@
 版本号唯一来源是 `package.json`，由 `node scripts/sync-version.mjs set <version>`
 传播到 Tauri、Cargo 与 Android 构建清单。发布流程见 [docs/RELEASING.md](docs/RELEASING.md)。
 
+## [2.0.0] - 2026-11-24
+
+题小星品牌迁移版。安装身份、题库包格式和数据库名都换了，不能当普通升级覆盖安装。
+
+### Added
+
+- 首页「小星建议」：本地学情引擎，按历史正确率、错题到期和今日进度给出练习入口，
+  不联网、不调用大模型（`src/lib/coach.ts`）
+- 导入兼容 Windows 编辑器留下的 UTF-8 BOM；CSV 未加引号的 `B,D` 答案、被逗号切开的
+  data URI 继续走修复管线
+- `docs/DEVLOG.md` 记录真实迁移过程和已知限制；`docs/LOCAL_AI.md` 写清本地模型接入边界
+
+### Changed
+
+- 仓库、根目录、Android `applicationId`、Java 包、Capacitor `appId`、Tauri `identifier`
+  统一改为题小星命名
+- 版本升到 `2.0.0`，Android `versionCode=2000000`
+- 题库包标识改为 `tixing-bank`，扩展名 `.tixing.json`；加密包改为
+  `tixing-bank-encrypted`，扩展名 `.tixing.enc.json`
+- 数据库文件名改为 `tixing.db`，IndexedDB 库名改为 `tixing`
+- 设置 setter 收口为 `updateSettings(patch)`，减少六份重复的 `set + persist`
+- 每日一练先排除最近做过的题，题库不够时再回填，避免回填把最近题又抽回来
+- 错题排序固定为到期优先、到期组内按错误次数降序
+
+### Removed
+
+- 旧版 `localStorage` 一次性迁移和 `useStorageHealth`。新安装身份不继承旧数据，
+  需要旧数据时先用旧版导出完整备份，再到新版恢复
+
+### Fixed
+
+- 修复题库快照注释里的旧 ID 格式，实际 ID 为 `${bankId}:r${revision}`
+- 修复导入模块里错位的注释块，`repairUnquotedAnswer` 的说明不再挂到 data URI 修复函数上
+- 统计页累计时长不足一分钟时显示「不到 1 分钟」，不再显示容易误解的「0 分钟」
+- 首页建议的标题与提示顺序统一：有到期错题时先清错题，再提薄弱领域
+- README 五张界面图改为当前 2.0 构建实际运行截图，替换 1.9.1 旧素材
+- release 证书重新生成，证书 DN 与 SHA-256 不再带旧品牌；旧 keystore 离线备份
+
 ## [1.9.1] - 2026-11-24
 
 把「本地题库工具」补成可以分发、可以分享、扛得住大题库的工作台。

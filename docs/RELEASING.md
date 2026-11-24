@@ -83,15 +83,15 @@ git push origin main --tags
 题库包格式（`tixing-bank`）与数据库 schema（桌面端 `tixing.db` 的 `meta.schema_version`，
 Web 端 IndexedDB 的 `tixing` 库版本）都有独立版本号，它们的破坏性变更同样要求应用升 major。
 
-## 五、不可变标识
+## 五、当前安装身份
 
-以下标识属于**安装身份契约**，改名会导致老用户无法升级，任何时候都不得变更：
+2.0 品牌迁移已经换过一次身份，下面这些值从现在起视为契约。再改就会产生第三个应用身份，旧版本也无法升级：
 
 - Android `applicationId` / `namespace`：`com.tixing.offline.ai`
 - Tauri `identifier`：`com.tixing.offline.ai`
 - 数据库文件名：`tixing.db`（位于应用数据目录下，由 `identifier` 决定所在目录）
 - Web 端 IndexedDB 库名：`tixing`
-- 旧版迁移键：`tixing-store-v1`（仅用于一次性迁移旧数据，不再写入）
+- 旧版 `localStorage` 迁移已移除：新版本不读旧迁移键，旧数据需用旧版导出备份后导入
 - 题库包标识：`format: "tixing-bank"`、扩展名 `.tixing.json`
 
 品牌名（`题小星` / `TiXing`）属于展示层，可以自由调整；上面这些标识不属于展示层。

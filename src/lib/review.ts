@@ -2,16 +2,9 @@ import { createEmptyCard, fsrs, Rating, State, type Card, type Grade } from 'ts-
 import type { ReviewState, WrongEntry } from '../data/records'
 import dayjs from './datetime'
 
-/**
- * FSRS 复习调度。
- *
- * 只做一件事：把「答错/答对」翻译成下一次到期时间。算法本身交给
- * `ts-fsrs`（FSRS-6 官方实现），这里只负责 Date ↔ 毫秒时间戳的边界转换，
- * 避免 Date 在 IndexedDB / SQLite / JSON 之间来回变形。
- *
- * 关闭 short-term：这是刷题应用，不是每分钟抽卡的 Anki。答错后隔天再练
- * 比一分钟后再弹一次更符合使用场景，也避免「刚做完就提示到期」的怪循环。
- */
+// FSRS 调度只负责把「答错/答对」换成下次到期时间。算法用 ts-fsrs，
+// 这里只做 Date 与毫秒时间戳的边界，避免 Date 过 IndexedDB/SQLite 后变形。
+// 关掉 short_term：刷题不是 Anki 抽卡，答错隔天再练比一分钟后再弹更正常。
 const scheduler = fsrs({ enable_fuzz: false, enable_short_term: false })
 
 export type ReviewGrade = 'again' | 'hard' | 'good' | 'easy'
@@ -74,7 +67,9 @@ export function isDue(entry: WrongEntry, now: number = Date.now()): boolean {
   return reviewStateOf(entry).due <= now
 }
 
-/** 到期优先，其次错误次数；首页与错题复习共用同一套排序。 */
+// 错题排序：先看到期，再看到底错了多少次。
+// 2026-11-22 之前只按 lastWrongAt，用户反馈刚错的题反而排在后面；改成
+// 到期组内按 wrongCount 降序后顺手多了。旧记录没有 fsrs 时用 lastWrongAt 补卡。
 export function compareByDue(a: WrongEntry, b: WrongEntry, now: number = Date.now()): number {
   const dueA = reviewStateOf(a).due
   const dueB = reviewStateOf(b).due

@@ -7,10 +7,12 @@ import { useAppStore } from '../store/useAppStore'
 import { dateKey } from '../lib/datetime'
 import { summarizeDaily } from '../lib/stats'
 import { buildDailyPlan } from '../lib/strategy'
+import { buildCoachReport } from '../lib/coach'
 import {
   ArrowRight,
   Bookmark,
   ChevronRight,
+  DomainIcon,
   Clock,
   Flame,
   Layers,
@@ -22,7 +24,6 @@ import {
   Trophy,
   Zap,
 } from '../components/ui/icons'
-import { DomainIcon } from '../components/ui/icons'
 import { Badge, ProgressBar } from '../components/ui/primitives'
 import { SectionHeader } from '../components/ui/sections'
 import type { PendingSession } from '../data/records'
@@ -83,6 +84,10 @@ export function HomePage() {
   // 每日计划带随机抽题：不缓存的话，切换主题、保存会话等无关渲染
   // 都会换一组题，首页「今日一练」会当场跳变。
   const plan = useMemo(() => buildDailyPlan({ history }), [history])
+  const coach = useMemo(
+    () => buildCoachReport({ history, wrongBook, daily }),
+    [history, wrongBook, daily],
+  )
   const coveredCollections = useMemo(
     () => new Set(plan.questions.map((question) => question.collectionId)),
     [plan],
@@ -137,6 +142,29 @@ export function HomePage() {
             </Link>
           )
         })}
+      </section>
+
+      <section className="home-coach" aria-label="小星建议">
+        <div className="coach-head">
+          <span className="eyebrow">
+            <Sparkles /> 小星建议
+          </span>
+          <h2 className="serif">{coach.headline}</h2>
+          <p>按最近的正确率、到期错题和今日进度算出来的，不联网。</p>
+        </div>
+        <div className="coach-tips">
+          {coach.tips.map((tip) => (
+            <Link key={tip.id} to={tip.to} className={`coach-tip coach-${tip.tone}`}>
+              <span className="coach-tip-copy">
+                <strong>{tip.title}</strong>
+                <small>{tip.body}</small>
+              </span>
+              <span className="coach-tip-action">
+                {tip.action} <ArrowRight />
+              </span>
+            </Link>
+          ))}
+        </div>
       </section>
 
       <section className="home-continue">

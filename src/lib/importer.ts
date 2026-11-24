@@ -246,11 +246,8 @@ function normalizeMeta(raw: Record<string, unknown>): Pick<
 }
 
 /**
- * 白名单校验图片来源。
- *
- * 为什么必须做：题干图会直接进 `<img src>`。允许 `javascript:` 之类的协议
- * 等于把导入文件变成脚本执行入口；允许 `file:` 则在 WebView 里必然坏图。
- * 只放行 http/https 与 data:image，其余一律当作「没有图」。
+ * 只放行 http(s) 和 data:image。题干图会直接进 <img src>，
+ * javascript: 之类的协议等于把导入文件变成脚本入口。
  */
 export function normalizeImageSource(raw: string): string {
   const value = raw.trim()
@@ -272,7 +269,9 @@ export function parseImportJson(raw: string): ParseResult {
   const issues: ImportIssue[] = []
   let data: unknown
   try {
-    data = JSON.parse(raw)
+    // Windows 记事本/Excel 导出的 JSON 常带 UTF-8 BOM，JSON.parse 会直接报
+    // Unexpected token。先剥掉再解析，比让用户重新存一遍靠谱。
+    data = JSON.parse(raw.replace(/^\uFEFF/, ''))
   } catch (error) {
     return {
       bank: null,
@@ -316,22 +315,11 @@ export function parseImportJson(raw: string): ParseResult {
 }
 
 /**
- * 修复未加引号的多选答案。
- *
- * `answer` 写成 `B,D` 但没加引号时，CSV 会把它拆成两列，导致后续列整体右移、
- * 题型被读成题干。这里只在「答案列恰好是单个 A-F 字母，紧随其后的多余列
- * 也都是单个 A-F 字母」时合并回去，避免误伤正常的宽表。
- */
-/**
  * 合并被逗号切开的 data URI。
  *
- * `data:image/png;base64,AAAA` 里自带一个逗号。CSV 规范要求这种字段加引号，
- * 但用户从 Excel 复制过来通常没有，于是单元格被多切一刀，图片列拿到
- * `data:image/png;base64`、后面的 base64 掉到下一列。
- *
- * 处理方式：只对「以 data:image 开头且还没结束」的单元格，把它与后续单元格
- * 用逗号拼回去，直到出现的片段以 base64 合法字符结尾为止。
- * 只影响图片列，不动其它字段，避免把有意的空列合并掉。
+ * Excel 复制出来的 data:image/png;base64,AAAA 通常没加引号，CSV 会把逗号
+ * 当分隔符切一刀。这里只对以 data:image 开头的单元格做拼接，最多吃 3 段，
+ * 避免误合并正常的空列。
  */
 function repairSplitDataUri(cells: string[]): string[] {
   const result = [...cells]
@@ -356,23 +344,23 @@ function repairSplitDataUri(cells: string[]): string[] {
   return result
 }
 
+// 答案列写 B,D 又没加引号时，CSV 会把它拆成两列，后面的题型整体右移。
+// 只在答案列是单个 A-F 字母、后面的溢出列也都是单字母时合并，别误伤宽表。
 function repairUnquotedAnswer(
   cells: string[],
   headers: string[],
 ): string[] {
   const repaired = repairSplitDataUri(cells)
   if (repaired.length <= headers.length) return repaired
-  const cells2 = repaired
-  if (cells2.length <= headers.length) return cells2
   const answerIndex = headers.findIndex((header) => header.toLowerCase() === 'answer')
-  if (answerIndex < 0) return cells2
-  const extra = cells2.length - headers.length
-  const answerCell = (cells2[answerIndex] ?? '').trim()
-  if (!/^[A-Fa-f]$/.test(answerCell)) return cells2
-  const overflow = cells2.slice(answerIndex + 1, answerIndex + 1 + extra)
-  if (overflow.length !== extra) return cells2
-  if (!overflow.every((cell) => /^[A-Fa-f]$/.test(cell.trim()))) return cells2
-  const merged = [...cells2]
+  if (answerIndex < 0) return repaired
+  const extra = repaired.length - headers.length
+  const answerCell = (repaired[answerIndex] ?? '').trim()
+  if (!/^[A-Fa-f]$/.test(answerCell)) return repaired
+  const overflow = repaired.slice(answerIndex + 1, answerIndex + 1 + extra)
+  if (overflow.length !== extra) return repaired
+  if (!overflow.every((cell) => /^[A-Fa-f]$/.test(cell.trim()))) return repaired
+  const merged = [...repaired]
   merged.splice(answerIndex, 1 + extra, [answerCell, ...overflow.map((c) => c.trim())].join(','))
   return merged
 }
@@ -400,13 +388,8 @@ export function parseImportCsv(raw: string): ParseResult {
   return parseRows(headers, body, issues)
 }
 
-/**
- * 行数据统一入口：CSV 与 Excel 都归一化成「表头 + 字符串二维表」后走这里。
- *
- * 为什么抽这一层：Excel 解析和 CSV 解析的差异只在「怎么拿到单元格」，
- * 表头校验、逐行题目校验、重名跳过这些规则必须只有一份实现，
- * 否则两边会各自漂移（比如 Excel 能导而 CSV 不能导的题）。
- */
+// CSV 和 Excel 都先归一成「表头 + 字符串二维表」，再走这里。
+// 以前两个入口各写一套校验，Excel 能导、CSV 不能导的题就是这么来的。
 export function parseRows(
   headers: string[],
   rows: string[][],
@@ -471,12 +454,7 @@ export function detectFormat(fileName: string): ImportFormat | null {
   return null
 }
 
-/**
- * 按内容推断格式，供「直接粘贴」场景使用。
- *
- * 粘贴时没有文件名可用，只能看首字符：以 `{` 或 `[` 开头视为 JSON，
- * 否则按 CSV 处理。否则用户粘贴 CSV 会被强制当作 JSON 解析而失败。
- */
+// 粘贴没有文件名，只能看首字符：{ 或 [ 当 JSON，其余按 CSV。
 export function detectFormatFromContent(raw: string): ImportFormat {
   const head = raw.trimStart()
   if (head.startsWith('{') || head.startsWith('[')) return 'json'

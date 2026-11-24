@@ -177,6 +177,100 @@
   transform: translateX(3px);
 }
 
+.home-coach {
+  display: grid;
+  grid-template-columns: minmax(200px, 0.62fr) minmax(0, 1.38fr);
+  gap: 18px;
+  align-items: start;
+  margin-top: 24px;
+  padding: 20px;
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--line));
+  border-radius: var(--radius-md);
+  background:
+    radial-gradient(circle at 0 0, color-mix(in srgb, var(--accent-soft) 55%, transparent), transparent 55%),
+    color-mix(in srgb, var(--paper-raised) 82%, transparent);
+}
+
+.coach-head h2 {
+  margin: 8px 0 6px;
+  font-size: 20px;
+  line-height: 1.4;
+}
+
+.coach-head p {
+  max-width: 28em;
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--ink-muted);
+}
+
+.coach-tips {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.coach-tip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--paper-raised) 70%, transparent);
+  transition: border-color 0.16s var(--ease), transform 0.16s var(--ease);
+}
+
+.coach-tip:hover {
+  transform: translateX(2px);
+  border-color: var(--line-strong);
+}
+
+.coach-tip-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.coach-tip-copy strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.coach-tip-copy small {
+  font-size: 10.5px;
+  line-height: 1.55;
+  color: var(--ink-muted);
+}
+
+.coach-tip-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  margin-left: auto;
+  font-size: 10.5px;
+  color: var(--ink-soft);
+}
+
+.coach-tip-action svg {
+  width: 12px;
+  height: 12px;
+}
+
+.coach-focus .coach-tip-copy strong {
+  color: var(--accent);
+}
+
+.coach-review .coach-tip-copy strong {
+  color: var(--gold);
+}
+
+.coach-steady .coach-tip-copy strong {
+  color: var(--moss);
+}
+
 .home-continue {
   margin-top: 36px;
 }
@@ -1403,6 +1497,10 @@
 
 @media (max-width: 900px) {
   .home-head {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .home-coach {
     grid-template-columns: minmax(0, 1fr);
   }
 

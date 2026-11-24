@@ -23,10 +23,14 @@ export default defineConfig({
     baseURL: 'http://127.0.0.1:5199',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
+    // 容器或离线机器上常用系统 Chromium；不设置时走 Playwright 自带版本。
+    launchOptions: process.env.PLAYWRIGHT_CHROMIUM_PATH
+      ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH }
+      : undefined,
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    command: 'pnpm dev --port 5199 --strictPort',
+    command: 'node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 5199 --strictPort',
     url: 'http://127.0.0.1:5199',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

@@ -5,12 +5,8 @@ import { shuffle } from './quiz'
 import { compareByDue } from './review'
 import { getLibraryCollections, type LibraryCollection } from './library'
 
-/**
- * 同一次计划生成里只取一次题库快照。
- *
- * `getLibraryCollections()` 本身有缓存，但每次 `flatMap` 题目仍会分配新数组；
- * 每日一练原先在按领域抽题时反复遍历全库，导入几千题后首页会明显变慢。
- */
+// 一次计划只取一次题库快照。首页每日一练原先按领域反复遍历全库，
+// 题量上来后明显拖慢；现在先 flatMap 一次，后续都在数组上做。
 function questionsOf(library: LibraryCollection[]): Question[] {
   return library.flatMap((collection) => collection.questions)
 }
@@ -85,9 +81,8 @@ export function domainAccuracy(
   const bucket = new Map<string, { answered: number; correct: number }>()
 
   for (const entry of history) {
-    // 只统计能对应到真实题库的记录。plan: / compose: 是临时练习容器，
-    // 以前用 startsWith / includes('-') 猜归属，把策略练习和自组卷算进
-    // 「我的题库」，数字自然对不上。
+    // plan:/compose: 是临时练习容器，不对应真实题库，直接跳过；
+    // 以前按 '-' 猜归属，会把策略练习和自组卷算进「我的题库」。
     const collection = byCollection.get(entry.collectionId)
     if (!collection) continue
     const current = bucket.get(collection.domainId) ?? { answered: 0, correct: 0 }
@@ -115,9 +110,10 @@ function pickByDomain(
   size: number,
   library: LibraryCollection[],
   allQuestions: Question[],
+  exclude?: Set<string>,
 ): Question[] {
   const picked: Question[] = []
-  const seen = new Set<string>()
+  const seen = new Set(exclude ?? [])
   const domainOrder = Object.keys(counts)
     .sort((a, b) => counts[b] - counts[a])
     .slice(0, 5)
@@ -192,13 +188,22 @@ export function buildDailyPlan(options: {
     if (!counts[domainId]) counts[domainId] = 1
   }
   const recent = new Set(options.recentQuestionIds ?? [])
-  const picked = pickByDomain(counts, random, size, library, allQuestions).filter(
-    (question) => !recent.has(question.id),
-  )
+  const picked = pickByDomain(counts, random, size, library, allQuestions, recent)
+  // 最近做过的题先避开；题库不够时再回填，但不要和已选题重复。
   const filled =
     picked.length >= size
       ? picked
-      : pickByDomain(counts, random, size, library, allQuestions)
+      : [
+          ...picked,
+          ...pickByDomain(
+            counts,
+            random,
+            size - picked.length,
+            library,
+            allQuestions,
+            new Set(picked.map((question) => question.id)),
+          ),
+        ].slice(0, size)
 
   return {
     kind: 'daily',
