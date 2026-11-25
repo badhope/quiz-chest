@@ -77,6 +77,8 @@ export function CollectionPage() {
     single: collection.questions.filter((q) => q.type === 'single').length,
     multiple: collection.questions.filter((q) => q.type === 'multiple').length,
     judge: collection.questions.filter((q) => q.type === 'judge').length,
+    fill: collection.questions.filter((q) => q.type === 'fill').length,
+    short: collection.questions.filter((q) => q.type === 'short').length,
   }
 
   return (
@@ -272,6 +274,24 @@ export function CollectionPage() {
             <strong>{typeCount.judge}</strong>
             <span>判断题</span>
           </div>
+          {typeCount.fill > 0 ? (
+            <div className="composition-card">
+              <span className="composition-icon accent">
+                <Layers />
+              </span>
+              <strong>{typeCount.fill}</strong>
+              <span>填空题</span>
+            </div>
+          ) : null}
+          {typeCount.short > 0 ? (
+            <div className="composition-card">
+              <span className="composition-icon moss">
+                <BookOpen />
+              </span>
+              <strong>{typeCount.short}</strong>
+              <span>简答题</span>
+            </div>
+          ) : null}
           <div className="composition-card">
             <span className="composition-icon neutral">
               <Clock />

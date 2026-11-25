@@ -71,6 +71,27 @@ test('答题答错进错题本，交卷生成记录', async ({ page }) => {
   expect(stores.wrong[0].wrongCount).toBe(1)
 })
 
+test('APK 资源可导入并作答填空题', async ({ page }) => {
+  const TEXT = `# APK 文本题
+
+1. 光合作用的场所是？【填空题】
+答案：叶绿体|叶绿体。
+解析：叶绿体含有叶绿素，是光合作用的场所。
+`
+  await page.goto('/#/import')
+  await page.getByRole('textbox', { name: '粘贴题库内容' }).fill(TEXT)
+  await page.getByRole('button', { name: /校验并预览/ }).click()
+  await page.getByRole('button', { name: /确认导入 1 题/ }).click()
+  await page.getByRole('link', { name: /打开这个题库/ }).click()
+  await page.getByRole('link', { name: /顺序练习/ }).click()
+  await page.getByLabel('填写答案').fill('叶绿体')
+  await page.getByRole('button', { name: /确认答案/ }).click()
+  await expect(page.getByText('填写正确')).toBeVisible()
+  const stores = await readStores(page)
+  expect(stores.banks.find((bank) => bank.title === 'APK 文本题')?.questions[0].answerText).toEqual(['叶绿体', '叶绿体。'])
+  expect(stores.wrong).toHaveLength(0)
+})
+
 test('设置页显示 IndexedDB 驱动', async ({ page }) => {
   await page.goto('/#/settings')
   await expect(page.getByText('本地数据库')).toBeVisible()

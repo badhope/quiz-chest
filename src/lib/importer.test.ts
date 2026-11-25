@@ -56,6 +56,52 @@ describe('parseImportJson', () => {
     expect(result.bank?.accent).toMatch(/^#[0-9a-fA-F]{6}$/)
   })
 
+  it('parses fill and short questions from JSON without options', () => {
+    const result = parseImportJson(JSON.stringify({
+      title: '生物填空',
+      questions: [
+        {
+          type: 'fill',
+          stem: '光合作用的场所是？',
+          answerText: ['叶绿体', '叶绿体。'],
+          explanation: '叶绿体含有叶绿素，是光合作用的场所。',
+          difficulty: 2,
+          tags: ['光合作用'],
+        },
+        {
+          type: 'short',
+          stem: '光合作用需要哪些条件？',
+          answerText: ['光照和叶绿体'],
+          keywords: ['光照', '叶绿体'],
+          explanation: '光照提供能量，叶绿体完成反应。',
+          difficulty: 2,
+          tags: ['光合作用'],
+        },
+      ],
+    }))
+    expect(result.issues).toHaveLength(0)
+    expect(result.questionCount).toBe(2)
+    expect(result.bank?.questions[0].type).toBe('fill')
+    expect(result.bank?.questions[0].options).toEqual([])
+    expect(result.bank?.questions[0].answerText).toEqual(['叶绿体', '叶绿体。'])
+    expect(result.bank?.questions[1].type).toBe('short')
+    expect(result.bank?.questions[1].keywords).toEqual(['光照', '叶绿体'])
+  })
+
+  it('rejects a short question without keywords', () => {
+    const result = parseImportJson(JSON.stringify({
+      title: '生物简答',
+      questions: [{
+        type: 'short',
+        stem: '说明光合作用。',
+        answerText: ['光照和叶绿体'],
+        explanation: '没有关键词。',
+      }],
+    }))
+    expect(result.bank).toBeNull()
+    expect(result.issues.some((issue) => issue.message.includes('关键词'))).toBe(true)
+  })
+
   it('tolerates a UTF-8 BOM from Windows editors', () => {
     const result = parseImportJson(`\uFEFF${JSON.stringify(validBank)}`)
     expect(result.bank?.questions).toHaveLength(3)

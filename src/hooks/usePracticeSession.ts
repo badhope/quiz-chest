@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import type { Question } from '../data/types'
 import { useAppStore } from '../store/useAppStore'
 import { dateKey } from '../lib/datetime'
-import { isCorrect, type SessionMode } from '../lib/quiz'
+import { isAnswered, isCorrect, type SessionMode } from '../lib/quiz'
 import { useCountdown, useTimer } from './useTimer'
 
 const EMPTY_SELECTION: number[] = []
@@ -27,8 +27,10 @@ export interface PracticeSessionState {
   index: number
   total: number
   answers: Record<string, number[]>
+  textAnswers: Record<string, string>
   checked: Record<string, boolean>
   selection: number[]
+  textAnswer: string
   isChecked: boolean
   showAnalysis: boolean
   answeredCount: number
@@ -41,6 +43,7 @@ export interface PracticeSessionState {
   timeCritical: boolean
   isLast: boolean
   select: (optionIndex: number) => void
+  setTextAnswer: (value: string) => void
   submitQuestion: () => void
   goNext: () => void
   goPrev: () => void
@@ -97,6 +100,7 @@ export function usePracticeSession(options: PracticeSessionOptions): PracticeSes
   }, [pendingSession, mode, historyCollectionId, sessionQuestions])
 
   const [answers, setAnswers] = useState<Record<string, number[]>>(() => resumable?.answers ?? {})
+  const [textAnswers, setTextAnswers] = useState<Record<string, string>>(() => resumable?.textAnswers ?? {})
   const [checked, setChecked] = useState<Record<string, boolean>>(() => {
     const restored: Record<string, boolean> = {}
     for (const id of resumable?.checkedIds ?? []) restored[id] = true
@@ -132,11 +136,12 @@ export function usePracticeSession(options: PracticeSessionOptions): PracticeSes
 
   const current = sessionQuestions[index]
   const selection = current ? (answers[current.id] ?? EMPTY_SELECTION) : EMPTY_SELECTION
+  const textAnswer = current ? (textAnswers[current.id] ?? '') : ''
   const isChecked = current ? Boolean(checked[current.id]) : false
 
   const answeredCount = useMemo(
-    () => sessionQuestions.filter((question) => (answers[question.id] ?? []).length > 0).length,
-    [sessionQuestions, answers],
+    () => sessionQuestions.filter((question) => isAnswered(answers[question.id], textAnswers[question.id])).length,
+    [sessionQuestions, answers, textAnswers],
   )
   const reviewedCount = useMemo(
     () => sessionQuestions.filter((question) => checked[question.id]).length,
@@ -145,14 +150,14 @@ export function usePracticeSession(options: PracticeSessionOptions): PracticeSes
   const correctCount = useMemo(
     () =>
       sessionQuestions.filter(
-        (question) => checked[question.id] && isCorrect(question, answers[question.id] ?? []),
+        (question) => checked[question.id] && isCorrect(question, answers[question.id] ?? [], textAnswers[question.id]),
       ).length,
-    [sessionQuestions, checked, answers],
+    [sessionQuestions, checked, answers, textAnswers],
   )
 
   const select = useCallback(
     (optionIndex: number) => {
-      if (!current || checked[current.id]) return
+      if (!current || current.type === 'fill' || current.type === 'short' || checked[current.id]) return
       setAnswers((prev) => {
         const existing = prev[current.id] ?? EMPTY_SELECTION
         if (current.type === 'multiple') {
@@ -167,24 +172,34 @@ export function usePracticeSession(options: PracticeSessionOptions): PracticeSes
     [checked, current],
   )
 
+  const setTextAnswer = useCallback(
+    (value: string) => {
+      if (!current || checked[current.id]) return
+      setTextAnswers((prev) => ({ ...prev, [current.id]: value }))
+    },
+    [checked, current],
+  )
+
   const submitQuestion = useCallback(() => {
     if (!current) return
     const picked = answers[current.id] ?? EMPTY_SELECTION
-    if (picked.length === 0) return
+    const text = textAnswers[current.id] ?? ''
+    if (!isAnswered(picked, text)) return
     setChecked((prev) => ({ ...prev, [current.id]: true }))
     setShowAnalysis(true)
-    if (!isCorrect(current, picked)) {
+    if (!isCorrect(current, picked, text)) {
       recordWrong({
         questionId: current.id,
         collectionId: current.collectionId,
         lastSelection: picked,
+        ...(text.trim() ? { lastText: text.trim() } : {}),
       })
     } else if (mode === 'review') {
       // FSRS：答对只是把下次到期时间推后，不把卡片移出错题本。
       // 用户仍可在错题页手动「标记已掌握」。
       gradeCorrect(current.id)
     }
-  }, [answers, current, mode, recordWrong, gradeCorrect])
+  }, [answers, textAnswers, current, mode, recordWrong, gradeCorrect])
 
   const goNext = useCallback(() => {
     setIndex((value) => (value < sessionQuestions.length - 1 ? value + 1 : value))
@@ -209,10 +224,10 @@ export function usePracticeSession(options: PracticeSessionOptions): PracticeSes
 
   const jumpToUnanswered = useCallback(() => {
     const target = sessionQuestions.findIndex(
-      (question) => (answers[question.id] ?? EMPTY_SELECTION).length === 0,
+      (question) => !isAnswered(answers[question.id], textAnswers[question.id]),
     )
     if (target >= 0) goTo(target)
-  }, [sessionQuestions, answers, goTo])
+  }, [sessionQuestions, answers, textAnswers, goTo])
 
   /**
    * 交卷：只落一次记录。
@@ -235,15 +250,17 @@ export function usePracticeSession(options: PracticeSessionOptions): PracticeSes
 
     for (const question of sessionQuestions) {
       const picked = answers[question.id] ?? EMPTY_SELECTION
-      if (picked.length === 0) continue
+      const text = textAnswers[question.id] ?? ''
+      if (!isAnswered(picked, text)) continue
       answered += 1
-      if (isCorrect(question, picked)) {
+      if (isCorrect(question, picked, text)) {
         correct += 1
       } else if (!checked[question.id]) {
         recordWrong({
           questionId: question.id,
           collectionId: question.collectionId,
           lastSelection: picked,
+          ...(text.trim() ? { lastText: text.trim() } : {}),
         })
       }
     }
@@ -287,6 +304,7 @@ export function usePracticeSession(options: PracticeSessionOptions): PracticeSes
     sessionQuestions,
     answers,
     checked,
+    textAnswers,
     mode,
     historyCollectionId,
     historyTitle,
@@ -317,14 +335,14 @@ export function usePracticeSession(options: PracticeSessionOptions): PracticeSes
   useEffect(() => {
     if (!autoNext || mode !== 'practice') return undefined
     if (!current || !checked[current.id]) return undefined
-    if (!isCorrect(current, answers[current.id] ?? EMPTY_SELECTION)) return undefined
+    if (!isCorrect(current, answers[current.id] ?? EMPTY_SELECTION, textAnswers[current.id])) return undefined
     if (index >= sessionQuestions.length - 1) return undefined
     const timer = window.setTimeout(() => {
       setIndex((value) => value + 1)
       setShowAnalysis(false)
     }, 900)
     return () => window.clearTimeout(timer)
-  }, [autoNext, mode, current, checked, answers, index, sessionQuestions.length])
+  }, [autoNext, mode, current, checked, answers, textAnswers, index, sessionQuestions.length])
 
   // 自动保存进度：每次答案/核对状态/当前题变化都落库（防抖 400ms）。
   // 这是「切走再回来能继续」的唯一实现路径——组件卸载时不可靠地
@@ -333,7 +351,8 @@ export function usePracticeSession(options: PracticeSessionOptions): PracticeSes
     if (finishedRef.current) return undefined
     if (sessionQuestions.length === 0) return undefined
     // 一题没答且停在第 1 题：还没真正开始，不写库，免得首页误报「继续上次」。
-    if (Object.keys(answers).length === 0 && index === 0) return undefined
+    const hasTextProgress = Object.values(textAnswers).some((value) => value.trim().length > 0)
+    if (Object.keys(answers).length === 0 && !hasTextProgress && index === 0) return undefined
 
     autosaveTimer.current = window.setTimeout(() => {
       savePendingSession({
@@ -344,6 +363,7 @@ export function usePracticeSession(options: PracticeSessionOptions): PracticeSes
         domainId: historyDomainId,
         questionIds: sessionQuestions.map((question) => question.id),
         answers,
+        textAnswers,
         checkedIds: Object.keys(checked).filter((id) => checked[id]),
         index,
         startedAt: startedAt.current ?? Date.now(),
@@ -359,6 +379,7 @@ export function usePracticeSession(options: PracticeSessionOptions): PracticeSes
     }
   }, [
     answers,
+    textAnswers,
     checked,
     index,
     sessionQuestions,
@@ -382,8 +403,10 @@ export function usePracticeSession(options: PracticeSessionOptions): PracticeSes
     index,
     total: sessionQuestions.length,
     answers,
+    textAnswers,
     checked,
     selection,
+    textAnswer,
     isChecked,
     showAnalysis,
     answeredCount,
@@ -396,6 +419,7 @@ export function usePracticeSession(options: PracticeSessionOptions): PracticeSes
     timeCritical: hasTimeLimit && remainingSec <= 60,
     isLast: index === sessionQuestions.length - 1,
     select,
+    setTextAnswer,
     submitQuestion,
     goNext,
     goPrev,

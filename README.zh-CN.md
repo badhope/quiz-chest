@@ -37,9 +37,9 @@ Android 安装包与 SHA-256 见 [Releases](https://github.com/badhope/ti-xing-o
 
 | | |
 | --- | --- |
-| **导入格式够宽容** | Excel（`.xlsx`）、JSON、CSV、Word（`.docx`）、TXT、Markdown 与 `.tixing.json` 题库包；CSV 的 BOM、未加引号的 `B,D`、被逗号切开的 data URI 都做了兼容。文本模板按题号解析，缺答案会逐条提示。 |
+| **导入格式够宽容** | Excel（`.xlsx`）、JSON、CSV、Word（`.docx`）、TXT、Markdown 与 `.tixing.json` 题库包；CSV 的 BOM、未加引号的 `B,D`、被逗号切开的 data URI 都做了兼容。文本模板按题号解析，单选、多选、判断、填空、简答都能进来，缺答案会逐条提示。 |
 | **三条找题路径** | 跟目标路线走、按领域逐层钻取，或让策略按薄弱项配题。 |
-| **完整练习闭环** | 单选、多选、判断；顺序练习即时批改，考试模式倒计时并自动交卷，背题模式先看答案再翻页。 |
+| **完整练习闭环** | 单选、多选、判断、填空、简答；顺序练习即时批改，考试模式倒计时并自动交卷，背题模式先看答案再翻页。填空按预设答案判分，简答按关键词全命中判分——结果只说明词有没有写到，不冒充语义评分。 |
 | **错题不会答对一次就消失** | 答错自动进错题本，FSRS 安排下次复习，未来 7 天到期量一眼可见；可标「概念没懂 / 方法不会 / 粗心看错 / 时间不够」并写一句笔记。 |
 | **小星建议** | 首页直接告诉你今天先干什么：补薄弱领域、清到期错题，或保持节奏。 |
 | **问小星（可选）** | 接本机 Ollama / llama.cpp，只发当前题；默认关闭，超时或失败自动退回题库解析。 |
@@ -66,6 +66,10 @@ Android 安装包与 SHA-256 见 [Releases](https://github.com/badhope/ti-xing-o
 <td width="50%"><img src="docs/screenshots/study.webp" alt="背题模式"><br><sub><b>背题</b> — 先看答案，不判分、不写正确率</sub></td>
 <td width="50%"><img src="docs/screenshots/import.webp" alt="导入题库"><br><sub><b>导入</b> — Word/TXT/MD 模板或直接粘贴</sub></td>
 </tr>
+<tr>
+<td width="50%"><img src="docs/screenshots/collection.webp" alt="题库详情"><br><sub><b>题库详情</b> — 题型构成、背题与练习入口</sub></td>
+<td width="50%"><img src="docs/screenshots/practice-text.webp" alt="填空与简答"><br><sub><b>填空 / 简答</b> — 文本作答、关键词命中与参考答案</sub></td>
+</tr>
 </table>
 
 ## 手机上
@@ -84,6 +88,10 @@ Android 安装包与 SHA-256 见 [Releases](https://github.com/badhope/ti-xing-o
 <tr>
 <td width="50%"><img src="docs/screenshots/mobile-study.webp" alt="手机背题页"><br><sub><b>背题</b> — 答案解析与上一题/下一题同屏</sub></td>
 <td width="50%"><img src="docs/screenshots/mobile-import.webp" alt="手机导入页"><br><sub><b>导入</b> — 文件、模板、粘贴入口纵向排布</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/screenshots/mobile-practice-text.webp" alt="手机填空简答"><br><sub><b>文本题</b> — 关键词命中、参考答案与解析一屏读完</sub></td>
+<td width="50%"><img src="docs/screenshots/mobile-tutor.webp" alt="手机问小星"><br><sub><b>问小星</b> — 本机模型讲题，入口只在解析区</sub></td>
 </tr>
 </table>
 
@@ -131,9 +139,15 @@ title,stem,optionA,optionB,optionC,optionD,answer,explanation,type
 ```
 
 答案支持 `B`、`BC`、`B;D`、`B,D`、`B、D`、`B/D`，也支持从 1 开始的下标如 `1,3`。
-必填列只有 `stem`、`optionA`、`optionB`、`answer`、`explanation`。
+必填列只有 `stem`、`optionA`、`optionB`、`answer`、`explanation`。填空/简答把选项和 `answer` 留空，答案写 `answerText`，简答再写 `keywords`；示例：
 
-Word、TXT、Markdown 走另一套题号模板：`1. 题干`、`A. 选项`、`答案：B`、`解析：…`。导入页可以直接下载模板，也可以粘贴。`docx` 只读正文段落，不保留字体和表格样式；缺答案、选项不足或题干重复会逐条提示。
+```csv
+stem,optionA,optionB,optionC,optionD,answer,answerText,keywords,explanation,type,difficulty,tags
+光合作用的场所是？,,,,,,叶绿体,,叶绿体含有叶绿素,fill,2,光合作用
+光合作用需要哪些条件？,,,,,,光照和叶绿体,光照|叶绿体,光照供能，叶绿体完成反应,short,2,光合作用
+```
+
+Word、TXT、Markdown 走另一套题号模板：`1. 题干`、`A. 选项`、`答案：B`、`解析：…`。导入页可以直接下载模板，也可以粘贴。`docx` 只读正文段落，不保留字体和表格样式；填空题写 `【填空题】` 和 `答案：…`，简答题写 `【简答题】`、`参考答案：…`、`关键词：…`。缺答案、选项不足或题干重复会逐条提示。
 
 完整字段说明见 [docs/IMPORT_FORMAT.md](docs/IMPORT_FORMAT.md)。
 

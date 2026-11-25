@@ -5,7 +5,7 @@ const MAX_QUESTIONS = 2000
 const QUESTION_HEADERS = [
   'title', 'stem',
   'optionA', 'optionB', 'optionC', 'optionD', 'optionE', 'optionF',
-  'answer', 'explanation', 'type', 'difficulty', 'tags',
+  'answer', 'answerText', 'keywords', 'explanation', 'type', 'difficulty', 'tags',
 ] as const
 
 const QUESTION_START = /^\s*(?:第\s*)?(\d{1,4})\s*(?:题\s*)?[.、)．:：]\s*(.+)$/
@@ -16,7 +16,8 @@ const EXPLANATION_LINE = /^\s*(?:【)?(?:答案)?解析(?:】)?\s*[：:]\s*(.*)$
 const TAGS_LINE = /^\s*(?:【)?(?:标签|考点)(?:】)?\s*[：:]\s*(.+)$/
 const DIFFICULTY_LINE = /^\s*(?:【)?难度(?:】)?\s*[：:]\s*([123])\s*$/
 const TYPE_LINE = /^\s*(?:【)?题型(?:】)?\s*[：:]\s*(.+)$/
-const TYPE_PREFIX = /^[【（(]\s*(单选题?|多选题?|判断题?|选择|填空|简答)\s*[】\]）)]\s*/
+const KEYWORDS_LINE = /^\s*(?:【)?(?:判分)?关键词(?:】)?\s*[：:]\s*(.+)$/
+const TYPE_PREFIX = /^[【（(]\s*(单选题?|多选题?|判断题?|填空题?|简答题?|选择|填空|简答)\s*[】\]）)]\s*/
 
 interface TextQuestionBlock {
   line: number
@@ -26,6 +27,8 @@ interface TextQuestionBlock {
   answer: string
   explanation: string
   tags: string[]
+  keywords: string[]
+  reference?: boolean
   difficulty: 1 | 2 | 3
 }
 
@@ -34,6 +37,8 @@ function typeFromText(value: string): QuestionType | null {
   if (/^(单选|单选题|single|choice)$/.test(text)) return 'single'
   if (/^(多选|多选题|multiple)$/.test(text)) return 'multiple'
   if (/^(判断|判断题|judge|true.?false)$/.test(text)) return 'judge'
+  if (/^(填空|填空题|fill)$/.test(text)) return 'fill'
+  if (/^(简答|简答题|short)$/.test(text)) return 'short'
   return null
 }
 
@@ -51,13 +56,39 @@ function normalizeAnswer(raw: string, options: string[]): string {
 }
 
 function buildBlock(block: TextQuestionBlock, title: string, issues: ImportIssue[]): string[] | null {
+  const rawAnswer = block.answer.trim()
+  const judgeLike = block.options.length === 0 && /^(正确|对|是|√|true|t|错误|错|否|×|false|f)$/i.test(rawAnswer)
+  const isText = block.type === 'fill' || block.type === 'short' || (block.options.length === 0 && !judgeLike)
+  if (isText) {
+    const textType: QuestionType = block.type === 'short' || (!block.type && block.reference) ? 'short' : 'fill'
+    const answerText = rawAnswer.split(/[|｜]/).map((item) => item.trim()).filter(Boolean)
+    if (answerText.length === 0) {
+      issues.push({ line: block.line, field: 'answer', message: '填空题/简答题缺少参考答案' })
+      return null
+    }
+    if (textType === 'short' && block.keywords.length === 0) {
+      issues.push({ line: block.line, field: 'keywords', message: '简答题需要写「关键词：…」，否则无法判分' })
+      return null
+    }
+    return [
+      title,
+      block.stem,
+      '', '', '', '', '', '',
+      '',
+      answerText.join('|'),
+      textType === 'short' ? block.keywords.join('|') : '',
+      block.explanation || '文本导入时未提供解析。',
+      textType,
+      String(block.difficulty),
+      block.tags.join(';'),
+    ]
+  }
   const answer = normalizeAnswer(block.answer, block.options)
   if (!answer) {
     issues.push({ line: block.line, field: 'answer', message: '答案无法匹配到 A-F 选项，已跳过' })
     return null
   }
   let options = block.options
-  const rawAnswer = block.answer.trim()
   if (options.length === 0 && (/^[【（(]?判断/.test(block.stem) || /^(正确|对|错误|错|√|×|true|false|t|f)$/i.test(rawAnswer))) {
     options = ['正确', '错误']
   }
@@ -81,6 +112,7 @@ function buildBlock(block: TextQuestionBlock, title: string, issues: ImportIssue
     block.stem,
     ...padding,
     answer,
+    '', '',
     block.explanation || '文本导入时未提供解析。',
     inferredType,
     String(block.difficulty),
@@ -177,6 +209,7 @@ export function parseTextImport(raw: string, fileName = '粘贴内容.txt'): Par
         answer: '',
         explanation: '',
         tags: [],
+        keywords: [],
         difficulty: 2,
       }
       inExplanation = false
@@ -194,6 +227,20 @@ export function parseTextImport(raw: string, fileName = '粘贴内容.txt'): Par
       const letterIndex = option[1].toUpperCase().charCodeAt(0) - 65
       while (current.options.length < letterIndex) current.options.push('')
       current.options[letterIndex] = option[2].trim()
+      inExplanation = false
+      continue
+    }
+    const keywords = trimmed.match(KEYWORDS_LINE)
+    if (keywords) {
+      current.keywords = keywords[1].split(/[|｜]/).map((item) => item.trim()).filter(Boolean)
+      inExplanation = false
+      continue
+    }
+    const reference = trimmed.match(/^\s*(?:【)?参考答案(?:】)?\s*[：:]\s*(.+)$/)
+    if (reference) {
+      current.reference = true
+      if (!current.type) current.type = 'short'
+      current.answer = reference[1].trim()
       inExplanation = false
       continue
     }
@@ -282,4 +329,17 @@ D. 蝙蝠
 解析：猫、鲸、蝙蝠都是哺乳动物；鸡是鸟类。
 难度：2
 考点：动物分类
+
+3. 光合作用的场所是？【填空题】
+答案：叶绿体|叶绿体。
+解析：叶绿体含有叶绿素，是光合作用的场所。
+难度：2
+考点：光合作用
+
+4. 光合作用需要哪两个必要条件？【简答】
+参考答案：光照和叶绿体。
+关键词：光照|叶绿体
+解析：光合作用在光照下由叶绿体完成。
+难度：2
+考点：光合作用
 `

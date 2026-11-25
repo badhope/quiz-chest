@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { getQuestion } from '../data'
 import { useAppStore } from '../store/useAppStore'
 import { useLibraryCollections } from '../lib/library'
-import { LETTERS, typeLabel } from '../lib/quiz'
+import { answerLabel, LETTERS, typeLabel } from '../lib/quiz'
 import { compareByDue, dueCount, dueForecast, dueLabel, ERROR_REASON_LABELS } from '../lib/review'
 import { AsyncButton } from '../components/ui/AsyncButton'
 import { Badge, EmptyState } from '../components/ui/primitives'
@@ -154,6 +154,24 @@ export function WrongBookPage() {
               </button>
               {isOpen ? (
                 <div className="wrong-body">
+                  {question.type === 'fill' || question.type === 'short' ? (
+                    <div className="wrong-text-answer">
+                      <p>
+                        <span>你的作答</span>
+                        <strong>{entry.lastText?.trim() || '未记录文本答案'}</strong>
+                      </p>
+                      <p>
+                        <span>{question.type === 'short' ? '参考答案' : '正确答案'}</span>
+                        <strong>{answerLabel(question)}</strong>
+                      </p>
+                      {question.type === 'short' && question.keywords?.length ? (
+                        <p className="wrong-keywords">
+                          <span>判分关键词</span>
+                          <strong>{question.keywords.join('、')}</strong>
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : (
                   <div className="wrong-options">
                     {question.options.map((option, index) => (
                       <span
@@ -171,6 +189,7 @@ export function WrongBookPage() {
                       </span>
                     ))}
                   </div>
+                  )}
                   <WrongMetaEditor
                     entry={entry}
                     onChange={(patch) => updateWrongMeta(entry.questionId, patch)}

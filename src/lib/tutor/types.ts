@@ -31,6 +31,8 @@ export interface AskTutorInput {
   settings: TutorSettings | undefined
   question: Question
   selection: number[]
+  /** 填空/简答的文本作答；选择题为空。 */
+  textAnswer?: string
   mode: TutorMode
   followup?: string
   history?: TutorChatMessage[]

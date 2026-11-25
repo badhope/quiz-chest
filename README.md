@@ -46,9 +46,9 @@ These are bundled practice questions, not a hosted bank for sale. You can hide t
 
 | | |
 | --- | --- |
-| **Tolerant import** | Excel (`.xlsx`), JSON, CSV, Word (`.docx`), TXT, Markdown and `.tixing.json` packages. CSV handles BOMs, unquoted `B,D` answers and data URIs split by commas; text imports follow a numbered template and report skipped rows. |
+| **Tolerant import** | Excel (`.xlsx`), JSON, CSV, Word (`.docx`), TXT, Markdown and `.tixing.json` packages. CSV handles BOMs, unquoted `B,D` answers and data URIs split by commas; text imports follow a numbered template and handle single choice, multiple choice, true/false, fill-in and short answer, reporting skipped rows. |
 | **Three ways to find questions** | Follow a goal track, drill down by domain, or let the strategy pick from weak areas. |
-| **A complete practice loop** | Single choice, multiple choice and true/false. Instant feedback in practice mode; countdown and auto-submit in exam mode; study mode reveals answers first without polluting accuracy. |
+| **A complete practice loop** | Single choice, multiple choice, true/false, fill-in and short answer. Instant feedback in practice mode; countdown and auto-submit in exam mode; study mode reveals answers first without polluting accuracy. Fill-in answers are matched against configured alternatives; short answers require every grading keyword to appear, and the UI says so instead of pretending to be a semantic grader. |
 | **Mistakes do not vanish after one correct answer** | Wrong answers enter the wrong-book; FSRS schedules the next review, with a seven-day due forecast. Tag why you missed it (concept, method, carelessness, time) and keep a short note. |
 | **Local study coach** | The home screen says what to do today: weak domain, due mistakes, or keep the current pace. |
 | **Optional local tutor** | Connect Ollama / llama.cpp; only the current question is sent. Off by default, with fallback to the bundled explanation. |
@@ -75,6 +75,10 @@ The competitor matrix and the boundaries of what TiXing deliberately does not bu
 <td width="50%"><img src="docs/screenshots/study.webp" alt="Study mode"><br><sub><b>Study</b> — read answers first, no scoring or accuracy side effects</sub></td>
 <td width="50%"><img src="docs/screenshots/import.webp" alt="Import screen"><br><sub><b>Import</b> — Word/TXT/MD template or paste directly</sub></td>
 </tr>
+<tr>
+<td width="50%"><img src="docs/screenshots/collection.webp" alt="Question bank detail"><br><sub><b>Bank detail</b> — type mix, study and practice entry points</sub></td>
+<td width="50%"><img src="docs/screenshots/practice-text.webp" alt="Fill-in and short answer"><br><sub><b>Fill-in / short answer</b> — text input, keyword hit and reference answer</sub></td>
+</tr>
 </table>
 
 ## On a phone
@@ -93,6 +97,10 @@ The same build runs in a 320 px browser and in the Android shell. The layouts be
 <tr>
 <td width="50%"><img src="docs/screenshots/mobile-study.webp" alt="Mobile study mode"><br><sub><b>Study</b> — answer, explanation and navigation on one screen</sub></td>
 <td width="50%"><img src="docs/screenshots/mobile-import.webp" alt="Mobile import"><br><sub><b>Import</b> — file, template and paste stacked</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/screenshots/mobile-practice-text.webp" alt="Mobile text question"><br><sub><b>Text question</b> — keyword hit, reference answer and explanation on one screen</sub></td>
+<td width="50%"><img src="docs/screenshots/mobile-tutor.webp" alt="Mobile tutor"><br><sub><b>Tutor</b> — local model in the explanation area</sub></td>
 </tr>
 </table>
 
@@ -140,7 +148,9 @@ title,stem,optionA,optionB,optionC,optionD,answer,explanation,type
 ```
 
 Accepted answers: `B`, `BC`, `B;D`, `B,D`, `B、D`, `B/D`, or 1-based indexes like `1,3`.
-Only `stem`, `optionA`, `optionB`, `answer` and `explanation` are required.
+Only `stem`, `optionA`, `optionB`, `answer` and `explanation` are required. For fill-in and short-answer rows, leave the option cells and `answer` blank, put the reference answer in `answerText`, and add `keywords` for short answers.
+
+Text and Word imports use the numbered template. Mark a question with `【填空题】` and `答案：…`, or `【简答题】` with `参考答案：…` and `关键词：…`. Short answers are graded by requiring every keyword to appear; this is not a semantic score.
 
 Full field reference: [docs/IMPORT_FORMAT.md](docs/IMPORT_FORMAT.md).
 

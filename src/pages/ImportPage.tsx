@@ -318,6 +318,18 @@ export function ImportPage() {
 
   if (step === 'review' && result?.bank) {
     const blocking = result.issues.filter((issue) => !issue.message.includes('跳过'))
+    const currentBank = result.bank
+    const typeSummary = ([
+      ['single', '单选'] as const,
+      ['multiple', '多选'] as const,
+      ['judge', '判断'] as const,
+      ['fill', '填空'] as const,
+      ['short', '简答'] as const,
+    ])
+      .map(([type, short]) => ({ short, count: currentBank.questions.filter((q) => q.type === type).length }))
+      .filter((item) => item.count > 0)
+      .map((item) => `${item.short} ${item.count}`)
+      .join(' · ')
     return (
       <div className="import-page">
         <PageHeader
@@ -335,9 +347,7 @@ export function ImportPage() {
           <div className="import-summary-card">
             <span>题型分布</span>
             <strong className="mono">
-              单选 {result.bank.questions.filter((q) => q.type === 'single').length} · 多选{' '}
-              {result.bank.questions.filter((q) => q.type === 'multiple').length} · 判断{' '}
-              {result.bank.questions.filter((q) => q.type === 'judge').length}
+              {typeSummary}
             </strong>
           </div>
           <div className="import-summary-card">
@@ -497,7 +507,7 @@ export function ImportPage() {
         <div>
           <span className="eyebrow">文本模板</span>
           <strong>Word / TXT / Markdown 按题号写</strong>
-          <p>每道题以「1. 题干」开头，选项用 A-F，答案写「答案：B」，解析写「解析：…」。多选题答案写「A、B、D」。</p>
+          <p>每道题以「1. 题干」开头，选项用 A-F，答案写「答案：B」，解析写「解析：…」。多选题答案写「A、B、D」。填空题与简答题写「【填空题】」或「【简答题】」，用「参考答案：…」和「关键词：…」作答；简答题没有关键词会被跳过。</p>
         </div>
         <button className="button button-ghost button-sm" onClick={() => void downloadTemplate()}>
           <Download /> 下载模板

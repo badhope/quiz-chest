@@ -6,6 +6,43 @@
 版本号唯一来源是 `package.json`，由 `node scripts/sync-version.mjs set <version>`
 传播到 Tauri、Cargo 与 Android 构建清单。发布流程见 [docs/RELEASING.md](docs/RELEASING.md)。
 
+## [2.2.0] - 2026-11-25
+
+把题库题型从三种扩到五种。填空和简答不另起一套题，复用原来的题库、错题、练习记录和备份；旧数据不需要迁移。PDF/OCR 和模考计分不在这一版，仍按路线图单独做。
+
+### Added
+
+- `QuestionType` 增加 `fill` 与 `short`；`Question` 增加可选的 `answerText`、`keywords`，错题条目增加 `lastText`，续做会话增加 `textAnswers`
+- `src/lib/quiz.ts`：`normalizeAnswerText` 做 NFKC、大小写、空白与常见标点归一化；填空命中任一可接受答案，简答要求全部判分关键词出现；无关键词时保留参考答案全等回退
+- 练习链路：`QuestionCard` 为填空题渲染单行输入、为简答题渲染多行输入；`usePracticeSession` 的已答、判分、错题、自动保存、续做与交卷同时处理选项和文本
+- 文本题判分文案不冒充语义评分：简答显示「关键词全部命中 / 关键词没覆盖全」，答错时列出「这次没写到：…」；填空多答案时展示可接受答案
+- JSON / CSV 导入增加 `answerText`、`keywords`；文本模板增加 `【填空题】`、`【简答题】`、`参考答案：`、`关键词：`；简答题没有关键词会跳过并提示
+- 题库编辑器支持填空/简答：文本答案用 `|` 分隔多个可接受值，简答关键词同样用 `|` 分隔，保存前走同一套校验
+- 背题页、打印页、错题本、题库构成统计、导入结果统计与问小星协议同步识别文本题；错题 CSV 增加「最近作答」「错因」「笔记」列
+- 新增测试：填空、简答、归一化、JSON/文本导入、编辑器、错题 CSV、含文本题的备份往返；E2E 新增填空/简答导入到作答与错题、编辑器保留文本题答案与关键词
+
+### Changed
+
+- README 中英文、导入格式文档、竞品路线图、开发记录更新到 2.2.0
+- CSV 表头仍保留 `stem`、`optionA`、`optionB`、`answer`、`explanation` 五个基础列；文本题把选项与 `answer` 留空，避免旧 CSV 和旧工具链被破坏
+- 题库详情与导入结果的题型统计按实际存在的题型显示，题库里没有填空/简答时不额外占位
+
+### Known limits
+
+- 简答按关键词全命中判分，不理解否定、语序或同义表达；页面明确写的是关键词命中，不是老师评分
+- 无真机、无 KVM/adb；Android 仍只做 APK 资源级 E2E，截图来自浏览器渲染
+- PDF/OCR 与模考分数报告尚未开始
+
+### Validation
+
+- 全量单测 38 文件 / 253 项通过；statements 50.57% / branches 41.06% / functions 41.02% / lines 51.86%
+- Web / PWA E2E 37 项通过；新增两条文本题链路
+- APK 资源 E2E 5 项通过；新增一条「APK 内导入并作答填空题」
+- `pnpm lint`、`pnpm build` 通过；Web PWA precache 30 条 / 1576.76 KiB
+- APK 3,807,151 bytes；SHA-256 `fe26a49fa21007419eda27d5a3b08d758ecfdd1c4b445f507a249ec0cb29f8cc`；versionCode 2002000
+- AAB 3,662,626 bytes；SHA-256 `043e1b5acf835c7a3d5fa55008958ffdc1961afea32604285fd4da7e242f7c39`；签名校验通过
+- 无真机、无 KVM/adb；截图来自浏览器渲染，系统返回键、分享面板与状态栏仍未设备实测
+
 ## [2.1.0] - 2026-11-25
 
 把自有题库的闭环从「Excel / CSV / JSON 导入 + 做题」补到「Word / TXT / Markdown 导入 → 练习或背题 → 错题标错因、写笔记 → 看见未来 7 天复习量」。不是追考试宝的题型数量，也不引入题库交易、课程、排名或账号云同步。

@@ -28,6 +28,7 @@ export interface Session {
   collectionId: string
   questionIds: string[]
   answers: Record<string, number[]>
+  textAnswers?: Record<string, string>
   startedAt: number
   finishedAt: number | null
 }
@@ -46,15 +47,48 @@ export function normalizeSelection(selection: number[]): number[] {
   return [...new Set(selection)].sort((a, b) => a - b)
 }
 
-export function isCorrect(question: Question, selection: number[]): boolean {
+/** 文本题归一化：全半角、大小写、空白和常见标点不参与判分。 */
+export function normalizeAnswerText(value: string): string {
+  return value
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/[\s\u3000]+/g, '')
+    .replace(/[，。！？；：、,.!?;:""''“”‘’（）()【】《》<>…—-]/g, '')
+}
+
+/**
+ * 判分。选择题比较选项下标；填空题命中任一可接受答案；简答题要求
+ * 全部关键词出现。简答没有配置关键词时退回参考答案全等，导入时会提示。
+ */
+export function isCorrect(question: Question, selection: number[], textAnswer = ''): boolean {
+  if (question.type === 'fill') {
+    const submitted = normalizeAnswerText(textAnswer)
+    if (!submitted) return false
+    return (question.answerText ?? []).some((answer) => normalizeAnswerText(answer) === submitted)
+  }
+  if (question.type === 'short') {
+    const submitted = normalizeAnswerText(textAnswer)
+    if (!submitted) return false
+    const keywords = (question.keywords ?? []).map(normalizeAnswerText).filter(Boolean)
+    if (keywords.length > 0) return keywords.every((keyword) => submitted.includes(keyword))
+    return (question.answerText ?? []).some((answer) => normalizeAnswerText(answer) === submitted)
+  }
   const picked = normalizeSelection(selection)
   const expected = normalizeSelection(question.answer)
   if (picked.length !== expected.length) return false
   return picked.every((value, index) => value === expected[index])
 }
 
-export function isAnswered(selection: number[] | undefined): boolean {
-  return Array.isArray(selection) && selection.length > 0
+export function isAnswered(selection: number[] | undefined, textAnswer = ''): boolean {
+  return (Array.isArray(selection) && selection.length > 0) || textAnswer.trim().length > 0
+}
+
+/** 答案的展示文本：选择题输出字母，文本题输出参考答案。 */
+export function answerLabel(question: Question): string {
+  if (question.type === 'fill' || question.type === 'short') {
+    return (question.answerText ?? []).join(' / ')
+  }
+  return question.answer.map((value) => LETTERS[value] ?? String(value + 1)).join('、')
 }
 
 export function typeLabel(type: QuestionType): string {
@@ -65,6 +99,10 @@ export function typeLabel(type: QuestionType): string {
       return '多选题'
     case 'judge':
       return '判断题'
+    case 'fill':
+      return '填空题'
+    case 'short':
+      return '简答题'
   }
 }
 
@@ -81,6 +119,7 @@ export function createSession(params: {
     collectionId: params.collectionId,
     questionIds: params.questionIds,
     answers: {},
+    textAnswers: {},
     startedAt: now,
     finishedAt: null,
   }
@@ -95,9 +134,10 @@ export function summarizeSession(
   let answered = 0
   for (const question of questions) {
     const selection = session.answers[question.id]
-    if (!isAnswered(selection)) continue
+    const textAnswer = session.textAnswers?.[question.id]
+    if (!isAnswered(selection, textAnswer)) continue
     answered += 1
-    if (isCorrect(question, selection)) correct += 1
+    if (isCorrect(question, selection, textAnswer)) correct += 1
   }
   const total = questions.length
   const end = session.finishedAt ?? now

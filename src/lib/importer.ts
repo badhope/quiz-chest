@@ -19,6 +19,10 @@ export interface ImportQuestionInput {
   stem: string
   options: string[]
   answer: number[]
+  /** 填空/简答的答案文本；选择题不填。 */
+  answerText?: string[]
+  /** 简答题判分关键词。 */
+  keywords?: string[]
   explanation: string
   difficulty: Difficulty
   tags: string[]
@@ -38,7 +42,7 @@ export interface ParseResult {
   questionCount: number
 }
 
-const QUESTION_TYPES: QuestionType[] = ['single', 'multiple', 'judge']
+const QUESTION_TYPES: QuestionType[] = ['single', 'multiple', 'judge', 'fill', 'short']
 const LEVELS = ['入门', '进阶', '挑战'] as const
 const ACCENTS = [
   '#315B7D', '#B45309', '#6E4B8A', '#1F7A5C', '#3E4C59', '#9A3B32', '#7A5C2E',
@@ -47,7 +51,7 @@ const ACCENTS = [
 /** CSV 可识别的列。`title` 用于给整份 CSV 命名，避免全部落成「未命名题库」。 */
 const HEADERS = [
   'title', 'stem', 'optionA', 'optionB', 'optionC', 'optionD', 'optionE', 'optionF',
-  'answer', 'explanation', 'type', 'difficulty', 'tags',
+  'answer', 'answerText', 'keywords', 'explanation', 'type', 'difficulty', 'tags',
   // 配图列：image 是题干图（URL 或 data URI），optionImageA..F 是选项图。
   'image', 'optionImageA', 'optionImageB', 'optionImageC', 'optionImageD',
   'optionImageE', 'optionImageF',
@@ -154,36 +158,62 @@ export function buildQuestionSeed(
   return seedFromRow(row, line, issues)
 }
 
+function asStringList(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map(asString).filter(Boolean)
+  return asString(value).split(/[|｜]/).map((item) => item.trim()).filter(Boolean)
+}
+
 function seedFromRow(row: Record<string, unknown>, line: number, issues: ImportIssue[]): ImportQuestionInput | null {
   const stem = asString(row.stem)
   if (!stem) {
     issues.push({ line, field: 'stem', message: '缺少题干' })
     return null
   }
-  const options: string[] = []
-  for (const key of OPTION_KEYS) {
-    const value = asString(Object.prototype.hasOwnProperty.call(row, key) ? row[key] : undefined)
-    if (value) options.push(value)
-  }
-  if (options.length < 2) {
-    issues.push({ line, field: 'options', message: '选项少于 2 个' })
-    return null
-  }
   const typeRaw = asString(row.type).toLowerCase() || 'single'
   if (!QUESTION_TYPES.includes(typeRaw as QuestionType)) {
-    issues.push({ line, field: 'type', message: `题型 ${row.type as string} 不合法（single/multiple/judge）` })
+    issues.push({ line, field: 'type', message: `题型 ${row.type as string} 不合法（single/multiple/judge/fill/short）` })
     return null
   }
   const type = typeRaw as QuestionType
-  const answer = parseAnswer(row.answer, options.length, line, issues)
-  if (answer.length === 0) return null
-  if (type !== 'multiple' && answer.length > 1) {
-    issues.push({ line, field: 'answer', message: `${type} 题型只能有一个答案` })
-    return null
+  const isText = type === 'fill' || type === 'short'
+  const options: string[] = []
+  if (!isText) {
+    for (const key of OPTION_KEYS) {
+      const value = asString(Object.prototype.hasOwnProperty.call(row, key) ? row[key] : undefined)
+      if (value) options.push(value)
+    }
+    if (options.length < 2) {
+      issues.push({ line, field: 'options', message: '选项少于 2 个' })
+      return null
+    }
   }
-  if (type === 'judge' && options.length !== 2) {
-    issues.push({ line, field: 'options', message: '判断题必须恰好 2 个选项' })
-    return null
+  let answer: number[] = []
+  let answerText: string[] = []
+  let keywords: string[] = []
+  if (isText) {
+    answerText = asStringList(row.answerText).map((item) => item.slice(0, 500))
+    if (answerText.length === 0) {
+      issues.push({ line, field: 'answerText', message: '填空题需要 answerText，简答题需要参考答案' })
+      return null
+    }
+    if (type === 'short') {
+      keywords = asStringList(row.keywords).map((item) => item.slice(0, 80))
+      if (keywords.length === 0) {
+        issues.push({ line, field: 'keywords', message: '简答题至少需要一个判分关键词，避免无法判分' })
+        return null
+      }
+    }
+  } else {
+    answer = parseAnswer(row.answer, options.length, line, issues)
+    if (answer.length === 0) return null
+    if (type !== 'multiple' && answer.length > 1) {
+      issues.push({ line, field: 'answer', message: `${type} 题型只能有一个答案` })
+      return null
+    }
+    if (type === 'judge' && options.length !== 2) {
+      issues.push({ line, field: 'options', message: '判断题必须恰好 2 个选项' })
+      return null
+    }
   }
   const explanation = asString(row.explanation)
   if (explanation.length < 4) {
@@ -211,6 +241,7 @@ function seedFromRow(row: Record<string, unknown>, line: number, issues: ImportI
     stem,
     options,
     answer,
+    ...(isText ? { answerText, keywords: type === 'short' ? keywords : undefined } : {}),
     explanation,
     difficulty,
     tags,

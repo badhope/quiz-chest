@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import * as Dialog from '@radix-ui/react-dialog'
 import type { Question } from '../../data/types'
-import { LETTERS, type SessionMode } from '../../lib/quiz'
+import { answerLabel, type SessionMode, typeLabel } from '../../lib/quiz'
 import {
   askTutor,
   normalizeTutorSettings,
@@ -17,12 +17,9 @@ interface TutorDialogProps {
   onOpenChange: (next: boolean) => void
   question: Question
   selection: number[]
+  textAnswer?: string
   mode: SessionMode
   isChecked: boolean
-}
-
-function answerLabel(answer: number[]): string {
-  return answer.map((value) => LETTERS[value] ?? String(value + 1)).join('、')
 }
 
 /**
@@ -39,6 +36,7 @@ export function TutorDialog({
   onOpenChange,
   question,
   selection,
+  textAnswer = '',
   mode,
   isChecked,
 }: TutorDialogProps) {
@@ -63,6 +61,7 @@ export function TutorDialog({
       settings: tutor,
       question,
       selection,
+      textAnswer,
       mode: 'explain',
       history: [],
       signal: controller.signal,
@@ -105,6 +104,7 @@ export function TutorDialog({
       settings: tutor,
       question,
       selection,
+      textAnswer,
       mode: nextMode,
       followup: text,
       history,
@@ -180,8 +180,8 @@ export function TutorDialog({
             <span className="tutor-context-label">当前题</span>
             <p>{question.stem}</p>
             <div className="tutor-context-meta">
-              <span>{question.type === 'multiple' ? '多选题' : question.type === 'judge' ? '判断题' : '单选题'}</span>
-              <span>正确答案 {answerLabel(question.answer)}</span>
+              <span>{typeLabel(question.type)}</span>
+              <span>{question.type === 'fill' ? '正确答案' : question.type === 'short' ? '参考答案' : '正确答案'} {answerLabel(question)}</span>
               {isChecked ? <span>{mode === 'exam' ? '考试中' : '已判分'}</span> : null}
             </div>
           </div>

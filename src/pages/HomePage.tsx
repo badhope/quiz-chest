@@ -189,7 +189,7 @@ export function HomePage() {
               <span className="continue-text">
                 <strong>继续「{pendingSession.collectionTitle}」</strong>
                 <small>
-                  已完成 {Object.keys(pendingSession.answers).length} /{' '}
+                  已完成 {pendingSession.questionIds.filter((id) => (pendingSession.answers[id]?.length ?? 0) > 0 || Boolean(pendingSession.textAnswers?.[id]?.trim())).length} /{' '}
                   {pendingSession.questionIds.length} 题 · 中途退出也不会丢
                 </small>
               </span>

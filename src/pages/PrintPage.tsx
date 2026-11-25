@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import type { Question } from '../data/types'
-import { LETTERS, typeLabel } from '../lib/quiz'
+import { answerLabel, LETTERS, typeLabel } from '../lib/quiz'
 import { EmptyState } from '../components/ui/primitives'
 import { ArrowLeft, Layers, Printer } from '../components/ui/icons'
 
@@ -75,33 +75,47 @@ export function PrintPage() {
         </header>
 
         <ol className="print-questions">
-          {questions.map((question, index) => (
+          {questions.map((question, index) => {
+            const isText = question.type === 'fill' || question.type === 'short'
+            return (
             <li key={question.id} className="print-question">
               <div className="print-stem">
                 <span className="print-index mono">{index + 1}.</span>
                 <span>
                   {question.stem}
                   <span className="print-type">
-                    （{typeLabel(question.type)}，{question.options.length} 个选项）
+                    （{typeLabel(question.type)}{isText ? '' : `，${question.options.length} 个选项`}）
                   </span>
                 </span>
               </div>
-              <div className="print-options">
-                {question.options.map((option, optionIndex) => (
-                  <div key={optionIndex} className="print-option">
-                    <span className="print-letter mono">{LETTERS[optionIndex]}.</span>
-                    <span>{option}</span>
-                  </div>
-                ))}
-              </div>
+              {isText ? (
+                <div className={`print-text-space${question.type === 'short' ? ' short' : ''}`}>
+                  {question.type === 'short' ? '作答：' : '答案：'}
+                </div>
+              ) : (
+                <div className="print-options">
+                  {question.options.map((option, optionIndex) => (
+                    <div key={optionIndex} className="print-option">
+                      <span className="print-letter mono">{LETTERS[optionIndex]}.</span>
+                      <span>{option}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
               {withAnswers ? (
                 <div className="print-answer">
-                  <strong>答案：{question.answer.map((value) => LETTERS[value]).join('、')}</strong>
+                  <strong>
+                    {question.type === 'short' ? '参考答案' : '答案'}：{answerLabel(question)}
+                  </strong>
+                  {question.type === 'short' && question.keywords?.length ? (
+                    <p>判分关键词：{question.keywords.join('、')}</p>
+                  ) : null}
                   {question.explanation ? <p>{question.explanation}</p> : null}
                 </div>
               ) : null}
             </li>
-          ))}
+            )
+          })}
         </ol>
 
         <footer className="print-foot">

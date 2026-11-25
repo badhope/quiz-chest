@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import type { LibraryCollection } from '../lib/library'
 import { useLibraryCollections } from '../lib/library'
-import { LETTERS, typeLabel } from '../lib/quiz'
+import { answerLabel, LETTERS, typeLabel } from '../lib/quiz'
 import { useAppStore } from '../store/useAppStore'
 import { Badge, ProgressBar } from '../components/ui/primitives'
 import { MissingPage } from '../components/ui/MissingPage'
@@ -98,10 +98,10 @@ function StudyRunner({ collection }: { collection: LibraryCollection }) {
     setIndex(0)
     setRevealed(false)
   }
-  const answerText = question.answer
-    .map((optionIndex) => question.options[optionIndex])
-    .filter(Boolean)
-    .join(' / ')
+  const isText = question.type === 'fill' || question.type === 'short'
+  const answerText = isText
+    ? answerLabel(question)
+    : question.answer.map((optionIndex) => question.options[optionIndex]).filter(Boolean).join(' / ')
 
   return (
     <div className="study-page">
@@ -140,6 +140,16 @@ function StudyRunner({ collection }: { collection: LibraryCollection }) {
             <img className="study-figure" src={question.image} alt="题干配图" />
           ) : null}
 
+          {isText ? (
+            <div className="study-text-question">
+              <span className="mono">{question.type === 'fill' ? '填空题' : '简答题'}</span>
+              <p>
+                {revealed
+                  ? '答案在下方，对照参考答案回忆一遍。'
+                  : '这是一道文本题，先在心里作答，再点「显示答案」。'}
+              </p>
+            </div>
+          ) : (
           <div className="study-options">
             {question.options.map((option, optionIndex) => (
               <div
@@ -154,6 +164,7 @@ function StudyRunner({ collection }: { collection: LibraryCollection }) {
               </div>
             ))}
           </div>
+          )}
 
           <div className="study-reveal-row">
             <button
@@ -168,11 +179,18 @@ function StudyRunner({ collection }: { collection: LibraryCollection }) {
             >
               {favoriteIds.includes(question.id) ? '已收藏' : '收藏这道题'}
             </button>
-            {revealed ? <span className="study-answer-label">正确答案：{answerText || '见解析'}</span> : null}
+            {revealed ? (
+              <span className="study-answer-label">
+                {question.type === 'short' ? '参考答案' : '正确答案'}：{answerText || '见解析'}
+              </span>
+            ) : null}
           </div>
 
           {revealed ? (
             <section className="study-answer" aria-live="polite">
+              {question.type === 'short' && question.keywords?.length ? (
+                <p className="study-keywords">判分关键词：{question.keywords.join('、')}</p>
+              ) : null}
               <h3>解析</h3>
               <p>{question.explanation}</p>
             </section>
