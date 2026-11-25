@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { readStores as readStoresFromPage } from './helpers'
 import { buildXlsx } from './xlsxFixture'
+import { strToU8, zipSync } from 'fflate'
 
 /**
  * 关键路径 E2E。
@@ -17,7 +18,7 @@ E2E 题库,下列哪些是偶数,1,2,3,4,B;D,能被 2 整除的是偶数,multipl
 async function importCsv(page: Page, csv = CSV, title = 'E2E 题库') {
   await page.goto('/import')
   await expect(page.getByRole('heading', { name: '把你自己的题目带进来' })).toBeVisible()
-  await page.getByRole('textbox', { name: '粘贴 JSON 内容' }).fill(csv)
+  await page.getByRole('textbox', { name: '粘贴题库内容' }).fill(csv)
   await page.getByRole('button', { name: /校验并预览/ }).click()
   await expect(page.getByRole('heading', { name: title })).toBeVisible()
   // 同名题库会先出现覆盖/新建选择；默认「覆盖原题库」即可。
@@ -329,7 +330,7 @@ test('带配图的题目能导入并渲染图片', async ({ page }) => {
 图解题库,下图显示了什么,圆形,方形,A,图中是一个圆点,single,${png}`
 
   await page.goto('/import')
-  await page.getByRole('textbox', { name: '粘贴 JSON 内容' }).fill(csv)
+  await page.getByRole('textbox', { name: '粘贴题库内容' }).fill(csv)
   await page.getByRole('button', { name: /校验并预览/ }).click()
   await page.getByRole('button', { name: /确认导入 1 题/ }).click()
   await expect(page.getByRole('heading', { name: /已导入 1 题/ })).toBeVisible()
@@ -422,4 +423,126 @@ test('分享题库生成加密包，重新导入时必须输入口令', async ({
   await page.getByLabel('分享口令').fill(password)
   await page.getByRole('button', { name: /解密并预览/ }).click()
   await expect(page.getByRole('heading', { name: 'E2E 题库' })).toBeVisible()
+})
+
+const TEXT_BANK = `# E2E 文本题库
+
+1. 一年有多少个月？
+A. 10
+B. 11
+C. 12
+D. 13
+答案：C
+解析：一年十二个月，这是常识。
+
+2. 下列哪些是偶数？
+A. 1
+B. 2
+C. 3
+D. 4
+答案：B、D
+解析：能被 2 整除的是偶数。
+`
+
+async function importText(page: Page, text = TEXT_BANK, title = 'E2E 文本题库') {
+  await page.goto('/import')
+  await page.getByRole('textbox', { name: '粘贴题库内容' }).fill(text)
+  await page.getByRole('button', { name: /校验并预览/ }).click()
+  await expect(page.getByRole('heading', { name: title })).toBeVisible()
+  await page.getByRole('button', { name: /确认导入 2 题/ }).click()
+  await expect(page.getByRole('heading', { name: /已导入 2 题/ })).toBeVisible()
+}
+
+test('题号文本导入 Word/TXT 模板并落库', async ({ page }) => {
+  await importText(page)
+  const stores = await readStores(page)
+  const bank = stores.banks.find((item) => item.title === 'E2E 文本题库')
+  expect(bank?.questions).toHaveLength(2)
+  expect(bank?.questions[0].type).toBe('single')
+  expect(bank?.questions[1].type).toBe('multiple')
+  expect(bank?.questions[1].answer).toEqual([1, 3])
+})
+
+test('Word 文档解出题号模板并落库', async ({ page }) => {
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+<w:p><w:r><w:t># E2E Word 题库</w:t></w:r></w:p>
+<w:p><w:r><w:t>1. 一年有多少个月？</w:t></w:r></w:p>
+<w:p><w:r><w:t>A. 10</w:t></w:r></w:p>
+<w:p><w:r><w:t>B. 11</w:t></w:r></w:p>
+<w:p><w:r><w:t>C. 12</w:t></w:r></w:p>
+<w:p><w:r><w:t>D. 13</w:t></w:r></w:p>
+<w:p><w:r><w:t>答案：C</w:t></w:r></w:p>
+<w:p><w:r><w:t>解析：一年十二个月，这是常识。</w:t></w:r></w:p>
+<w:p><w:r><w:t>2. 下列哪些是偶数？【多选】</w:t></w:r></w:p>
+<w:p><w:r><w:t>A. 1</w:t></w:r></w:p>
+<w:p><w:r><w:t>B. 2</w:t></w:r></w:p>
+<w:p><w:r><w:t>C. 3</w:t></w:r></w:p>
+<w:p><w:r><w:t>D. 4</w:t></w:r></w:p>
+<w:p><w:r><w:t>答案：B、D</w:t></w:r></w:p>
+<w:p><w:r><w:t>解析：能被 2 整除的是偶数。</w:t></w:r></w:p>
+</w:body></w:document>`
+  const buffer = Buffer.from(zipSync({ 'word/document.xml': strToU8(xml) }))
+  await page.goto('/import')
+  await page.setInputFiles('input[type="file"]', {
+    name: 'E2E Word 题库.docx',
+    mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    buffer,
+  })
+  await expect(page.getByRole('heading', { name: 'E2E Word 题库' })).toBeVisible()
+  await page.getByRole('button', { name: /确认导入 2 题/ }).click()
+  await expect(page.getByRole('heading', { name: /已导入 2 题/ })).toBeVisible()
+  const stores = await readStores(page)
+  const bank = stores.banks.find((item) => item.title === 'E2E Word 题库')
+  expect(bank?.questions).toHaveLength(2)
+  expect(bank?.questions[1].answer).toEqual([1, 3])
+})
+
+test('背题模式显示答案但不写入正确率和历史', async ({ page }) => {
+  await importCsv(page, CSV, 'E2E 题库')
+  await openBank(page)
+  await page.getByRole('link', { name: /背题模式/ }).click()
+  await expect(page.locator('.study-stem')).toContainText('一年有多少个月')
+  await page.getByRole('button', { name: '显示答案' }).click()
+  await expect(page.getByText(/正确答案：12/)).toBeVisible()
+  await expect(page.getByText('一年十二个月')).toBeVisible()
+  await expect(page.getByText(/已看 1 \/ 2 题/)).toBeVisible()
+
+  const stores = await readStores(page)
+  expect(stores.history).toHaveLength(0)
+  expect(stores.wrong).toHaveLength(0)
+})
+
+test('错题可标错因和保存笔记，刷新后仍在', async ({ page }) => {
+  await importCsv(page, CSV, 'E2E 题库')
+  await openBank(page)
+  await page.getByRole('link', { name: /顺序练习/ }).click()
+  await page.getByRole('button', { name: /^A 10$/ }).click()
+  await page.getByRole('button', { name: /确认答案/ }).click()
+  await page.getByRole('button', { name: /下一题/ }).click()
+  await page.getByRole('button', { name: /^B 2$/ }).click()
+  await page.getByRole('button', { name: /^D 4$/ }).click()
+  await page.getByRole('button', { name: /确认答案/ }).click()
+  await page.getByRole('button', { name: '交卷' }).click()
+  await page.getByRole('button', { name: '提交并查看结果' }).click()
+  await expect(page.getByText(/最近一次记录已保存/)).toBeVisible()
+
+  await page.goto('/review?tab=wrong')
+  await page.locator('.wrong-head').first().click()
+  await page.getByRole('button', { name: /概念没懂/ }).click()
+  const note = page.getByPlaceholder(/记一句/)
+  await note.fill('把年份记成 11 个月了')
+  await page.getByRole('button', { name: '保存笔记' }).click()
+
+  await expect.poll(async () => {
+    const stores = await readStores(page)
+    return stores.wrong[0]?.reason
+  }).toBe('concept')
+  const saved = await readStores(page)
+  expect(saved.wrong[0]?.note).toBe('把年份记成 11 个月了')
+
+  await page.reload()
+  await page.goto('/review?tab=wrong')
+  await page.locator('.wrong-head').first().click()
+  await expect(page.locator('.wrong-note textarea')).toHaveValue('把年份记成 11 个月了')
 })

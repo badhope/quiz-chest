@@ -6,6 +6,7 @@ import type {
   HistoryEntry,
   ImportedBank,
   BankSnapshot,
+  ErrorReason,
   PaperRecord,
   PendingSession,
   WrongEntry,
@@ -57,7 +58,9 @@ interface AppState {
   toggleFavorite: (questionId: string) => void
   /** 破坏性清空：先落库成功再清内存，失败返回 false。 */
   clearFavorites: () => Promise<boolean>
-  recordWrong: (entry: Omit<WrongEntry, 'wrongCount' | 'lastWrongAt' | 'fsrs'>) => void
+  recordWrong: (entry: Omit<WrongEntry, 'wrongCount' | 'lastWrongAt' | 'fsrs' | 'reason' | 'note'>) => void
+  /** 手动标注错因/笔记；reason 传 null 表示清除。 */
+  updateWrongMeta: (questionId: string, patch: { reason?: ErrorReason | null; note?: string }) => void
   /** 复习答对：按 FSRS 延后到期时间，不直接把题移出错题本。 */
   gradeCorrect: (questionId: string) => void
   removeWrong: (questionId: string) => void
@@ -250,6 +253,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     const existing = get().wrongBook[entry.questionId]
     const now = Date.now()
     const next: WrongEntry = {
+      ...existing,
       ...entry,
       wrongCount: (existing?.wrongCount ?? 0) + 1,
       lastWrongAt: now,
@@ -260,6 +264,22 @@ export const useAppStore = create<AppState>()((set, get) => ({
       wrongBook: { ...state.wrongBook, [entry.questionId]: next },
     }))
     persist((repo) => repo.recordWrong(next), { retryKey: `wrong:${next.questionId}` })
+  },
+  updateWrongMeta: (questionId, patch) => {
+    const existing = get().wrongBook[questionId]
+    if (!existing) return
+    const next: WrongEntry = { ...existing }
+    if ('reason' in patch) {
+      if (patch.reason) next.reason = patch.reason
+      else delete next.reason
+    }
+    if ('note' in patch) {
+      const note = patch.note?.trim()
+      if (note) next.note = note.slice(0, 200)
+      else delete next.note
+    }
+    set((state) => ({ wrongBook: { ...state.wrongBook, [questionId]: next } }))
+    persist((repo) => repo.recordWrong(next), { retryKey: `wrong:${questionId}` })
   },
   gradeCorrect: (questionId) => {
     const existing = get().wrongBook[questionId]

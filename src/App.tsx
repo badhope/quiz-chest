@@ -35,6 +35,7 @@ export function App() {
           <Route path="strategy/:kind" element={<StrategyPage />} />
           <Route path="practice-plan/:kind" element={<PlanPracticePage />} />
           <Route path="collection/:collectionId" element={<CollectionPage />} />
+          <Route path="study/:collectionId" element={<StudyPage />} />
           <Route path="practice/:collectionId" element={<PracticePage />} />
           <Route path="result/:collectionId" element={<ResultPage />} />
           <Route path="review" element={<ShelfPage />} />
@@ -51,6 +52,8 @@ export function App() {
     </Router>
   )
 }
+
+const StudyPage = lazy(() => import('./pages/StudyPage').then((module) => ({ default: module.StudyPage })))
 
 const ImportPage = lazy(() => import('./pages/ImportPage').then((module) => ({ default: module.ImportPage })))
 

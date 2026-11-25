@@ -31,7 +31,7 @@ test('APK 资源可启动：首页渲染，移动端底部导航可见', async (
 test('导入题库并跨刷新持久化（IndexedDB）', async ({ page }) => {
   await page.goto('/#/import')
   await expect(page.getByRole('heading', { name: '把你自己的题目带进来' })).toBeVisible()
-  await page.getByRole('textbox', { name: '粘贴 JSON 内容' }).fill(CSV)
+  await page.getByRole('textbox', { name: '粘贴题库内容' }).fill(CSV)
   await page.getByRole('button', { name: /校验并预览/ }).click()
   await page.getByRole('button', { name: /确认导入 \d+ 题/ }).click()
   await expect(page.getByRole('heading', { name: /已导入 \d+ 题/ })).toBeVisible()
@@ -50,7 +50,7 @@ test('导入题库并跨刷新持久化（IndexedDB）', async ({ page }) => {
 
 test('答题答错进错题本，交卷生成记录', async ({ page }) => {
   await page.goto('/#/import')
-  await page.getByRole('textbox', { name: '粘贴 JSON 内容' }).fill(CSV)
+  await page.getByRole('textbox', { name: '粘贴题库内容' }).fill(CSV)
   await page.getByRole('button', { name: /校验并预览/ }).click()
   await page.getByRole('button', { name: /确认导入 \d+ 题/ }).click()
   await expect(page.getByRole('heading', { name: /已导入 \d+ 题/ })).toBeVisible()

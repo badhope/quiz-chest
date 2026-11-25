@@ -2,7 +2,7 @@
 
 A local-first question-bank workbench that runs without a network.
 
-Bring your own Excel, CSV or JSON files, then practise, run timed exams, review mistakes,
+Bring your own Excel, CSV, JSON, Word, TXT or Markdown files, then practise, study, run timed exams, review mistakes,
 build printable papers and move a full backup between devices. No account, no hosted bank,
 no telemetry.
 
@@ -46,10 +46,10 @@ These are bundled practice questions, not a hosted bank for sale. You can hide t
 
 | | |
 | --- | --- |
-| **Tolerant import** | Excel (`.xlsx`), JSON, CSV and `.tixing.json` packages. CSV handles BOMs, unquoted `B,D` answers and data URIs split by commas. |
+| **Tolerant import** | Excel (`.xlsx`), JSON, CSV, Word (`.docx`), TXT, Markdown and `.tixing.json` packages. CSV handles BOMs, unquoted `B,D` answers and data URIs split by commas; text imports follow a numbered template and report skipped rows. |
 | **Three ways to find questions** | Follow a goal track, drill down by domain, or let the strategy pick from weak areas. |
-| **A complete practice loop** | Single choice, multiple choice and true/false. Instant feedback in practice mode; countdown and auto-submit in exam mode. |
-| **Mistakes do not vanish after one correct answer** | Wrong answers enter the wrong-book; FSRS schedules the next review. Due questions come first. |
+| **A complete practice loop** | Single choice, multiple choice and true/false. Instant feedback in practice mode; countdown and auto-submit in exam mode; study mode reveals answers first without polluting accuracy. |
+| **Mistakes do not vanish after one correct answer** | Wrong answers enter the wrong-book; FSRS schedules the next review, with a seven-day due forecast. Tag why you missed it (concept, method, carelessness, time) and keep a short note. |
 | **Local study coach** | The home screen says what to do today: weak domain, due mistakes, or keep the current pace. |
 | **Optional local tutor** | Connect Ollama / llama.cpp; only the current question is sent. Off by default, with fallback to the bundled explanation. |
 | **Edit and roll back** | Edit stems, options, answers and explanations in place. Every save archives the previous version; the last 20 revisions are kept. |
@@ -57,6 +57,8 @@ These are bundled practice questions, not a hosted bank for sale. You can hide t
 | **Stays fast on big banks** | Inverted search index plus progressive card rendering, so a few thousand cards do not hit the DOM at once. |
 | **Print a real paper** | A4 layout with name/score fields and optional answers; navigation hides when printing. |
 | **One codebase, three shells** | Web/PWA, desktop (Tauri 2) and Android (Capacitor 8) share the same data model. |
+
+The competitor matrix and the boundaries of what TiXing deliberately does not build are in [docs/COMPETITORS.md](docs/COMPETITORS.md).
 
 ## Screens
 
@@ -68,6 +70,10 @@ These are bundled practice questions, not a hosted bank for sale. You can hide t
 <tr>
 <td width="50%"><img src="docs/screenshots/stats.webp" alt="Learning statistics"><br><sub><b>Statistics</b> — volume, accuracy trend, domain split</sub></td>
 <td width="50%"><img src="docs/screenshots/settings.webp" alt="Settings and backup"><br><sub><b>Settings</b> — backup, restore and preferences</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/screenshots/study.webp" alt="Study mode"><br><sub><b>Study</b> — read answers first, no scoring or accuracy side effects</sub></td>
+<td width="50%"><img src="docs/screenshots/import.webp" alt="Import screen"><br><sub><b>Import</b> — Word/TXT/MD template or paste directly</sub></td>
 </tr>
 </table>
 
@@ -83,6 +89,10 @@ The same build runs in a 320 px browser and in the Android shell. The layouts be
 <tr>
 <td width="50%"><img src="docs/screenshots/mobile-practice.webp" alt="Mobile practice"><br><sub><b>Practice</b> — single-line header, sticky answer bar</sub></td>
 <td width="50%"><img src="docs/screenshots/mobile-settings.webp" alt="Mobile settings"><br><sub><b>Settings</b> — stacked rows, native share for backup</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/screenshots/mobile-study.webp" alt="Mobile study mode"><br><sub><b>Study</b> — answer, explanation and navigation on one screen</sub></td>
+<td width="50%"><img src="docs/screenshots/mobile-import.webp" alt="Mobile import"><br><sub><b>Import</b> — file, template and paste stacked</sub></td>
 </tr>
 </table>
 

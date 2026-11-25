@@ -95,3 +95,48 @@ export function isMastered(state: ReviewState): boolean {
 }
 
 export { State }
+
+export const ERROR_REASON_LABELS: Record<'concept' | 'method' | 'careless' | 'time', string> = {
+  concept: '概念没懂',
+  method: '方法不会',
+  careless: '粗心看错',
+  time: '时间不够',
+}
+
+export interface DueForecastDay {
+  dateKey: string
+  label: string
+  count: number
+  overdue: boolean
+}
+
+/**
+ * 未来 N 天的到期分布。今天之前到期的统一压在「今天」，否则用户会被
+ * 十几条已逾期记录吓到，反而不知道今天该做什么。
+ */
+export function dueForecast(
+  entries: { fsrs?: { due?: number } }[],
+  days = 7,
+  now = Date.now(),
+): DueForecastDay[] {
+  const today = new Date(now)
+  today.setHours(0, 0, 0, 0)
+  const start = today.getTime()
+  const week = ['日', '一', '二', '三', '四', '五', '六']
+  const buckets = Array.from({ length: days }, (_, index) => {
+    const date = new Date(start)
+    date.setDate(date.getDate() + index)
+    return {
+      dateKey: `${date.getMonth() + 1}/${date.getDate()}`,
+      label: index === 0 ? '今天' : index === 1 ? '明天' : `周${week[date.getDay()]}`,
+      count: 0,
+      overdue: index === 0,
+    } satisfies DueForecastDay
+  })
+  for (const entry of entries) {
+    const due = entry.fsrs?.due ?? 0
+    const offset = Math.max(0, Math.floor((due - start) / 86_400_000))
+    if (offset < days) buckets[offset].count += 1
+  }
+  return buckets
+}

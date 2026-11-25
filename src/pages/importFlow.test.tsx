@@ -56,7 +56,7 @@ describe('导入页落库边界', () => {
       </MemoryRouter>,
     )
 
-    fireEvent.change(screen.getByLabelText('粘贴 JSON 内容'), { target: { value: sample } })
+    fireEvent.change(screen.getByLabelText('粘贴题库内容'), { target: { value: sample } })
     fireEvent.click(screen.getByRole('button', { name: /校验并预览/ }))
     fireEvent.click(await screen.findByRole('button', { name: /确认导入/ }))
 

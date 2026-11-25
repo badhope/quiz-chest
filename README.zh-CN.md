@@ -2,7 +2,7 @@
 
 一个不联网也能把题库跑起来的本地工作台。
 
-导入自己的 Excel、CSV 或 JSON，练题、限时考试、错题复习、组卷打印、备份迁移，数据全部留在设备上。
+导入自己的 Excel、CSV、JSON，或按题号模板贴入 Word / TXT / Markdown，练题、背题、限时考试、错题复习、组卷打印、备份迁移，数据全部留在设备上。
 题小星不卖题库、不做账号、不接云端，首页那个「小星建议」也是本地算出来的。
 
 [English](README.md) · [简体中文](README.zh-CN.md)
@@ -37,10 +37,10 @@ Android 安装包与 SHA-256 见 [Releases](https://github.com/badhope/ti-xing-o
 
 | | |
 | --- | --- |
-| **导入格式够宽容** | Excel（`.xlsx`）、JSON、CSV 与 `.tixing.json` 题库包；CSV 的 BOM、未加引号的 `B,D`、被逗号切开的 data URI 都做了兼容。 |
+| **导入格式够宽容** | Excel（`.xlsx`）、JSON、CSV、Word（`.docx`）、TXT、Markdown 与 `.tixing.json` 题库包；CSV 的 BOM、未加引号的 `B,D`、被逗号切开的 data URI 都做了兼容。文本模板按题号解析，缺答案会逐条提示。 |
 | **三条找题路径** | 跟目标路线走、按领域逐层钻取，或让策略按薄弱项配题。 |
-| **完整练习闭环** | 单选、多选、判断；练习模式即时批改，考试模式倒计时并自动交卷。 |
-| **错题不会答对一次就消失** | 答错自动进错题本，FSRS 安排下次复习；到期题优先排，答对多次后再标记掌握。 |
+| **完整练习闭环** | 单选、多选、判断；顺序练习即时批改，考试模式倒计时并自动交卷，背题模式先看答案再翻页。 |
+| **错题不会答对一次就消失** | 答错自动进错题本，FSRS 安排下次复习，未来 7 天到期量一眼可见；可标「概念没懂 / 方法不会 / 粗心看错 / 时间不够」并写一句笔记。 |
 | **小星建议** | 首页直接告诉你今天先干什么：补薄弱领域、清到期错题，或保持节奏。 |
 | **问小星（可选）** | 接本机 Ollama / llama.cpp，只发当前题；默认关闭，超时或失败自动退回题库解析。 |
 | **题库能改、能回滚** | 题干、选项、答案、解析就地编辑；每次保存前存档，最多保留 20 个历史版本。 |
@@ -48,6 +48,8 @@ Android 安装包与 SHA-256 见 [Releases](https://github.com/badhope/ti-xing-o
 | **大题库不卡** | 搜索走倒排索引，题库卡片渐进渲染，不会一次挂几千张卡到 DOM。 |
 | **能印出真正的卷子** | A4 版式、姓名/得分栏、可选答案解析，打印时自动隐藏导航。 |
 | **三端一套代码** | Web/PWA、桌面（Tauri 2）、Android（Capacitor 8），共用同一套数据模型。 |
+
+竞品拆解、能力矩阵和「不抄什么」的边界，见 [docs/COMPETITORS.md](docs/COMPETITORS.md)。
 
 ## 界面
 
@@ -60,11 +62,15 @@ Android 安装包与 SHA-256 见 [Releases](https://github.com/badhope/ti-xing-o
 <td width="50%"><img src="docs/screenshots/stats.webp" alt="学习统计"><br><sub><b>学习统计</b> — 作答量、正确率走势、领域分布</sub></td>
 <td width="50%"><img src="docs/screenshots/settings.webp" alt="设置与备份"><br><sub><b>设置与备份</b> — 完整备份、恢复与偏好设置</sub></td>
 </tr>
+<tr>
+<td width="50%"><img src="docs/screenshots/study.webp" alt="背题模式"><br><sub><b>背题</b> — 先看答案，不判分、不写正确率</sub></td>
+<td width="50%"><img src="docs/screenshots/import.webp" alt="导入题库"><br><sub><b>导入</b> — Word/TXT/MD 模板或直接粘贴</sub></td>
+</tr>
 </table>
 
 ## 手机上
 
-同一份构建可以直接跑在 320px 浏览器和 Android 壳里。下面是 390×844、触控模式下的实拍，不是把桌面截图缩小。
+同一份构建可以直接跑在 320px 浏览器和 Android 壳里。下面是 390×844、触控视口下的实际渲染，不是把桌面截图缩小。
 
 <table>
 <tr>
@@ -74,6 +80,10 @@ Android 安装包与 SHA-256 见 [Releases](https://github.com/badhope/ti-xing-o
 <tr>
 <td width="50%"><img src="docs/screenshots/mobile-practice.webp" alt="手机答题页"><br><sub><b>答题</b> — 顶栏单行，底部吸附操作条</sub></td>
 <td width="50%"><img src="docs/screenshots/mobile-settings.webp" alt="手机设置页"><br><sub><b>设置</b> — 设置行纵向排布，备份走系统分享</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/screenshots/mobile-study.webp" alt="手机背题页"><br><sub><b>背题</b> — 答案解析与上一题/下一题同屏</sub></td>
+<td width="50%"><img src="docs/screenshots/mobile-import.webp" alt="手机导入页"><br><sub><b>导入</b> — 文件、模板、粘贴入口纵向排布</sub></td>
 </tr>
 </table>
 
@@ -122,6 +132,8 @@ title,stem,optionA,optionB,optionC,optionD,answer,explanation,type
 
 答案支持 `B`、`BC`、`B;D`、`B,D`、`B、D`、`B/D`，也支持从 1 开始的下标如 `1,3`。
 必填列只有 `stem`、`optionA`、`optionB`、`answer`、`explanation`。
+
+Word、TXT、Markdown 走另一套题号模板：`1. 题干`、`A. 选项`、`答案：B`、`解析：…`。导入页可以直接下载模板，也可以粘贴。`docx` 只读正文段落，不保留字体和表格样式；缺答案、选项不足或题干重复会逐条提示。
 
 完整字段说明见 [docs/IMPORT_FORMAT.md](docs/IMPORT_FORMAT.md)。
 

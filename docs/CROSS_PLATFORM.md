@@ -218,11 +218,24 @@ cd android
   集成 llama.cpp / MNN 的 AAR；当前没有内置推理 SDK。
 - 浏览器/桌面端仍由本机服务的 CORS 决定；应用不会代理，也不会把题目发到公网。
 
-验证分两层：`pnpm test:e2e` 的 31 项浏览器测试（含 11 项手机专项与 3 项本地 AI 专项）覆盖
+验证分两层：`pnpm test:e2e` 的 35 项浏览器测试（含 11 项手机专项与 3 项本地 AI 专项）覆盖
 320/390 视口、44px 热区、答题卡遮罩、交卷框定位、搜索缩视口、模拟刘海、导入
 MIME 与手机导出；`pnpm build:apk:release` + `pnpm verify:apk` 负责 Android 编译、
 资源和签名。真机上的系统分享面板、硬件返回键、状态栏图标仍需要在目标机型上抽测，
 浏览器 E2E 不能替代这一层。
+
+2.1.0 验证记录：
+
+| 检查项 | 结果 |
+| --- | --- |
+| 全量单测 | 38 文件 / 246 项通过；statements 49.98% / branches 41.1% / functions 40.72% / lines 51.33% |
+| Web / PWA E2E | 35 项通过；含文本粘贴、Word 文档、背题、错因笔记刷新四条新增用例 |
+| APK 资源 E2E | 4 项通过；加载 APK 内 `assets/public`，覆盖启动、IndexedDB 持久化、错题与设置页 |
+| Lint / typecheck / Web build | 通过；PWA precache 30 条（1565.04 KiB） |
+| Rust | 未重跑；沿用 2.0.3 的环境限制记录（缺少 GTK/WebKit 开发库链接 symlink） |
+| APK | 3,803,559 bytes；SHA-256 `add9903d13f3e49445899a660741757e428372798498c0384c71114cba55e0cc`；versionCode 2001000 |
+| AAB | 3,659,044 bytes；SHA-256 `41c78d74fb917dd64f3368c293fa8c07b109573b0ff0e30bc05311072621525f`；签名校验通过 |
+| 真机 | 无 KVM、无 adb 设备；截图与 E2E 均来自浏览器，不是真机截图 |
 
 2.0.4 验证记录：
 

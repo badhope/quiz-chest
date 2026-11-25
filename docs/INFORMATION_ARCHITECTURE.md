@@ -94,5 +94,5 @@
 
 - 主路由在 320×568 与 390×844 下 `documentElement.scrollWidth` 等于视口宽度；题库页只允许 `.tree-nav` 内部横向滚动。
 - 顶栏、底栏、弹层共用 `--safe-top/right/bottom/left`，由 Capacitor `SystemBars` 注入，浏览器回退 `env()`。
-- 底部导航按当前路由归属高亮：`/collection`、`/edit`、`/compose`、`/print` 归「题库」；`/goals`、`/goal` 归「策略」；`/result` 归「档案」；「设置」只匹配 `/settings`。
+- 底部导航按当前路由归属高亮：`/collection`、`/study`、`/edit`、`/compose`、`/print` 归「题库」；`/goals`、`/goal` 归「策略」；`/result` 归「档案」；「设置」只匹配 `/settings`。
 - 交卷确认框、搜索面板和分享面板都在 `position: fixed` 层内重新定位，不能依赖桌面端的相对定位。

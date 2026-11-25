@@ -6,6 +6,41 @@
 版本号唯一来源是 `package.json`，由 `node scripts/sync-version.mjs set <version>`
 传播到 Tauri、Cargo 与 Android 构建清单。发布流程见 [docs/RELEASING.md](docs/RELEASING.md)。
 
+## [2.1.0] - 2026-11-25
+
+把自有题库的闭环从「Excel / CSV / JSON 导入 + 做题」补到「Word / TXT / Markdown 导入 → 练习或背题 → 错题标错因、写笔记 → 看见未来 7 天复习量」。不是追考试宝的题型数量，也不引入题库交易、课程、排名或账号云同步。
+
+### Added
+
+- `src/lib/docxText.ts`：只解压 `.docx` 的 `word/document.xml`，抽正文段落、tab 与换行；限制解压后大小，不引入 mammoth
+- `src/lib/textImport.ts`：题号模板解析，支持单选、多选、判断，`答案：A、D`、判断题自动补「正确/错误」、缺解析占位、重复题干跳过、单次 2000 题上限
+- 导入页支持 `.docx` / `.txt` / `.md` 文件、文本模板下载与直接粘贴；`detectFormat` 与内容识别同步扩展
+- `src/pages/StudyPage.tsx` 与 `/study/:collectionId`：背题模式，显示/收起答案、上一题/下一题、打乱、收藏、键盘左右/空格/Enter；不判分、不写历史、不写错题、不占 FSRS
+- 错题本新增四类错因（概念没懂 / 方法不对 / 粗心 / 时间不够）与 200 字题目笔记，`useAppStore.updateWrongMeta` 即时落库
+- 错题本新增未来 7 天 FSRS 到期预测，逾期题归入今天；`dueForecast` 与 `ERROR_REASON_LABELS` 可复用
+- `docs/COMPETITORS.md`：考试宝 / 粉笔 / Anki / Quizlet 能力矩阵、2.1.0 取舍与 P1-P3 缺口
+- `textImport.test.ts` 6 项、`review.test.ts` 3 项；E2E 新增文本导入、Word 文档导入、背题模式、错因与笔记持久化
+
+### Changed
+
+- `ImportFormat` 扩展为 `json | csv | xlsx | docx | text`；导入页文案从「粘贴 JSON」改为「粘贴题库内容」
+- 题库详情增加「背题模式」入口；底部导航将 `/study` 归入「题库」
+- 备份 schema 的错题条目接受可选 `reason` / `note`，旧备份仍可读；备份测试断言元信息可往返
+- README 中英文、导入格式文档、信息架构与桌面/手机截图更新到 2.1.0
+
+### Fixed
+
+- `.docx` 文件虽然能抽出文本，却在确认阶段被 `detectFormat` 当成不支持格式拒绝；`runParse` 现在接受文本覆盖格式，Word 导入真正走通
+- 粘贴文本时内部文件名使用 `.text` 后缀，导致 `detectFormat` 返回空并报「仅支持」；改为生成 `.txt` 名称
+- `recordWrong` 用 `...entry` 覆盖旧错题条目，会把已有 `reason` / `note` 抹掉；改为 `...existing, ...entry`
+- E2E 错因用例误用 Testing Library 的 `getByDisplayValue`，改为 Playwright 的 textarea `toHaveValue`
+
+### Validation
+
+- `pnpm lint`、`pnpm build` 通过；Web PWA precache 30 条，约 1565.04 KiB
+- 全量单测 38 文件 / 246 项通过；Web E2E 35 项通过；新增 4 条 E2E（文本粘贴、Word 文档、背题、错因笔记刷新）
+- 无真机、无 KVM/adb；Android 仍只做资源级 E2E，不能写成真机验证
+
 ## [2.0.4] - 2026-11-25
 
 内置题库从“能打开”补到“能直接练”。不是把题量数字堆高，而是把重复题、同一句换个说法再问一遍的填充题清掉，再把每个题库补到至少 20 道可连续练习的题。

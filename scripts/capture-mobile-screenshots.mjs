@@ -34,12 +34,24 @@ await shot('mobile-catalog')
 const firstCollection = page.locator('.tree-collection').first()
 const href = await firstCollection.getAttribute('href')
 if (href) {
+  await page.goto(`${base}${href.replace('/collection/', '/study/')}`, { waitUntil: 'networkidle' })
+  await page.waitForSelector('.study-page')
+  await page.getByRole('button', { name: '显示答案' }).click()
+  await page.waitForSelector('.study-answer')
+  await page.evaluate(() => window.scrollBy(0, 260))
+  await page.waitForTimeout(250)
+  await page.screenshot({ path: `${out}/mobile-study.png` })
+
   await page.goto(`${base}${href.replace('/collection/', '/practice/')}?mode=practice`, {
     waitUntil: 'networkidle',
   })
   await page.waitForSelector('.question-card')
   await shot('mobile-practice')
 }
+
+await page.goto(`${base}/import`, { waitUntil: 'networkidle' })
+await page.waitForSelector('.import-page')
+await shot('mobile-import')
 
 await page.goto(`${base}/settings`, { waitUntil: 'networkidle' })
 await page.waitForSelector('.settings-page')

@@ -157,6 +157,8 @@ describe('helpers', () => {
     expect(detectFormat('bank.json')).toBe('json')
     expect(detectFormat('bank.CSV')).toBe('csv')
     expect(detectFormat('bank.xlsx')).toBe('xlsx')
+    expect(detectFormat('bank.docx')).toBe('docx')
+    expect(detectFormat('bank.txt')).toBe('text')
     expect(detectFormat('题库.XLS')).toBe(null)
   })
 

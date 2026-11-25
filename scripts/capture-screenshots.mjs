@@ -1,4 +1,4 @@
-// 重新生成 README 里的五张界面图。
+// 重新生成 README 里的界面图。
 // 需要本机浏览器与 Playwright 环境；默认用 Playwright 自带 Chromium，
 // CI 或容器里可用 PLAYWRIGHT_CHROMIUM_PATH 指定已安装的 Chromium。
 import { chromium } from '@playwright/test'
@@ -31,6 +31,12 @@ if (href) {
   await page.waitForSelector('.collection-page')
   await page.screenshot({ path: `${out}/collection.png` })
 
+  await page.goto(`${base}${href.replace('/collection/', '/study/')}`, { waitUntil: 'networkidle' })
+  await page.waitForSelector('.study-page')
+  await page.getByRole('button', { name: '显示答案' }).click()
+  await page.waitForSelector('.study-answer')
+  await page.screenshot({ path: `${out}/study.png` })
+
   await page.goto(`${base}${href.replace('/collection/', '/practice/')}?mode=practice`, {
     waitUntil: 'networkidle',
   })
@@ -60,6 +66,10 @@ if (href) {
     await page.waitForTimeout(150)
   }
 }
+
+await page.goto(`${base}/import`, { waitUntil: 'networkidle' })
+await page.waitForSelector('.import-page')
+await page.screenshot({ path: `${out}/import.png` })
 
 await page.goto(`${base}/records?tab=stats`, { waitUntil: 'networkidle' })
 await page.waitForSelector('.stats-page')
