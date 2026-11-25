@@ -576,3 +576,42 @@
     display: block;
   }
 }
+
+@media (max-width: 560px) {
+  .import-template {
+    flex-wrap: wrap;
+  }
+
+  .import-template .button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 700px) {
+  .wrong-forecast {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .wrong-forecast-list {
+    overflow-x: auto;
+  }
+
+  .wrong-day {
+    flex: 0 0 56px;
+  }
+
+  .wrong-meta-editor {
+    padding: 10px;
+  }
+
+  .wrong-note-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .wrong-note-actions .button {
+    width: 100%;
+  }
+}

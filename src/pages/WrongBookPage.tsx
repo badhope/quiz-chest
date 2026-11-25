@@ -4,17 +4,18 @@ import { getQuestion } from '../data'
 import { useAppStore } from '../store/useAppStore'
 import { useLibraryCollections } from '../lib/library'
 import { LETTERS, typeLabel } from '../lib/quiz'
-import { compareByDue, dueCount, dueLabel } from '../lib/review'
+import { compareByDue, dueCount, dueForecast, dueLabel, ERROR_REASON_LABELS } from '../lib/review'
 import { AsyncButton } from '../components/ui/AsyncButton'
 import { Badge, EmptyState } from '../components/ui/primitives'
 import { PageHeader } from '../components/ui/sections'
-import { ArrowRight, Bookmark, Target, RotateCcw, Trash2 } from '../components/ui/icons'
+import { ArrowRight, Bookmark, Check, CircleAlert, Target, RotateCcw, Trash2 } from '../components/ui/icons'
 import { DomainIcon } from '../components/ui/icons'
 
 export function WrongBookPage() {
   const wrongBook = useAppStore((state) => state.wrongBook)
   const favorites = useAppStore((state) => state.favorites)
   const removeWrong = useAppStore((state) => state.removeWrong)
+  const updateWrongMeta = useAppStore((state) => state.updateWrongMeta)
   const clearWrongBook = useAppStore((state) => state.clearWrongBook)
   const toggleFavorite = useAppStore((state) => state.toggleFavorite)
   const library = useLibraryCollections()
@@ -37,6 +38,8 @@ export function WrongBookPage() {
       return sort === 'count' ? b.wrongCount - a.wrongCount : b.lastWrongAt - a.lastWrongAt
     })
   }, [wrongBook, sort, collectionFilter])
+
+  const forecast = useMemo(() => dueForecast(entries), [entries])
 
   if (entries.length === 0) {
     return (
@@ -61,7 +64,7 @@ export function WrongBookPage() {
       <PageHeader
         eyebrow="错题本"
         title={`${entries.length} 道题等待复习`}
-        subtitle={`今天到期 ${dueCount(entries)} 道，按 FSRS 记忆曲线安排复习；标记掌握后自动移出。`}
+        subtitle={`今天到期 ${dueCount(entries)} 道，按 FSRS 记忆曲线安排复习；标记掌握后自动移出。给错题标错因、写一句笔记，复习时先想起自己为什么错。`}
         actions={
           <div className="page-head-actions">
           <label className="wrong-filter">
@@ -104,6 +107,22 @@ export function WrongBookPage() {
         }
       />
 
+      <section className="wrong-forecast" aria-label="未来七天复习到期">
+        <div className="wrong-forecast-head">
+          <span className="eyebrow">未来 7 天到期</span>
+          <strong>今天先处理 {forecast[0]?.count ?? 0} 道</strong>
+        </div>
+        <div className="wrong-forecast-list">
+          {forecast.map((day) => (
+            <div key={day.dateKey} className={`wrong-day${day.count === 0 ? ' empty' : ''}${day.overdue && day.count > 0 ? ' overdue' : ''}`}>
+              <strong className="mono">{day.count}</strong>
+              <span>{day.label}</span>
+              <small className="mono">{day.dateKey}</small>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {entries.length === 0 ? (
         <EmptyState
           icon={<Target />}
@@ -127,6 +146,7 @@ export function WrongBookPage() {
                 <span className="wrong-stem">{question.stem}</span>
                 <span className="wrong-meta">
                   <Badge tone="neutral">{typeLabel(question.type)}</Badge>
+                  {entry.reason ? <Badge tone="gold" outline>{ERROR_REASON_LABELS[entry.reason]}</Badge> : null}
                   <Badge tone={dueLabel(entry) === '今天到期' ? 'gold' : 'neutral'}>
                     {dueLabel(entry)}
                   </Badge>
@@ -151,6 +171,10 @@ export function WrongBookPage() {
                       </span>
                     ))}
                   </div>
+                  <WrongMetaEditor
+                    entry={entry}
+                    onChange={(patch) => updateWrongMeta(entry.questionId, patch)}
+                  />
                   <div className="wrong-analysis">
                     <h4>解析</h4>
                     <p>{question.explanation}</p>
@@ -187,6 +211,64 @@ export function WrongBookPage() {
         <Link to="/catalog" className="button button-primary button-sm">
           继续练习 <ArrowRight />
         </Link>
+      </div>
+    </div>
+  )
+}
+
+
+function WrongMetaEditor({
+  entry,
+  onChange,
+}: {
+  entry: { reason?: keyof typeof ERROR_REASON_LABELS; note?: string }
+  onChange: (patch: { reason?: keyof typeof ERROR_REASON_LABELS | null; note?: string }) => void
+}) {
+  const [note, setNote] = useState(entry.note ?? '')
+  const [saved, setSaved] = useState(false)
+  const reasons = Object.entries(ERROR_REASON_LABELS) as Array<[keyof typeof ERROR_REASON_LABELS, string]>
+  return (
+    <div className="wrong-meta-editor">
+      <div className="wrong-reasons">
+        <span className="wrong-meta-label">错因</span>
+        {reasons.map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            className={`wrong-reason${entry.reason === key ? ' active' : ''}`}
+            onClick={() => onChange({ reason: entry.reason === key ? null : key })}
+          >
+            {entry.reason === key ? <Check /> : <CircleAlert />}
+            {label}
+          </button>
+        ))}
+      </div>
+      <label className="wrong-note">
+        <span className="wrong-meta-label">我的笔记</span>
+        <textarea
+          rows={2}
+          maxLength={200}
+          value={note}
+          onChange={(event) => {
+            setNote(event.target.value)
+            setSaved(false)
+          }}
+          placeholder="记一句：是公式记错了、题干看漏了，还是时间不够？"
+        />
+      </label>
+      <div className="wrong-note-actions">
+        <button
+          type="button"
+          className="button button-ghost button-sm"
+          onClick={() => {
+            onChange({ note })
+            setSaved(true)
+          }}
+          disabled={note === (entry.note ?? '')}
+        >
+          保存笔记
+        </button>
+        <span role="status">{saved ? '笔记已保存到本机。' : '只保存在本机，随全量备份恢复。'}</span>
       </div>
     </div>
   )

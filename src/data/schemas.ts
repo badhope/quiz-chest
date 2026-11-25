@@ -62,6 +62,8 @@ export const WrongSchema = v.object({
   lastWrongAt: v.number(),
   lastSelection: v.array(v.number()),
   fsrs: v.optional(ReviewSchema),
+  reason: v.optional(v.picklist(['concept', 'method', 'careless', 'time'])),
+  note: v.optional(v.string()),
 })
 
 export const HistorySchema = v.object({

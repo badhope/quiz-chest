@@ -16,6 +16,7 @@ import { sessionModeLabel } from '../lib/quiz'
 import {
   ArrowLeft,
   Bookmark,
+  BookOpen,
   ChevronRight,
   Clock,
   Flame,
@@ -152,6 +153,13 @@ export function CollectionPage() {
             >
               <Zap />
               顺序练习
+            </Link>
+            <Link
+              to={`/study/${collection.id}`}
+              className="button button-ghost"
+            >
+              <BookOpen />
+              背题模式
             </Link>
             <Link
               to={`/practice/${collection.id}?mode=exam`}

@@ -13,10 +13,13 @@ import {
 } from '../lib/importer'
 import { looksLikeExportPackage, parseExportPackage } from '../lib/exporter'
 import { decryptBankPackage, isEncryptedBankPackage } from '../lib/securePackage'
+import { extractDocxText } from '../lib/docxText'
+import { parseTextImport, TEXT_IMPORT_TEMPLATE } from '../lib/textImport'
+import { downloadText } from '../lib/download'
 import { parseWorkbookFile } from '../services/xlsxImport'
 import { Badge, EmptyState } from '../components/ui/primitives'
 import { PageHeader, SectionHeader } from '../components/ui/sections'
-import { ArrowRight, BookOpen, CircleCheck, CircleX, Library, Upload } from '../components/ui/icons'
+import { ArrowRight, BookOpen, CircleCheck, CircleX, Download, Library, Upload } from '../components/ui/icons'
 
 type Step = 'input' | 'unlock' | 'review' | 'done'
 
@@ -54,9 +57,10 @@ export function ImportPage() {
   const [unlocking, setUnlocking] = useState(false)
   const [domainId, setDomainId] = useState('')
   const [trackName, setTrackName] = useState('')
+  const [templateMessage, setTemplateMessage] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const runParse = (text: string, name: string) => {
+  const runParse = (text: string, name: string, formatOverride?: 'text') => {
     setError('')
     setResult(null)
     setOverwriteBankId(null)
@@ -97,16 +101,20 @@ export function ImportPage() {
       setError(pkg.error)
       return
     }
-    const format = detectFormat(name)
-    if (!format) {
-      setError('仅支持 .xlsx / .csv / .json 文件或题小星题库包（.tixing.json）')
+    const format = formatOverride ?? detectFormat(name)
+    if (!format || format === 'docx') {
+      setError('仅支持 .xlsx / .csv / .json / .docx / .txt / .md 文件或题小星题库包（.tixing.json）')
       return
     }
     if (text.trim().length === 0) {
       setError('文件内容为空')
       return
     }
-    const parsed = format === 'json' ? parseImportJson(text) : parseImportCsv(text)
+    const parsed = format === 'json'
+      ? parseImportJson(text)
+      : format === 'text'
+        ? parseTextImport(text, name)
+        : parseImportCsv(text)
     setResult(parsed)
     if (parsed.bank) {
       setStep('review')
@@ -119,7 +127,22 @@ export function ImportPage() {
       setError(`文件过大（${formatBytes(file.size)}），单次导入上限 ${formatBytes(MAX_IMPORT_BYTES)}。请拆分后分批导入。`)
       return
     }
-    // Excel 与文本走不同的读取路径：xlsx 是 zip 容器，必须按 ArrayBuffer 解。
+    // Excel / Word 与纯文本走不同的读取路径：xlsx、docx 都是 zip 容器，必须按 ArrayBuffer 解。
+    if (detectFormat(file.name) === 'docx') {
+      const reader = new FileReader()
+      reader.onload = () => {
+        try {
+          const text = extractDocxText(reader.result as ArrayBuffer)
+          setRawText(`（Word 文件：${file.name}）`)
+          runParse(text, file.name, 'text')
+        } catch (error) {
+          setError(`Word 解析失败：${error instanceof Error ? error.message : String(error)}`)
+        }
+      }
+      reader.onerror = () => setError('读取文件失败，请重试')
+      reader.readAsArrayBuffer(file)
+      return
+    }
     if (detectFormat(file.name) === 'xlsx') {
       const reader = new FileReader()
       reader.onload = async () => {
@@ -166,7 +189,12 @@ export function ImportPage() {
   const onPaste = () => {
     // 粘贴内容没有文件名，按内容嗅探格式，避免 CSV 被当作 JSON 解析。
     const format = detectFormatFromContent(rawText)
-    runParse(rawText, `粘贴内容.${format}`)
+    runParse(rawText, `粘贴内容.${format === 'text' ? 'txt' : format}`)
+  }
+
+  const downloadTemplate = async () => {
+    const result = await downloadText('题小星-文本导入模板.txt', TEXT_IMPORT_TEMPLATE, 'text/plain;charset=utf-8')
+    setTemplateMessage(result.ok ? (result.channel === 'native-share' ? '模板已生成，请在系统面板中保存或发送。' : '模板已开始下载。') : `模板导出失败：${result.error}`)
   }
 
   const commit = async () => {
@@ -421,7 +449,7 @@ export function ImportPage() {
         title="把你自己的题目带进来"
         subtitle={
           <>
-            支持 JSON、CSV、Excel 与题小星题库包（含加密包），逐行校验后才会入库。数据只保存在本机数据库。
+            支持 JSON、CSV、Excel、Word、TXT、Markdown 与题小星题库包（含加密包），逐行校验后才会入库。数据只保存在本机数据库。
             {existingCount > 0 ? ` 已有 ${existingCount} 个导入题库。` : ''}
           </>
         }
@@ -444,13 +472,13 @@ export function ImportPage() {
           }}
         >
           <Upload />
-          <strong>点击选择文件，支持 .xlsx / .csv / .json；桌面端也可以直接拖入</strong>
-          <span>Excel 与 CSV 用同一套列名；单次最多 2000 题，超过 6 个选项请用 JSON 格式。加密包会自动要求输入口令。</span>
+          <strong>点击选择文件，支持 .xlsx / .csv / .json / .docx / .txt / .md；桌面端也可以直接拖入</strong>
+          <span>Excel 与 CSV 用同一套列名；Word/TXT/MD 按题号模板解析。单次最多 2000 题，超过 6 个选项请用 JSON 格式。加密包会自动要求输入口令。</span>
         </div>
         <input
           ref={fileRef}
           type="file"
-          accept=".json,.csv,.xlsx,.tixing.json,application/json,text/csv,text/comma-separated-values,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/octet-stream"
+          accept=".json,.csv,.xlsx,.docx,.txt,.md,.markdown,.tixing.json,application/json,text/csv,text/plain,text/markdown,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/octet-stream"
           className="visually-hidden"
           onChange={(event) => {
             onFile(event.target.files?.[0] ?? undefined)
@@ -465,9 +493,21 @@ export function ImportPage() {
         ) : null}
       </section>
 
+      <section className="import-template">
+        <div>
+          <span className="eyebrow">文本模板</span>
+          <strong>Word / TXT / Markdown 按题号写</strong>
+          <p>每道题以「1. 题干」开头，选项用 A-F，答案写「答案：B」，解析写「解析：…」。多选题答案写「A、B、D」。</p>
+        </div>
+        <button className="button button-ghost button-sm" onClick={() => void downloadTemplate()}>
+          <Download /> 下载模板
+        </button>
+        {templateMessage ? <p className="import-template-note" role="status">{templateMessage}</p> : null}
+      </section>
+
       <section className="import-paste">
         <SectionHeader
-          title="或者直接粘贴 JSON"
+          title="或者直接粘贴题库内容"
           aside={
             <Link to="/docs" className="text-link" onClick={(event) => event.preventDefault()}>
               格式说明见 docs/IMPORT_FORMAT.md
@@ -479,8 +519,8 @@ export function ImportPage() {
           rows={10}
           value={rawText}
           onChange={(event) => setRawText(event.target.value)}
-          placeholder={'{\n  "title": "我的题库",\n  "questions": [\n    {\n      "type": "single",\n      "stem": "题干",\n      "options": ["选项A", "选项B", "选项C", "选项D"],\n      "answer": ["A"],\n      "explanation": "解析"\n    }\n  ]\n}'}
-          aria-label="粘贴 JSON 内容"
+          placeholder={'也可以直接粘贴题号模板：\n1. 题干\nA. 选项\nB. 选项\n答案：B\n解析：…\n\n或粘贴 JSON：\n{\n  "title": "我的题库",\n  "questions": [\n    {\n      "type": "single",\n      "stem": "题干",\n      "options": ["选项A", "选项B", "选项C", "选项D"],\n      "answer": ["A"],\n      "explanation": "解析"\n    }\n  ]\n}'}
+          aria-label="粘贴题库内容"
         />
         <div className="import-actions">
           <button className="button button-ghost" onClick={() => setRawText('')} disabled={!rawText}>

@@ -444,13 +444,15 @@ export function parseImportSheet(headers: string[], rows: string[][]): ParseResu
   return parseRows(headers, rows)
 }
 
-export type ImportFormat = 'json' | 'csv' | 'xlsx'
+export type ImportFormat = 'json' | 'csv' | 'xlsx' | 'docx' | 'text'
 
 export function detectFormat(fileName: string): ImportFormat | null {
   const lower = fileName.toLowerCase()
   if (lower.endsWith('.json')) return 'json'
   if (lower.endsWith('.csv')) return 'csv'
   if (lower.endsWith('.xlsx')) return 'xlsx'
+  if (lower.endsWith('.docx')) return 'docx'
+  if (lower.endsWith('.txt') || lower.endsWith('.md') || lower.endsWith('.markdown')) return 'text'
   return null
 }
 
@@ -458,6 +460,7 @@ export function detectFormat(fileName: string): ImportFormat | null {
 export function detectFormatFromContent(raw: string): ImportFormat {
   const head = raw.trimStart()
   if (head.startsWith('{') || head.startsWith('[')) return 'json'
+  if (/^\s*(?:#+\s*.+|题库\s*[：:])/m.test(raw) || /^\s*(?:第\s*)?\d{1,4}\s*(?:题\s*)?[.、)．:：]/m.test(raw)) return 'text'
   return 'csv'
 }
 

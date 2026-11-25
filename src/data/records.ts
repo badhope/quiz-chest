@@ -44,6 +44,8 @@ export interface ImportedBank {
   questions: QuestionSeed[]
 }
 
+export type ErrorReason = 'concept' | 'method' | 'careless' | 'time'
+
 export interface WrongEntry {
   questionId: string
   collectionId: string
@@ -52,6 +54,10 @@ export interface WrongEntry {
   lastSelection: number[]
   /** FSRS 复习状态；旧数据没有这个字段时按「今天到期」处理。 */
   fsrs?: ReviewState
+  /** 错因由用户手动标注；不自动猜测，避免把「粗心」误归成「不会」。 */
+  reason?: ErrorReason
+  /** 这道题的个人笔记，最多 200 字，随备份一起走。 */
+  note?: string
 }
 
 export interface HistoryEntry {

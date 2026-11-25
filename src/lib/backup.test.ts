@@ -23,7 +23,7 @@ function samplePayload(): BackupPayload {
     settings,
     favorites: ['q1', 'q2'],
     wrongBook: {
-      q1: { questionId: 'q1', collectionId: 'bank-1', wrongCount: 2, lastWrongAt: 1000, lastSelection: [0] },
+      q1: { questionId: 'q1', collectionId: 'bank-1', wrongCount: 2, lastWrongAt: 1000, lastSelection: [0], reason: 'careless', note: '把 12 个月记成 11 个月' },
     },
     history: [
       {
@@ -72,6 +72,8 @@ describe('backup', () => {
     expect(restored.payload?.data.settings).toEqual(settings)
     expect(restored.payload?.data.banks).toHaveLength(1)
     expect(restored.payload?.data.history[0].accuracy).toBe(80)
+    expect(restored.payload?.data.wrongBook.q1.reason).toBe('careless')
+    expect(restored.payload?.data.wrongBook.q1.note).toContain('11 个月')
   })
 
   it('stamps the current format and version', () => {
