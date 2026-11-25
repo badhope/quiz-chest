@@ -7,6 +7,7 @@ import { useAppStore } from '../../store/useAppStore'
 import { AnswerCard } from './AnswerCard'
 import { QuestionCard } from './QuestionCard'
 import { SubmitDialog } from './SubmitDialog'
+import { TutorDialog } from '../tutor/TutorDialog'
 import { ArrowLeft, CircleHelp, Clock, Grid3x3, RotateCcw } from '../ui/icons'
 import { ProgressBar } from '../ui/primitives'
 
@@ -35,6 +36,7 @@ export function PracticeRunner(props: PracticeRunnerProps) {
   const navigate = useNavigate()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [outlineOpen, setOutlineOpen] = useState(false)
+  const [tutorOpen, setTutorOpen] = useState(false)
 
   const session = usePracticeSession({
     questions: props.questions,
@@ -68,7 +70,10 @@ export function PracticeRunner(props: PracticeRunnerProps) {
 
       if (mode === 'exam') {
         if (!isLast) goNext()
-        else setDialogOpen(true)
+        else {
+          setTutorOpen(false)
+          setDialogOpen(true)
+        }
       } else if (!isChecked && selection.length > 0) {
         submitQuestion()
       } else if (isChecked) {
@@ -143,7 +148,10 @@ export function PracticeRunner(props: PracticeRunnerProps) {
         </button>
         <button
           className="button button-primary button-sm practice-submit"
-          onClick={() => setDialogOpen(true)}
+          onClick={() => {
+            setTutorOpen(false)
+            setDialogOpen(true)
+          }}
         >
           交卷
         </button>
@@ -179,7 +187,11 @@ export function PracticeRunner(props: PracticeRunnerProps) {
           onPrev={session.goPrev}
           onNext={session.goNext}
           onSubmit={session.submitQuestion}
-          onRequestSubmit={() => setDialogOpen(true)}
+          onRequestSubmit={() => {
+            setTutorOpen(false)
+            setDialogOpen(true)
+          }}
+          onAskTutor={() => setTutorOpen(true)}
           canGoPrev={session.index > 0}
           isLast={session.isLast}
         />
@@ -199,7 +211,14 @@ export function PracticeRunner(props: PracticeRunnerProps) {
             )}
             <button
               className="aside-link"
-              onClick={() => (mode === 'exam' ? setDialogOpen(true) : session.jumpToUnanswered())}
+              onClick={() => {
+                if (mode === 'exam') {
+                  setTutorOpen(false)
+                  setDialogOpen(true)
+                } else {
+                  session.jumpToUnanswered()
+                }
+              }}
             >
               {mode === 'exam' ? '提前交卷' : '跳到未作答'}
             </button>
@@ -229,6 +248,17 @@ export function PracticeRunner(props: PracticeRunnerProps) {
           </div>
         </aside>
       </main>
+
+      {tutorOpen ? (
+        <TutorDialog
+          open
+          onOpenChange={setTutorOpen}
+          question={current}
+          selection={selection}
+          mode={mode}
+          isChecked={isChecked}
+        />
+      ) : null}
 
       <SubmitDialog
         open={dialogOpen}

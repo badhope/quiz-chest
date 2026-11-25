@@ -208,13 +208,37 @@ cd android
 7. **PWA**：manifest 的 `orientation` 为 `any`，允许横屏/分屏重排；shortcuts 指向
    `/catalog`、`/review?tab=wrong`、`/records?tab=stats`。
 
-验证分两层：`pnpm test:e2e` 的 28 项浏览器测试（含 11 项手机专项）覆盖
+### 本地 AI 讲解（2.0.3）
+
+- 设置页的「本地 AI 讲解」默认关闭。端点只接受回环地址，HTTP 走 `CapacitorHttp`
+  原生通道，不经过 WebView 的 CORS/mixed-content。
+- `network_security_config.xml` 只为 `127.0.0.1`、`localhost`、`::1` 开
+  `cleartextTrafficPermitted`；其他明文请求仍按 Android 默认拒绝。
+- APK 不带模型权重。用户需要自己安装本地推理 App 并暴露 OpenAI 兼容端口，或后续
+  集成 llama.cpp / MNN 的 AAR；当前没有内置推理 SDK。
+- 浏览器/桌面端仍由本机服务的 CORS 决定；应用不会代理，也不会把题目发到公网。
+
+验证分两层：`pnpm test:e2e` 的 31 项浏览器测试（含 11 项手机专项与 3 项本地 AI 专项）覆盖
 320/390 视口、44px 热区、答题卡遮罩、交卷框定位、搜索缩视口、模拟刘海、导入
 MIME 与手机导出；`pnpm build:apk:release` + `pnpm verify:apk` 负责 Android 编译、
 资源和签名。真机上的系统分享面板、硬件返回键、状态栏图标仍需要在目标机型上抽测，
 浏览器 E2E 不能替代这一层。
 
+2.0.3 验证记录：
+
+| 检查项 | 结果 |
+| --- | --- |
+| 全量单测 | 36 文件 / 235 项通过；statements 49.87% / branches 40.73% / functions 41.7% / lines 50.95% |
+| Web / PWA E2E | 31 项通过（17 项主链路 + 11 项手机专项 + 3 项本地 AI 专项） |
+| APK 资源 E2E | 4 项通过（Pixel 5 视口，加载 APK 内 `assets/public`） |
+| Lint / typecheck / Web build | 通过；PWA precache 29 条 |
+| Rust | 未通过：当前环境缺少 GTK/WebKit 开发库的链接 symlink，`cargo test` 链接阶段失败；这是环境缺库，不是本轮单测断言失败，发布记录不写成 Rust 通过 |
+| APK | 3,778,531 bytes；SHA-256 `00c37c86841a212bce176a2c0664943b30633caa155f5dc53832931aef75bd07` |
+| AAB | 3,631,935 bytes；SHA-256 `11f9ca3b171b5bf37fa560052f562f4f68bbf1d4ec87c688c66bca05d97a0711` |
+| 真机 | 无 KVM、无 adb 设备，未安装到真实手机；本地模型真机回环、系统返回键、分享面板与状态栏图标未做设备实测 |
+
 2.0.2 验证记录：
+
 
 | 检查项 | 结果 |
 | --- | --- |

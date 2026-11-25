@@ -1,4 +1,5 @@
 import * as v from 'valibot'
+import { DEFAULT_TUTOR_ENDPOINT, DEFAULT_TUTOR_MODEL } from '../lib/tutor/config'
 
 /**
  * 持久化数据的结构 schema 单一来源。
@@ -102,6 +103,13 @@ export const SettingsSchema = v.object({
   autoNext: v.boolean(),
   showSampleBanks: v.boolean(),
   allowRemoteImages: v.optional(v.boolean(), false),
+  tutor: v.optional(
+    v.object({
+      enabled: v.optional(v.boolean(), false),
+      endpoint: v.optional(v.string(), DEFAULT_TUTOR_ENDPOINT),
+      model: v.optional(v.string(), DEFAULT_TUTOR_MODEL),
+    }),
+  ),
 })
 
 export type BankContent = v.InferOutput<typeof BankContentSchema>
