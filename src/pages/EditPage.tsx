@@ -22,6 +22,8 @@ interface DraftQuestion {
   stem: string
   options: string[]
   answer: number[]
+  answerText: string
+  keywords: string
   explanation: string
   difficulty: 1 | 2 | 3
   tags: string
@@ -31,7 +33,11 @@ const TYPE_LABEL: Record<QuestionType, string> = {
   single: '单选',
   multiple: '多选',
   judge: '判断',
+  fill: '填空',
+  short: '简答',
 }
+
+const isTextType = (type: QuestionType) => type === 'fill' || type === 'short'
 
 /** 编辑器分批渲染的步长。 */
 const VISIBLE_BATCH = 50
@@ -55,6 +61,8 @@ export function EditPage() {
       stem: question.stem,
       options: [...question.options],
       answer: [...question.answer],
+      answerText: (question.answerText ?? []).join('|'),
+      keywords: (question.keywords ?? []).join('|'),
       explanation: question.explanation,
       difficulty: question.difficulty,
       tags: question.tags.join('、'),
@@ -88,6 +96,8 @@ export function EditPage() {
             stem: question.stem,
             options: [...question.options],
             answer: [...question.answer],
+            answerText: (question.answerText ?? []).join('|'),
+            keywords: (question.keywords ?? []).join('|'),
             explanation: question.explanation,
             difficulty: question.difficulty,
             tags: question.tags.join('、'),
@@ -150,6 +160,10 @@ export function EditPage() {
 
   const setType = (index: number, type: QuestionType) => {
     const draft = drafts[index]
+    if (type === 'fill' || type === 'short') {
+      patchQuestion(index, { type, options: [], answer: [] })
+      return
+    }
     if (type === 'judge') {
       patchQuestion(index, {
         type,
@@ -158,7 +172,8 @@ export function EditPage() {
       })
       return
     }
-    patchQuestion(index, { type })
+    const options = draft.options.length >= 2 ? draft.options : ['', '', '', '']
+    patchQuestion(index, { type, options, answer: [] })
   }
 
   const setOptionCount = (index: number, count: number) => {
@@ -321,7 +336,7 @@ export function EditPage() {
             <header className="edit-question-head">
               <strong className="mono">第 {index + 1} 题</strong>
               <div className="edit-question-tools">
-                {(['single', 'multiple', 'judge'] as QuestionType[]).map((type) => (
+                {(['single', 'multiple', 'judge', 'fill', 'short'] as QuestionType[]).map((type) => (
                   <button
                     key={type}
                     className={`chip${draft.type === type ? ' active' : ''}`}
@@ -330,7 +345,7 @@ export function EditPage() {
                     {TYPE_LABEL[type]}
                   </button>
                 ))}
-                {draft.type !== 'judge' ? (
+                {draft.type !== 'judge' && !isTextType(draft.type) ? (
                   <select
                     value={draft.options.length}
                     onChange={(event) => setOptionCount(index, Number(event.target.value))}
@@ -355,30 +370,60 @@ export function EditPage() {
               onChange={(event) => patchQuestion(index, { stem: event.target.value })}
             />
 
-            <div className="edit-options">
-              {draft.options.map((option, optionIndex) => (
-                <label key={optionIndex} className="edit-option">
+            {isTextType(draft.type) ? (
+              <div className="edit-text-answer">
+                <label>
+                  <span>
+                    {draft.type === 'fill'
+                      ? '正确答案（多个可接受答案用 | 分隔）'
+                      : '参考答案（多个可接受答案用 | 分隔）'}
+                  </span>
                   <input
-                    type={draft.type === 'multiple' ? 'checkbox' : 'radio'}
-                    name={`answer-${index}`}
-                    checked={draft.answer.includes(optionIndex)}
-                    onChange={() => setAnswer(index, optionIndex)}
-                    aria-label={`把选项 ${String.fromCharCode(65 + optionIndex)} 设为答案`}
-                  />
-                  <span className="mono">{String.fromCharCode(65 + optionIndex)}</span>
-                  <input
-                    value={option}
-                    onChange={(event) =>
-                      patchQuestion(index, {
-                        options: draft.options.map((value, i) =>
-                          i === optionIndex ? event.target.value : value,
-                        ),
-                      })
-                    }
+                    value={draft.answerText}
+                    placeholder={draft.type === 'fill' ? '例如：光合作用|光合' : '例如：光照和叶绿体'}
+                    onChange={(event) => patchQuestion(index, { answerText: event.target.value })}
                   />
                 </label>
-              ))}
-            </div>
+                {draft.type === 'short' ? (
+                  <label>
+                    <span>判分关键词（用 | 分隔，全部出现才算对）</span>
+                    <input
+                      value={draft.keywords}
+                      placeholder="例如：光照|叶绿体"
+                      onChange={(event) => patchQuestion(index, { keywords: event.target.value })}
+                    />
+                  </label>
+                ) : null}
+                <p className="edit-text-hint">
+                  文本题不显示选项；判分时会忽略空格、全半角和常见标点。
+                </p>
+              </div>
+            ) : (
+              <div className="edit-options">
+                {draft.options.map((option, optionIndex) => (
+                  <label key={optionIndex} className="edit-option">
+                    <input
+                      type={draft.type === 'multiple' ? 'checkbox' : 'radio'}
+                      name={`answer-${index}`}
+                      checked={draft.answer.includes(optionIndex)}
+                      onChange={() => setAnswer(index, optionIndex)}
+                      aria-label={`把选项 ${String.fromCharCode(65 + optionIndex)} 设为答案`}
+                    />
+                    <span className="mono">{String.fromCharCode(65 + optionIndex)}</span>
+                    <input
+                      value={option}
+                      onChange={(event) =>
+                        patchQuestion(index, {
+                          options: draft.options.map((value, i) =>
+                            i === optionIndex ? event.target.value : value,
+                          ),
+                        })
+                      }
+                    />
+                  </label>
+                ))}
+              </div>
+            )}
 
             <label className="edit-explanation">
               <span>解析（至少 4 个字符）</span>
@@ -440,7 +485,9 @@ export function EditPage() {
 function draftToRow(draft: DraftQuestion): Record<string, unknown> {
   const row: Record<string, unknown> = {
     stem: draft.stem,
-    answer: draft.answer.map((value) => String.fromCharCode(65 + value)).join(','),
+    answer: isTextType(draft.type) ? '' : draft.answer.map((value) => String.fromCharCode(65 + value)).join(','),
+    answerText: draft.answerText,
+    keywords: draft.keywords,
     explanation: draft.explanation,
     type: draft.type,
     difficulty: draft.difficulty,

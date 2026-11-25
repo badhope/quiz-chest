@@ -77,7 +77,13 @@ export function CollectionPage() {
     single: collection.questions.filter((q) => q.type === 'single').length,
     multiple: collection.questions.filter((q) => q.type === 'multiple').length,
     judge: collection.questions.filter((q) => q.type === 'judge').length,
+    fill: collection.questions.filter((q) => q.type === 'fill').length,
+    short: collection.questions.filter((q) => q.type === 'short').length,
   }
+  const typeSummary = (Object.entries(typeCount) as [keyof typeof typeCount, number][])
+    .filter(([, count]) => count > 0)
+    .map(([type]) => ({ single: '单选', multiple: '多选', judge: '判断', fill: '填空', short: '简答' })[type])
+    .join('、')
 
   return (
     <>
@@ -142,7 +148,7 @@ export function CollectionPage() {
               {lastRecord ? '继续巩固，刷新最好成绩' : '按自己的节奏，一题一题吃透'}
             </h2>
             <p>
-              单选、多选、判断共 {collection.questions.length} 题。可以先做一半，退出后进度会保留；
+              {typeSummary}共 {collection.questions.length} 题。可以先做一半，退出后进度会保留；
               提交后立即查看解析，错题自动进入错题本。
             </p>
           </div>
@@ -272,6 +278,24 @@ export function CollectionPage() {
             <strong>{typeCount.judge}</strong>
             <span>判断题</span>
           </div>
+          {typeCount.fill > 0 ? (
+            <div className="composition-card">
+              <span className="composition-icon accent">
+                <Layers />
+              </span>
+              <strong>{typeCount.fill}</strong>
+              <span>填空题</span>
+            </div>
+          ) : null}
+          {typeCount.short > 0 ? (
+            <div className="composition-card">
+              <span className="composition-icon moss">
+                <BookOpen />
+              </span>
+              <strong>{typeCount.short}</strong>
+              <span>简答题</span>
+            </div>
+          ) : null}
           <div className="composition-card">
             <span className="composition-icon neutral">
               <Clock />

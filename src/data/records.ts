@@ -52,6 +52,8 @@ export interface WrongEntry {
   wrongCount: number
   lastWrongAt: number
   lastSelection: number[]
+  /** 填空/简答最后一次作答的原文；没有文本作答时为空。 */
+  lastText?: string
   /** FSRS 复习状态；旧数据没有这个字段时按「今天到期」处理。 */
   fsrs?: ReviewState
   /** 错因由用户手动标注；不自动猜测，避免把「粗心」误归成「不会」。 */
@@ -124,6 +126,8 @@ export interface PendingSession {
   /** 冻结的题序（题目 ID），保证续做时顺序与离开前一致。 */
   questionIds: string[]
   answers: Record<string, number[]>
+  /** 填空/简答的文本作答；旧会话没有该字段时按空对象处理。 */
+  textAnswers?: Record<string, string>
   /** 已核对（查看过解析）的题目 ID；练习模式下用于恢复「已提交」状态。 */
   checkedIds: string[]
   index: number

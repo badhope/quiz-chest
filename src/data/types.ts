@@ -10,7 +10,7 @@ export type DomainId =
 
 export type Level = '入门' | '进阶' | '挑战'
 
-export type QuestionType = 'single' | 'multiple' | 'judge'
+export type QuestionType = 'single' | 'multiple' | 'judge' | 'fill' | 'short'
 
 export type Difficulty = 1 | 2 | 3
 
@@ -108,6 +108,13 @@ export interface Question {
   stem: string
   options: string[]
   answer: number[]
+  /**
+   * 文本题的答案：填空题为可接受答案（任一命中算对），简答题为参考答案。
+   * 选择题不填。
+   */
+  answerText?: string[]
+  /** 简答题的判分关键词；全部出现才算对。填空不使用。 */
+  keywords?: string[]
   explanation: string
   difficulty: Difficulty
   tags: string[]

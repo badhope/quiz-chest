@@ -1,6 +1,6 @@
 import type { TutorSettings } from '../../data/records'
 import type { Question } from '../../data/types'
-import { LETTERS } from '../quiz'
+import { answerLabel, LETTERS } from '../quiz'
 import { normalizeTutorSettings } from './config'
 import type {
   AskTutorInput,
@@ -86,8 +86,10 @@ export function buildTutorMessages(
   mode: TutorMode,
   followup = '',
   history: TutorChatMessage[] = [],
+  textAnswer = '',
 ): TutorApiMessage[] {
   const includeAnswer = mode !== 'hint'
+  const isText = question.type === 'fill' || question.type === 'short'
   const options = question.options
     .map((option, index) => `${LETTERS[index] ?? index + 1}. ${clip(option, MAX_OPTION)}`)
     .join('\n')
@@ -97,13 +99,20 @@ export function buildTutorMessages(
       : ''
 
   const lines = [
-    `【题型】${question.type === 'multiple' ? '多选题' : question.type === 'judge' ? '判断题' : '单选题'}`,
+    `【题型】${question.type === 'multiple' ? '多选题' : question.type === 'judge' ? '判断题' : question.type === 'fill' ? '填空题' : question.type === 'short' ? '简答题' : '单选题'}`,
     `【题干】${clip(question.stem, MAX_STEM)}`,
-    `【选项】\n${options}`,
-    `【学生选择】${selection.length ? answerLetters(selection) : '未作答'}`,
   ]
+  if (!isText) {
+    lines.push(`【选项】\n${options}`)
+    lines.push(`【学生选择】${selection.length ? answerLetters(selection) : '未作答'}`)
+  } else {
+    lines.push(`【学生作答】${clip(textAnswer, 600) || '未作答'}`)
+  }
   if (includeAnswer) {
-    lines.push(`【正确答案】${answerLetters(question.answer)}`)
+    lines.push(`【${isText ? '参考答案' : '正确答案'}】${isText ? clip(answerLabel(question), MAX_EXPLANATION) : answerLetters(question.answer)}`)
+    if (question.type === 'short' && question.keywords?.length) {
+      lines.push(`【判分关键词】${question.keywords.join('、')}`)
+    }
     lines.push(`【题库解析】${clip(question.explanation, MAX_EXPLANATION)}`)
   }
   if (imageNote) lines.push(`【配图说明】${imageNote}`)
@@ -111,7 +120,9 @@ export function buildTutorMessages(
   const ask =
     mode === 'hint'
       ? '请给我一个不直接揭示答案的提示。'
-      : '请解释为什么正确答案是这个选项；如果我选错了，指出我可能卡在哪一步。'
+      : isText
+        ? '请对照参考答案解释这道题的思路；如果我答得不对，指出我漏了哪个关键点。'
+        : '请解释为什么正确答案是这个选项；如果我选错了，指出我可能卡在哪一步。'
 
   const context: TutorApiMessage = { role: 'user', content: lines.join('\n') }
   const cleanHistory: TutorApiMessage[] = history
@@ -230,6 +241,7 @@ export function planTutorRequest(input: AskTutorInput): TutorFailure | TutorRequ
     input.mode,
     input.followup,
     input.history,
+    input.textAnswer,
   )
 
   return {

@@ -43,19 +43,33 @@ export function historyToCsv(history: HistoryEntry[]): string {
 
 export function wrongBookToCsv(
   wrongBook: Record<string, WrongEntry>,
-  resolveQuestion: (id: string) => { stem: string; collectionId: string; wrongCount: number; lastWrongAt: number } | undefined,
+  resolveQuestion: (id: string) => { stem: string; collectionId: string; wrongCount: number; lastWrongAt: number; options?: string[] } | undefined,
   resolveCollectionTitle: (id: string) => string,
 ): string {
-  const headers = ['题干', '所属题库', '错误次数', '最近出错']
+  const headers = ['题干', '所属题库', '错误次数', '最近出错', '最近作答', '错因', '笔记']
+  const reasonLabels: Record<string, string> = {
+    concept: '概念不清',
+    method: '方法不对',
+    careless: '粗心',
+    time: '时间不够',
+  }
   const rows = Object.values(wrongBook)
     .sort((a, b) => b.lastWrongAt - a.lastWrongAt)
     .map((entry) => {
       const question = resolveQuestion(entry.questionId)
+      const lastAnswer = entry.lastText?.trim()
+        ? entry.lastText.trim()
+        : entry.lastSelection.length
+          ? entry.lastSelection.map((value) => String.fromCharCode(65 + value)).join('、')
+          : ''
       return [
         question?.stem ?? `（题目已删除：${entry.questionId}）`,
         resolveCollectionTitle(entry.collectionId),
         entry.wrongCount,
         new Date(entry.lastWrongAt).toLocaleString('zh-CN', { hour12: false }),
+        lastAnswer,
+        entry.reason ? reasonLabels[entry.reason] ?? entry.reason : '',
+        entry.note ?? '',
       ]
     })
   return toCsv(headers, rows)

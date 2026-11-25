@@ -194,3 +194,22 @@
   size: A4;
   margin: 16mm 14mm;
 }
+
+/* 填空题留一行，简答题留三行，打印后能直接手写 */
+.print-text-space {
+  height: 30px;
+  margin: 6px 0 0 24px;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 27px,
+    var(--line) 27px,
+    var(--line) 28px
+  );
+  color: var(--ink-muted);
+  font-size: 11px;
+}
+
+.print-text-space.short {
+  height: 90px;
+}

@@ -52,6 +52,31 @@ describe('parseTextImport', () => {
     expect(result.bank?.questions[0].answer).toEqual([0])
   })
 
+  it('imports fill and short questions with answerText and keywords', () => {
+    const result = parseTextImport(`1. 光合作用的场所是？【填空题】
+答案：叶绿体
+解析：叶绿体是光合作用的场所。
+
+2. 光合作用需要哪两个条件？【简答题】
+参考答案：光照和叶绿体。
+关键词：光照|叶绿体
+解析：光照提供能量，叶绿体完成反应。`)
+    expect(result.questionCount).toBe(2)
+    expect(result.bank?.questions[0].type).toBe('fill')
+    expect(result.bank?.questions[0].answerText).toEqual(['叶绿体'])
+    expect(result.bank?.questions[1].type).toBe('short')
+    expect(result.bank?.questions[1].answerText).toEqual(['光照和叶绿体。'])
+    expect(result.bank?.questions[1].keywords).toEqual(['光照', '叶绿体'])
+  })
+
+  it('skips a short question without keywords instead of silently making it ungradable', () => {
+    const result = parseTextImport(`1. 说明光合作用。【简答题】
+参考答案：光照和叶绿体。
+解析：没有写关键词。`)
+    expect(result.questionCount).toBe(0)
+    expect(result.issues.some((issue) => issue.message.includes('关键词'))).toBe(true)
+  })
+
   it('skips duplicate stems and reports them', () => {
     const result = parseTextImport(`1. 同一道题\nA. 甲\nB. 乙\n答案：A\n解析：第一份解析\n\n2. 同一道题\nA. 甲\nB. 乙\n答案：A\n解析：第二份解析`)
     expect(result.questionCount).toBe(1)

@@ -52,7 +52,7 @@ export function PracticeRunner(props: PracticeRunnerProps) {
   const favorites = useAppStore((state) => state.favorites)
   const toggleFavorite = useAppStore((state) => state.toggleFavorite)
 
-  const { current, select, goNext, submitQuestion, isChecked, selection, isLast } = session
+  const { current, select, goNext, submitQuestion, isChecked, selection, textAnswer, isLast } = session
 
   // 键盘作答：数字键选项、Enter 提交 / 下一题。输入框聚焦时不拦截。
   useEffect(() => {
@@ -62,7 +62,8 @@ export function PracticeRunner(props: PracticeRunnerProps) {
       if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return
 
       const number = Number(event.key)
-      if (Number.isInteger(number) && number >= 1 && number <= current.options.length) {
+      if (current.type !== 'fill' && current.type !== 'short'
+        && Number.isInteger(number) && number >= 1 && number <= current.options.length) {
         select(number - 1)
         return
       }
@@ -74,7 +75,7 @@ export function PracticeRunner(props: PracticeRunnerProps) {
           setTutorOpen(false)
           setDialogOpen(true)
         }
-      } else if (!isChecked && selection.length > 0) {
+      } else if (!isChecked && (selection.length > 0 || textAnswer.trim())) {
         submitQuestion()
       } else if (isChecked) {
         goNext()
@@ -82,7 +83,7 @@ export function PracticeRunner(props: PracticeRunnerProps) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [current, select, goNext, submitQuestion, isChecked, selection.length, mode, isLast])
+  }, [current, select, goNext, submitQuestion, isChecked, selection.length, textAnswer, mode, isLast])
 
   useEffect(() => {
     if (!outlineOpen) return undefined
@@ -179,11 +180,13 @@ export function PracticeRunner(props: PracticeRunnerProps) {
           index={session.index}
           mode={mode}
           selection={session.selection}
+          textAnswer={session.textAnswer}
           isChecked={session.isChecked}
           showAnalysis={session.showAnalysis}
           favorite={favorites.includes(current.id)}
           onToggleFavorite={() => toggleFavorite(current.id)}
           onSelect={session.select}
+          onTextChange={session.setTextAnswer}
           onPrev={session.goPrev}
           onNext={session.goNext}
           onSubmit={session.submitQuestion}
@@ -227,6 +230,7 @@ export function PracticeRunner(props: PracticeRunnerProps) {
           <AnswerCard
             questions={session.questions}
             answers={session.answers}
+            textAnswers={session.textAnswers}
             checked={session.checked}
             currentIndex={session.index}
             open={outlineOpen}
@@ -255,6 +259,7 @@ export function PracticeRunner(props: PracticeRunnerProps) {
           onOpenChange={setTutorOpen}
           question={current}
           selection={selection}
+          textAnswer={textAnswer}
           mode={mode}
           isChecked={isChecked}
         />

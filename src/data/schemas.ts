@@ -10,10 +10,12 @@ import { DEFAULT_TUTOR_ENDPOINT, DEFAULT_TUTOR_MODEL } from '../lib/tutor/config
  * 解析长度、答案合法性）仍由 importer 逐行校验，保证错误能定位到行号。
  */
 export const QuestionSchema = v.object({
-  type: v.picklist(['single', 'multiple', 'judge']),
+  type: v.picklist(['single', 'multiple', 'judge', 'fill', 'short']),
   stem: v.string(),
   options: v.array(v.string()),
   answer: v.array(v.number()),
+  answerText: v.optional(v.array(v.string())),
+  keywords: v.optional(v.array(v.string())),
   explanation: v.string(),
   difficulty: v.picklist([1, 2, 3]),
   tags: v.optional(v.array(v.string()), []),
@@ -61,6 +63,7 @@ export const WrongSchema = v.object({
   wrongCount: v.number(),
   lastWrongAt: v.number(),
   lastSelection: v.array(v.number()),
+  lastText: v.optional(v.string()),
   fsrs: v.optional(ReviewSchema),
   reason: v.optional(v.picklist(['concept', 'method', 'careless', 'time'])),
   note: v.optional(v.string()),

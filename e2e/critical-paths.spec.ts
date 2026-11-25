@@ -463,6 +463,83 @@ test('题号文本导入 Word/TXT 模板并落库', async ({ page }) => {
   expect(bank?.questions[1].answer).toEqual([1, 3])
 })
 
+test('填空与简答从文本导入到作答、错题记录形成闭环', async ({ page }) => {
+  const TEXT_TYPES = `# E2E 文本题型
+
+1. 中国的首都是？【填空题】
+答案：北京|北京市
+解析：北京是中华人民共和国的首都。
+
+2. 光合作用需要哪两个条件？【简答题】
+参考答案：光照和叶绿体。
+关键词：光照|叶绿体
+解析：光照提供能量，叶绿体是反应场所。
+`
+  await importText(page, TEXT_TYPES, 'E2E 文本题型')
+  const imported = await readStores(page)
+  const bank = imported.banks.find((item) => item.title === 'E2E 文本题型')
+  expect(bank?.questions[0].type).toBe('fill')
+  expect(bank?.questions[0].options).toEqual([])
+  expect(bank?.questions[0].answerText).toEqual(['北京', '北京市'])
+  expect(bank?.questions[1].type).toBe('short')
+  expect(bank?.questions[1].keywords).toEqual(['光照', '叶绿体'])
+
+  await openBank(page, 'E2E 文本题型')
+  await expect(page.getByText('填空、简答共 2 题')).toBeVisible()
+  await page.getByRole('link', { name: /顺序练习/ }).click()
+  await page.getByLabel('填写答案').fill('北京')
+  await page.getByRole('button', { name: /确认答案/ }).click()
+  await expect(page.locator('.analysis-answer')).toContainText('北京')
+  await page.getByRole('button', { name: /下一题/ }).click()
+  await page.getByLabel('填写简答答案').fill('只要有光照就行')
+  await page.getByRole('button', { name: /确认答案/ }).click()
+  await expect(page.locator('.analysis-keywords')).toContainText('光照、叶绿体')
+  await page.getByRole('button', { name: '交卷' }).click()
+  await page.getByRole('button', { name: '提交并查看结果' }).click()
+  await expect(page.getByText(/最近一次记录已保存/)).toBeVisible()
+
+  await page.goto('/review?tab=wrong')
+  await page.locator('.wrong-head').first().click()
+  await expect(page.locator('.wrong-text-answer')).toContainText('只要有光照就行')
+  await expect(page.locator('.wrong-text-answer')).toContainText('光照和叶绿体')
+})
+
+test('题库编辑器保留文本题的答案与关键词', async ({ page }) => {
+  const TEXT_TYPES = `# E2E 文本题型
+
+1. 中国的首都是？【填空题】
+答案：北京|北京市
+解析：北京是中华人民共和国的首都。
+
+2. 光合作用需要哪两个条件？【简答题】
+参考答案：光照和叶绿体。
+关键词：光照|叶绿体
+解析：光照提供能量，叶绿体是反应场所。
+`
+  await importText(page, TEXT_TYPES, 'E2E 文本题型')
+  const stores = await readStores(page)
+  const bank = stores.banks.find((item) => item.title === 'E2E 文本题型')
+  expect(bank?.id).toBeTruthy()
+  await page.goto(`/edit/${bank!.id}`)
+  await expect(page.getByRole('heading', { name: /修改「E2E 文本题型」/ })).toBeVisible()
+
+  const first = page.locator('.edit-question').nth(0)
+  await expect(first.getByRole('button', { name: '填空' })).toHaveClass(/active/)
+  await expect(first.locator('.edit-text-answer input').first()).toHaveValue('北京|北京市')
+  await first.locator('.edit-text-answer input').first().fill('北京|北京市|京城')
+
+  const second = page.locator('.edit-question').nth(1)
+  await expect(second.getByRole('button', { name: '简答' })).toHaveClass(/active/)
+  await expect(second.locator('.edit-text-answer input').nth(1)).toHaveValue('光照|叶绿体')
+  await page.getByRole('button', { name: '保存修改' }).click()
+  await expect(page.getByText('已保存，题库内容与编号均已更新')).toBeVisible()
+
+  const saved = await readStores(page)
+  const edited = saved.banks.find((item) => item.id === bank!.id)
+  expect(edited?.questions[0].answerText).toEqual(['北京', '北京市', '京城'])
+  expect(edited?.questions[1].keywords).toEqual(['光照', '叶绿体'])
+})
+
 test('Word 文档解出题号模板并落库', async ({ page }) => {
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>

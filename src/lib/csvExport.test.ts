@@ -60,17 +60,25 @@ describe('wrongBookToCsv', () => {
   it('resolves stems and titles, sorts by recency', () => {
     const csv = wrongBookToCsv(
       {
-        'demo-1': { questionId: 'demo-1', collectionId: 'demo', wrongCount: 2, lastWrongAt: 2000, lastSelection: [0] },
-        'demo-2': { questionId: 'demo-2', collectionId: 'demo', wrongCount: 1, lastWrongAt: 3000, lastSelection: [1] },
+        'demo-1': { questionId: 'demo-1', collectionId: 'demo', wrongCount: 2, lastWrongAt: 2000, lastSelection: [0], reason: 'careless', note: '看漏了条件' },
+        'demo-2': { questionId: 'demo-2', collectionId: 'demo', wrongCount: 1, lastWrongAt: 3000, lastSelection: [], lastText: '只有光照' },
       },
-      (id) => (id === 'demo-1' ? { stem: '第一题', collectionId: 'demo', wrongCount: 2, lastWrongAt: 2000 } : undefined),
+      (id) => ({
+        stem: id === 'demo-1' ? '第一题' : '第二题',
+        collectionId: 'demo',
+        wrongCount: id === 'demo-1' ? 2 : 1,
+        lastWrongAt: id === 'demo-1' ? 2000 : 3000,
+      }),
       () => '验收题库',
     )
     const rows = csv.trim().split('\r\n')
-    expect(rows[1]).toContain('demo-2')
+    expect(rows[0]).toContain('最近作答')
+    expect(rows[1]).toContain('第二题')
+    expect(rows[1]).toContain('只有光照')
     expect(rows[2]).toContain('第一题')
     expect(rows[2]).toContain('验收题库')
-    expect(rows[2]).toContain('2')
+    expect(rows[2]).toContain('粗心')
+    expect(rows[2]).toContain('看漏了条件')
   })
 })
 

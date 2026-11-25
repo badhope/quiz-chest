@@ -5,6 +5,8 @@ import {
   createSession,
   formatDuration,
   isCorrect,
+  isAnswered,
+  normalizeAnswerText,
   normalizeSelection,
   summarizeSession,
 } from './quiz'
@@ -116,6 +118,36 @@ describe('answer evaluation', () => {
     expect(isCorrect(multiple, [0, 2])).toBe(true)
     expect(isCorrect(multiple, [2, 0])).toBe(true)
     expect(isCorrect(multiple, [0, 2, 3])).toBe(false)
+  })
+
+  it('accepts any configured fill answer after normalizing punctuation and width', () => {
+    const fill = question({ type: 'fill', options: [], answer: [], answerText: ['光合作用', '光合'] })
+    expect(isCorrect(fill, [], '光合作用')).toBe(true)
+    expect(isCorrect(fill, [], ' 光 合 作 用。')).toBe(true)
+    expect(isCorrect(fill, [], '呼吸作用')).toBe(false)
+    expect(isCorrect(fill, [], '')).toBe(false)
+    expect(isAnswered([], '光合作用')).toBe(true)
+    expect(isAnswered([], '  ')).toBe(false)
+  })
+
+  it('requires all keywords for a short answer and keeps the exact-answer fallback', () => {
+    const short = question({
+      type: 'short',
+      options: [],
+      answer: [],
+      answerText: ['光照和叶绿体'],
+      keywords: ['光照', '叶绿体'],
+    })
+    expect(isCorrect(short, [], '需要光照，叶绿体参与')).toBe(true)
+    expect(isCorrect(short, [], '只要有光照就行')).toBe(false)
+    const noKeywords = question({ type: 'short', options: [], answer: [], answerText: ['线粒体'] })
+    expect(isCorrect(noKeywords, [], '线粒体')).toBe(true)
+    expect(isCorrect(noKeywords, [], '线 粒 体。')).toBe(true)
+  })
+
+  it('normalizes full-width and punctuation without dropping meaningful symbols', () => {
+    expect(normalizeAnswerText('Ａ＋Ｂ')).toBe('a+b')
+    expect(normalizeAnswerText('“北京”。')).toBe('北京')
   })
 })
 

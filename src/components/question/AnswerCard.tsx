@@ -1,10 +1,11 @@
 import type { Question } from '../../data/types'
-import { isCorrect } from '../../lib/quiz'
+import { isAnswered, isCorrect } from '../../lib/quiz'
 import { ChevronDown } from '../ui/icons'
 
 export interface AnswerCardProps {
   questions: Question[]
   answers: Record<string, number[]>
+  textAnswers?: Record<string, string>
   checked?: Record<string, boolean>
   currentIndex: number
   open: boolean
@@ -19,6 +20,7 @@ export interface AnswerCardProps {
 export function AnswerCard({
   questions,
   answers,
+  textAnswers = {},
   checked,
   currentIndex,
   open,
@@ -34,7 +36,7 @@ export function AnswerCard({
       {open ? (
         <div className="outline-grid">
           {questions.map((question, questionIndex) => {
-            const picked = (answers[question.id] ?? []).length > 0
+            const picked = isAnswered(answers[question.id], textAnswers[question.id])
             const done = Boolean(checked?.[question.id])
             const stateClass = done
               ? isCorrect(question, answers[question.id] ?? [])

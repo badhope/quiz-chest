@@ -1026,3 +1026,76 @@
     backdrop-filter: blur(14px);
   }
 }
+
+/* 填空 / 简答的文本作答 */
+.text-answer {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.text-answer-input,
+.text-answer-area {
+  width: 100%;
+  padding: 13px 15px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.7;
+  resize: vertical;
+  transition: border-color 0.16s var(--ease), box-shadow 0.16s var(--ease);
+}
+
+.text-answer-input:focus,
+.text-answer-area:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 13%, transparent);
+}
+
+.text-answer-input:disabled,
+.text-answer-area:disabled {
+  color: var(--ink);
+  -webkit-text-fill-color: var(--ink);
+  opacity: 1;
+  background: var(--paper-sunken);
+}
+
+.text-answer-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+.analysis-keywords,
+.study-keywords {
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.study-text-question {
+  display: grid;
+  gap: 5px;
+  padding: 15px 17px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--paper-sunken) 60%, transparent);
+}
+
+.study-text-question .mono {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--ink-muted);
+}
+
+.study-text-question p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-soft);
+}

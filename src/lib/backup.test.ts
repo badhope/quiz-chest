@@ -23,7 +23,7 @@ function samplePayload(): BackupPayload {
     settings,
     favorites: ['q1', 'q2'],
     wrongBook: {
-      q1: { questionId: 'q1', collectionId: 'bank-1', wrongCount: 2, lastWrongAt: 1000, lastSelection: [0], reason: 'careless', note: '把 12 个月记成 11 个月' },
+      q1: { questionId: 'q1', collectionId: 'bank-1', wrongCount: 2, lastWrongAt: 1000, lastSelection: [], lastText: '北京', reason: 'careless', note: '把 12 个月记成 11 个月' },
     },
     history: [
       {
@@ -56,7 +56,16 @@ function samplePayload(): BackupPayload {
         durationMin: 10,
         tags: [],
         importedAt: 1000,
-        questions: [],
+        questions: [{
+          type: 'fill',
+          stem: '中国的首都是？',
+          options: [],
+          answer: [],
+          answerText: ['北京'],
+          explanation: '北京是首都。',
+          difficulty: 2,
+          tags: [],
+        }],
       },
     ],
     papers: [],
@@ -74,6 +83,8 @@ describe('backup', () => {
     expect(restored.payload?.data.history[0].accuracy).toBe(80)
     expect(restored.payload?.data.wrongBook.q1.reason).toBe('careless')
     expect(restored.payload?.data.wrongBook.q1.note).toContain('11 个月')
+    expect(restored.payload?.data.wrongBook.q1.lastText).toBe('北京')
+    expect(restored.payload?.data.banks[0].questions[0].answerText).toEqual(['北京'])
   })
 
   it('stamps the current format and version', () => {
