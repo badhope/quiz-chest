@@ -6,6 +6,34 @@
 版本号唯一来源是 `package.json`，由 `node scripts/sync-version.mjs set <version>`
 传播到 Tauri、Cargo 与 Android 构建清单。发布流程见 [docs/RELEASING.md](docs/RELEASING.md)。
 
+## [2.3.0] - 2026-11-26
+
+把模拟考试从「倒计时 + 交卷」补成能结算的卷子。分数不靠正确率反推：单选 2 分、多选 3 分、判断 1 分、填空 2 分、简答 4 分，及格线为满分 60%，结果页给题型拆分。PDF/OCR 仍未做，留在路线图。
+
+### Added
+
+- `src/lib/exam.ts`：固定题型分值、`scoreExam` 结算、满分 60% 及格线；未作答按 0 分，不做负分
+- `ExamResult` / `ExamTypeResult`：总分、满分、及格线、是否及格与按题型聚合；`HistoryEntry` 增加可选 `exam`
+- 结果页增加 `ExamReport`：分数、及格线刻度、按题型得分条与「单选 2 分 / 多选 3 分…」口径说明
+- 练习记录与题库详情显示模考得分；结果页用 `record` 参数定位本次记录，刷新后仍是同一场分数
+- IndexedDB 与 SQLite 同步保存模考结果；桌面 schema v5 增加 `history.exam_json`，老记录读出为空，按普通练习展示
+- 单测新增 `exam.test.ts` 5 项；Web E2E 新增模考计分闭环，APK 资源 E2E 新增同一条链路
+
+### Changed
+
+- `usePracticeSession.finish` 在 `mode === 'exam'` 时先结算再写入记录；结果页优先读取该记录的 `exam`，读不到才退回正确率
+- 规范化文档口径：题小星 2.3.0 的模考不计排名、不做能力诊断，只回答「这场得了多少、过没过、哪类题丢分」
+- README 中英文补齐模考结算说明与桌面/手机截图；竞品矩阵把「无及格线 / 分数报告」改为 2.3.0 能力
+
+### Validation
+
+- 全量单测 39 文件 / 258 项通过；statements 50.83% / branches 40.5% / functions 41.05% / lines 52.16%
+- Web E2E 38 项通过；新增「模拟考试按题型赋分、判定及格线并保存模考记录」
+- APK 资源 E2E 6 项通过；新增 APK 内模考结算
+- `pnpm lint`、`pnpm typecheck`、`pnpm build` 通过；PWA precache 30 条 / 1583.61 KiB
+- 本机 `cargo check` 通过；`cargo test` 仍因缺 GTK/WebKit 链接库无法链接，由 CI 执行
+- APK/AAB 哈希见 `docs/DISTRIBUTION.md` 与 GitHub Release
+
 ## [2.2.0] - 2026-11-25
 
 把题库题型从三种扩到五种。填空和简答不另起一套题，复用原来的题库、错题、练习记录和备份；旧数据不需要迁移。PDF/OCR 和模考计分不在这一版，仍按路线图单独做。

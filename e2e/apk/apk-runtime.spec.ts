@@ -92,6 +92,28 @@ test('APK 资源可导入并作答填空题', async ({ page }) => {
   expect(stores.wrong).toHaveLength(0)
 })
 
+test('APK 资源内模拟考试按题型结算', async ({ page }) => {
+  await page.goto('/#/import')
+  await page.getByRole('textbox', { name: '粘贴题库内容' }).fill(CSV)
+  await page.getByRole('button', { name: /校验并预览/ }).click()
+  await page.getByRole('button', { name: /确认导入 \d+ 题/ }).click()
+  await page.getByRole('link', { name: /打开这个题库/ }).click()
+  await page.getByRole('link', { name: /模拟考试/ }).click()
+
+  await page.getByRole('button', { name: /^C 12$/ }).click()
+  await page.getByRole('button', { name: /下一题/ }).click()
+  await page.getByRole('button', { name: /^B 2$/ }).click()
+  await page.getByRole('button', { name: /^D 4$/ }).click()
+  await page.getByRole('button', { name: /完成练习/ }).click()
+  await page.getByRole('button', { name: '提交并查看结果' }).click()
+
+  await expect(page.getByRole('heading', { name: '过线了' })).toBeVisible()
+  await expect(page.locator('.result-score')).toContainText('5')
+  await expect(page.locator('.exam-type-row').filter({ hasText: '多选题' }).locator('.exam-type-score')).toHaveText('3 / 3')
+  const stores = await readStores(page)
+  expect(stores.history[0].exam).toMatchObject({ score: 5, fullScore: 5, passScore: 3, passed: true })
+})
+
 test('设置页显示 IndexedDB 驱动', async ({ page }) => {
   await page.goto('/#/settings')
   await expect(page.getByText('本地数据库')).toBeVisible()

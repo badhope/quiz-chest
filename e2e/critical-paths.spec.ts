@@ -463,6 +463,49 @@ test('题号文本导入 Word/TXT 模板并落库', async ({ page }) => {
   expect(bank?.questions[1].answer).toEqual([1, 3])
 })
 
+test('模拟考试按题型赋分、判定及格线并保存模考记录', async ({ page }) => {
+  await importCsv(page, CSV, 'E2E 题库')
+  await openBank(page)
+
+  await page.getByRole('link', { name: /模拟考试/ }).click()
+  await expect(page.getByText('模拟考试')).toBeVisible()
+
+  // 单选 2 分：C 正确。
+  await page.getByRole('button', { name: /^C 12$/ }).click()
+  await page.getByRole('button', { name: /下一题/ }).click()
+
+  // 多选 3 分：B、D 正确。
+  await page.getByRole('button', { name: /^B 2$/ }).click()
+  await page.getByRole('button', { name: /^D 4$/ }).click()
+  await page.getByRole('button', { name: /完成练习/ }).click()
+  await page.getByRole('button', { name: '提交并查看结果' }).click()
+
+  await expect(page.getByRole('heading', { name: '过线了' })).toBeVisible()
+  await expect(page.locator('.result-score')).toContainText('5')
+  await expect(page.locator('.result-score')).toContainText('/ 5')
+  await expect(page.getByText('已及格 · 及格线 3')).toBeVisible()
+  await expect(page.locator('.exam-type-row').filter({ hasText: '单选题' }).locator('.exam-type-score')).toHaveText('2 / 2')
+  await expect(page.locator('.exam-type-row').filter({ hasText: '多选题' }).locator('.exam-type-score')).toHaveText('3 / 3')
+
+  const stores = await readStores(page)
+  const entry = stores.history[0]
+  expect(entry.exam).toMatchObject({
+    score: 5,
+    fullScore: 5,
+    passScore: 3,
+    passed: true,
+  })
+  expect(entry.exam?.types).toEqual([
+    expect.objectContaining({ type: 'single', correct: 1, total: 1, score: 2, fullScore: 2 }),
+    expect.objectContaining({ type: 'multiple', correct: 1, total: 1, score: 3, fullScore: 3 }),
+  ])
+
+  // 刷新后 query 里的 record 仍能找回同一条模考记录，分数不会退回正确率。
+  await page.reload()
+  await expect(page.getByRole('heading', { name: '过线了' })).toBeVisible()
+  await expect(page.locator('.result-score')).toContainText('5')
+})
+
 test('填空与简答从文本导入到作答、错题记录形成闭环', async ({ page }) => {
   const TEXT_TYPES = `# E2E 文本题型
 

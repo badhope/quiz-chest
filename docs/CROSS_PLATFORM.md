@@ -224,6 +224,19 @@ MIME 与手机导出；`pnpm build:apk:release` + `pnpm verify:apk` 负责 Andro
 资源和签名。真机上的系统分享面板、硬件返回键、状态栏图标仍需要在目标机型上抽测，
 浏览器 E2E 不能替代这一层。
 
+2.3.0 验证记录：
+
+| 检查项 | 结果 |
+| --- | --- |
+| 全量单测 | 39 文件 / 258 项通过；statements 50.83% / branches 40.5% / functions 41.05% / lines 52.16% |
+| Web / PWA E2E | 38 项通过；新增模拟考试按题型赋分、及格线判定与记录保存 |
+| APK 资源 E2E | 6 项通过；加载 APK 内 `assets/public`，新增 APK 内模考结算 |
+| Lint / typecheck / Web build | 通过；PWA precache 30 条（1583.61 KiB） |
+| Rust | `cargo check` 通过；`cargo test` 仍因缺 GTK/WebKit 链接库无法本机链接，由 CI 执行 |
+| APK | 3,808,939 bytes；SHA-256 `a3cc80869c86e92eb674ea170e7d164b2deeaa77614322062860eda1dad71933`；versionCode 2003000 |
+| AAB | 3,664,426 bytes；SHA-256 `8a13c5a15138ba2b778dfe022d2b27c97333f72e31ed7ffcf93ff1f41d44ad11`；签名校验通过 |
+| 真机 | 无 KVM、无 adb 设备；截图与 E2E 均来自浏览器，不是真机截图 |
+
 2.2.0 验证记录：
 
 | 检查项 | 结果 |

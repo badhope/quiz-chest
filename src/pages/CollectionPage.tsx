@@ -341,7 +341,9 @@ export function CollectionPage() {
                 <span className="record-mode">
                   {sessionModeLabel(entry.mode)}
                 </span>
-                <span className="record-score mono">{entry.accuracy}%</span>
+                <span className="record-score mono">
+                  {entry.exam ? `${entry.exam.score}/${entry.exam.fullScore}` : `${entry.accuracy}%`}
+                </span>
                 <span className="record-detail">
                   对 {entry.correct} · 错 {entry.wrong} · 跳过 {entry.skipped}
                 </span>

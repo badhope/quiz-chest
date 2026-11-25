@@ -8,6 +8,7 @@ import { formatDateTime } from '../lib/datetime'
 import { formatDuration, parseSessionMode, percent, sessionModeLabel } from '../lib/quiz'
 import { Badge } from '../components/ui/primitives'
 import { MissingPage } from '../components/ui/MissingPage'
+import { ExamReport } from '../components/question/ExamReport'
 import { SectionHeader } from '../components/ui/sections'
 import {
   ArrowRight,
@@ -40,7 +41,9 @@ export function ResultPage() {
   const duration = Number(searchParams.get('duration') ?? 0)
 
   const accuracy = percent(correct, answered)
-  const latest = history[0]
+  const recordId = searchParams.get('record')
+  const latest = (recordId ? history.find((entry) => entry.id === recordId) : undefined) ?? history[0]
+  const exam = mode === 'exam' ? latest?.exam : undefined
 
   const gained = useMemo(() => {
     if (!collection) return favorites.length
@@ -64,27 +67,40 @@ export function ResultPage() {
   const skipped = total - answered
   const incomplete = total > 0 && answered < total * 0.6
 
-  const verdict = incomplete
+  const verdict = exam
     ? {
-        label: '本次未完成',
-        tone: 'neutral',
-        text: `共 ${total} 题，只作答了 ${answered} 题。正确率仅代表已作答部分，建议完整做完再评估。`,
+        label: exam.passed ? '过线了' : '还差一点',
+        tone: exam.passed ? 'success' : exam.score >= exam.passScore * 0.8 ? 'gold' : 'danger',
+        text: exam.passed
+          ? `得分 ${exam.score} / ${exam.fullScore}，及格线 ${exam.passScore} 分。${
+              wrongCount > 0 ? `有 ${wrongCount} 道错题已收录，趁热复盘。` : '这份卷子没有丢分。'
+            }`
+          : `得分 ${exam.score} / ${exam.fullScore}，距及格线还差 ${exam.passScore - exam.score} 分。${
+              skipped > 0 ? `有 ${skipped} 题未作答，按 0 分计。` : '先把丢分最多的题型补上。'
+            }`,
       }
-    : accuracy >= 90
-      ? { label: '状态极佳', tone: 'success', text: '基础扎实，可以挑战更高难度的题库了。' }
-      : accuracy >= 70
-        ? { label: '稳步前进', tone: 'moss', text: '大部分考点已经掌握，重点复习错题即可。' }
-        : accuracy >= 50
-          ? { label: '仍需巩固', tone: 'gold', text: '建议回到解析，把错题对应的知识点重新过一遍。' }
-          : { label: '从头梳理', tone: 'danger', text: '先慢下来理解概念，再做一次顺序练习。' }
+    : incomplete
+      ? {
+          label: '本次未完成',
+          tone: 'neutral',
+          text: `共 ${total} 题，只作答了 ${answered} 题。正确率仅代表已作答部分，建议完整做完再评估。`,
+        }
+      : accuracy >= 90
+        ? { label: '状态极佳', tone: 'success', text: '基础扎实，可以挑战更高难度的题库了。' }
+        : accuracy >= 70
+          ? { label: '稳步前进', tone: 'moss', text: '大部分考点已经掌握，重点复习错题即可。' }
+          : accuracy >= 50
+            ? { label: '仍需巩固', tone: 'gold', text: '建议回到解析，把错题对应的知识点重新过一遍。' }
+            : { label: '从头梳理', tone: 'danger', text: '先慢下来理解概念，再做一次顺序练习。' }
 
   return (
     <div className="result-page">
       <header className="result-hero">
         <span className="result-kicker">{sessionModeLabel(mode)} · 已完成</span>
         <div className="result-score">
-          <strong className="mono">{accuracy}</strong>
-          <span>%</span>
+          <strong className="mono">{exam ? exam.score : accuracy}</strong>
+          <span>{exam ? '分' : '%'}</span>
+          {exam ? <small>/ {exam.fullScore}</small> : null}
         </div>
         <h1 className="serif">{verdict.label}</h1>
         <p>{verdict.text}</p>
@@ -92,9 +108,16 @@ export function ResultPage() {
           <Badge tone={verdict.tone as 'success' | 'moss' | 'gold' | 'danger' | 'neutral'}>
             {resultTitle}
           </Badge>
+          {exam ? (
+            <Badge tone={exam.passed ? 'success' : 'danger'}>
+              {exam.passed ? '已及格' : '未及格'} · 及格线 {exam.passScore}
+            </Badge>
+          ) : null}
           <Badge tone="neutral">{latest ? formatDateTime(latest.finishedAt) : '刚刚'}</Badge>
         </div>
       </header>
+
+      {exam ? <ExamReport result={exam} /> : null}
 
       <section className="result-grid">
         <div className="result-stat">
@@ -123,7 +146,9 @@ export function ResultPage() {
         <div className="result-detail-head">
           <div>
             <span className="eyebrow">本次表现</span>
-            <h2 className="serif">正确率 {accuracy}%</h2>
+            <h2 className="serif">
+              {exam ? `答对 ${correct} / ${answered} 题` : `正确率 ${accuracy}%`}
+            </h2>
           </div>
           <div className="result-detail-meta">
             <span>
@@ -134,23 +159,27 @@ export function ResultPage() {
             </span>
           </div>
         </div>
-        <div className="accuracy-scale">
-          <div className="accuracy-track">
-            <span style={{ width: `${accuracy}%` }} />
-            <i style={{ left: '70%' }} />
+        {exam ? null : (
+          <div className="accuracy-scale">
+            <div className="accuracy-track">
+              <span style={{ width: `${accuracy}%` }} />
+              <i style={{ left: '70%' }} />
+            </div>
+            <div className="accuracy-labels">
+              <span>0</span>
+              <span>70% 掌握线</span>
+              <span>100%</span>
+            </div>
           </div>
-          <div className="accuracy-labels">
-            <span>0</span>
-            <span>70% 掌握线</span>
-            <span>100%</span>
-          </div>
-        </div>
+        )}
         <div className="result-notes">
           <div>
             <h3>下一步</h3>
             <p>
               {wrongCount > 0
-                ? `有 ${wrongCount} 道错题已加入错题本，建议 24 小时内复习一次。`
+                ? exam && !exam.passed
+                  ? `有 ${wrongCount} 道错题已加入错题本，先对照题型表补最弱的一块。`
+                  : `有 ${wrongCount} 道错题已加入错题本，建议 24 小时内复习一次。`
                 : '本次没有错题，可以尝试模拟考试模式检验稳定性。'}
             </p>
           </div>

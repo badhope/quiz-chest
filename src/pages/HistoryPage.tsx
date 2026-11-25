@@ -76,7 +76,7 @@ export function HistoryPage() {
                 <Clock /> {formatDuration(entry.durationSec)}
               </span>
               <span>
-                <Trophy /> {entry.accuracy}%
+                <Trophy /> {entry.exam ? `${entry.exam.score}/${entry.exam.fullScore} 分` : `${entry.accuracy}%`}
               </span>
             </span>
             <ArrowRight className="history-arrow" />

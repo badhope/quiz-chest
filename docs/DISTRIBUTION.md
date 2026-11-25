@@ -8,18 +8,18 @@ Google Play、App Store 或国内应用商店的开发者账号，因此本仓�
 
 | 文件 | 用途 |
 | --- | --- |
-| `artifacts/tixing-2.2.0-release.apk` | 直接安装到 Android 手机；已用 release keystore 签名 |
-| `artifacts/tixing-2.2.0-release.aab` | 交给 Google Play 或支持 AAB 的商店；不能直接侧载 |
-| `artifacts/SHA256SUMS-2.2.0.txt` | 两个产物的 SHA-256，用于分发后校验 |
+| `artifacts/tixing-2.3.0-release.apk` | 直接安装到 Android 手机；已用 release keystore 签名 |
+| `artifacts/tixing-2.3.0-release.aab` | 交给 Google Play 或支持 AAB 的商店；不能直接侧载 |
+| `artifacts/SHA256SUMS-2.3.0.txt` | 两个产物的 SHA-256，用于分发后校验 |
 
-`versionName=2.2.0`，`versionCode=2002000`，`minSdk=24`，`targetSdk=36`。
-2.1.0 与 2.0.4 的 APK/AAB 与校验文件仍保留在 `artifacts/`，用于回滚与旧版本对照，不覆盖、不删除。
+`versionName=2.3.0`，`versionCode=2003000`，`minSdk=24`，`targetSdk=36`。
+2.2.0、2.1.0 与 2.0.4 的 APK/AAB 与校验文件仍保留在 `artifacts/`，用于回滚与旧版本对照，不覆盖、不删除。
 
 当前产物校验和：
 
 ```text
-99cf43895349ef5ed4241b1092c311eaade0c3a9ab4c1298e329c4178592d0ce  tixing-2.2.0-release.apk（3,807,207 bytes）
-d0d23c8aab8f59255a5210243f77e2bc4192f0578e405da9c37b45d734cebbf6  tixing-2.2.0-release.aab（3,662,690 bytes）
+a3cc80869c86e92eb674ea170e7d164b2deeaa77614322062860eda1dad71933  tixing-2.3.0-release.apk（3,808,939 bytes）
+8a13c5a15138ba2b778dfe022d2b27c97333f72e31ed7ffcf93ff1f41d44ad11  tixing-2.3.0-release.aab（3,664,426 bytes）
 ```
 
 AAB 只用于商店上传，不能直接侧载；手机安装用 APK。
@@ -35,7 +35,7 @@ AAB 只用于商店上传，不能直接侧载；手机安装用 APK。
 
 ## 三、商店与 AAB
 
-- Google Play 上传 `tixing-2.2.0-release.aab`，包名 `com.tixing.offline.ai`。
+- Google Play 上传 `tixing-2.3.0-release.aab`，包名 `com.tixing.offline.ai`。
 - 国内商店有各自的备案、资质与主体要求；这些不是构建脚本能替代的。
 - 首次上架后，后续版本必须使用同一份 keystore 签名，否则商店会拒绝升级。
 
@@ -60,13 +60,13 @@ release 签名材料位于本机：
 接收方可先核对哈希，再安装：
 
 ```bash
-sha256sum -c SHA256SUMS-2.2.0.txt
+sha256sum -c SHA256SUMS-2.3.0.txt
 ```
 
 构建方可复验签名：
 
 ```bash
-node scripts/verify-signature.mjs artifacts/tixing-2.2.0-release.apk \
+node scripts/verify-signature.mjs artifacts/tixing-2.3.0-release.apk \
   "$ANDROID_HOME" "$JAVA_HOME"
 ```
 
