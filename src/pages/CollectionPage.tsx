@@ -101,7 +101,7 @@ export function CollectionPage() {
               <Badge tone="moss">更新于 {collection.updated}</Badge>
               {collection.origin === 'builtin' ? (
                 <Badge tone="gold" outline>
-                  示例题库 · 非正式教材
+                  内置题库 · 入门可用
                 </Badge>
               ) : (
                 <Badge tone="gold" outline>
@@ -141,8 +141,8 @@ export function CollectionPage() {
               {lastRecord ? '继续巩固，刷新最好成绩' : '按自己的节奏，一题一题吃透'}
             </h2>
             <p>
-              单选、多选、判断共 {collection.questions.length} 题，提交后立即查看解析，
-              错题会自动进入错题本。
+              单选、多选、判断共 {collection.questions.length} 题。可以先做一半，退出后进度会保留；
+              提交后立即查看解析，错题自动进入错题本。
             </p>
           </div>
           <div className="launch-actions">

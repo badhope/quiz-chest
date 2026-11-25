@@ -240,7 +240,7 @@ export function CatalogPage() {
                         <Badge tone="neutral">{collection.level}</Badge>
                         {collection.origin === 'builtin' ? (
                           <Badge tone="gold" outline>
-                            示例
+                            内置
                           </Badge>
                         ) : null}
                       </div>
@@ -363,7 +363,7 @@ export function DomainPage() {
                     <Badge tone="neutral">{collection.level}</Badge>
                     {collection.origin === 'builtin' ? (
                       <Badge tone="gold" outline>
-                        示例
+                        内置
                       </Badge>
                     ) : null}
                   </div>

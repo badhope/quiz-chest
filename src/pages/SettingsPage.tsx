@@ -386,16 +386,16 @@ export function SettingsPage() {
         {isBareContentBuild ? (
           <div className="settings-row">
             <div>
-              <strong>示例题库</strong>
+              <strong>内置题库</strong>
               <p>当前是无内置内容构建，只包含你自己导入的题库。</p>
             </div>
           </div>
         ) : (
           <div className="settings-row">
             <div>
-              <strong>显示示例题库</strong>
+              <strong>显示内置题库</strong>
               <p>
-                内置的 32 个示例题库每个只有 6-7 题，仅演示产品结构。关闭后题库总览只显示你导入的题库。
+                32 个内置题库每库至少 20 题，覆盖入门到进阶，打开就能练。关闭后题库总览只显示你导入的题库。
               </p>
             </div>
             <button
@@ -449,11 +449,11 @@ export function SettingsPage() {
           </div>
           <div>
             <strong className="mono">{collections.length}</strong>
-            <span>示例题库</span>
+            <span>内置题库</span>
           </div>
           <div>
             <strong className="mono">{totalQuestions}</strong>
-            <span>示例题目</span>
+            <span>内置题目</span>
           </div>
           <div>
             <strong className="mono">{favorites.length}</strong>
