@@ -6,6 +6,33 @@
 版本号唯一来源是 `package.json`，由 `node scripts/sync-version.mjs set <version>`
 传播到 Tauri、Cargo 与 Android 构建清单。发布流程见 [docs/RELEASING.md](docs/RELEASING.md)。
 
+## [2.0.3] - 2026-11-25
+
+把「AI 刷题助手」里缺的本地讲解模块补上。不是再加一个刷题页，而是让答题解析区能接用户自己的本机模型，同时守住「题目不出本机」的边界。
+
+### Added
+
+- `src/lib/tutor/`：`config.ts`、`protocol.ts`、`transport.ts` 与统一导出。默认关闭，只接受 `127.0.0.1` / `localhost` / `::1`，拒绝公网、局域网、账号信息和非 http(s) 端点
+- 答题解析区「问小星」入口与弹层：题库解析先行，本机模型回答可追问；支持「只给提示」「换一种说法」，对话只在内存中保留，换题或关闭即清空
+- 设置页「本地 AI 讲解」分组：开关、接口地址、模型名、保存与测试连接；测试只发固定探测文本，不发送题目
+- `AppSettings.tutor` 与备份 schema 字段；旧备份缺少该字段时自动补默认值，不改变其他设置
+- `android/app/src/main/res/xml/network_security_config.xml`：只为本机回环开 cleartext HTTP，其他明文请求仍按 Android 默认拒绝
+- `e2e/tutor.spec.ts`：3 项端到端测试，覆盖默认关闭不发请求、只发当前题与追问消息顺序、HTTP 500 降级
+- `src/lib/tutor/tutor.test.ts`：17 项单测，覆盖端点校验、prompt 边界、响应解析、超时/错误降级、连接测试与旧设置归一化
+
+### Changed
+
+- 版本升到 `2.0.3`，Android `versionName=2.0.3`、`versionCode=2000003`
+- 答题解析头部加入讲解入口，320px 下保持 44px 入口热区，弹层在 320×568 视口内 `x=10,y=8,w=300,h=552`，无横向溢出
+- Android 原生壳走 `CapacitorHttp`，避开 WebView CORS 与 mixed-content；Web 端仍走 `fetch`，需要本机服务允许 CORS
+- README 中英文的「AI」段落改为两套能力：本地学情规则 `小星建议` 与可选本机模型 `问小星`；新增手机讲题截图
+- `docs/LOCAL_AI.md` 从设计草案改为已实现说明，写明 45 秒超时、纯文本输出、不传图片/题库/历史、Android 限制与真机验收缺口
+
+### Fixed
+
+- 追问消息顺序错误：初版把追问塞进题目上下文，导致 `assistant` 回答出现在 `user` 追问之前。现在固定为 `system → 题目上下文 → 历史 → 新追问`，E2E 校验 4 条消息的角色顺序
+- 旧备份缺少 `tutor` 字段时可能只剩部分设置；`normalizeSnapshot` 与 `SettingsSchema` 均已补默认值
+
 ## [2.0.2] - 2026-11-25
 
 手机端冲突修复与 Android 环境适配版。重点不是把桌面截图缩小，而是把 320px 窄屏、

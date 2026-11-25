@@ -1,10 +1,16 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAppStore } from '../store/useAppStore'
 import { useDataLayer } from '../hooks/useDataLayer'
 import { collections } from '../data/taxonomy'
 import { getQuestion, isBareContentBuild, totalQuestions } from '../data'
 import { collectionTitleOf } from '../lib/search'
+import {
+  normalizeTutorSettings,
+  testTutorConnection,
+  validateTutorEndpoint,
+  type TutorSettings,
+} from '../lib/tutor'
 import { dateStamp } from '../lib/datetime'
 import { downloadCsv, historyToCsv, wrongBookToCsv } from '../lib/csvExport'
 import { APP_VERSION, versionLabel } from '../lib/version'
@@ -14,7 +20,7 @@ import {
   downloadBackup,
   parseBackup,
 } from '../lib/backup'
-import { ArrowRight, Download, Menu, Settings, Sun, Moon, RotateCcw, Upload } from '../components/ui/icons'
+import { ArrowRight, Download, Menu, Settings, Sparkles, Sun, Moon, RotateCcw, Upload } from '../components/ui/icons'
 import { PageHeader } from '../components/ui/sections'
 
 /**
@@ -33,6 +39,7 @@ export function SettingsPage() {
   const setAutoNext = useAppStore((state) => state.setAutoNext)
   const setShowSampleBanks = useAppStore((state) => state.setShowSampleBanks)
   const setAllowRemoteImages = useAppStore((state) => state.setAllowRemoteImages)
+  const updateSettings = useAppStore((state) => state.updateSettings)
   const bankCount = useAppStore((state) => state.banks.length)
   const resetProgress = useAppStore((state) => state.resetProgress)
   const favorites = useAppStore((state) => state.favorites)
@@ -52,6 +59,66 @@ export function SettingsPage() {
   const [restoring, setRestoring] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [resetMessage, setResetMessage] = useState('')
+  const tutor = normalizeTutorSettings(settings.tutor)
+  const [tutorEndpoint, setTutorEndpoint] = useState(tutor.endpoint)
+  const [tutorModel, setTutorModel] = useState(tutor.model)
+  const [tutorMessage, setTutorMessage] = useState('')
+  const [tutorTesting, setTutorTesting] = useState(false)
+
+  useEffect(() => {
+    // 设置可能在页面挂载后才从 IndexedDB/SQLite hydrate；这里同步的是外部持久化值。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setTutorEndpoint(tutor.endpoint)
+    setTutorModel(tutor.model)
+  }, [tutor.endpoint, tutor.model])
+
+  const saveTutor = (next: Partial<TutorSettings> = {}) => {
+    const candidate = { ...tutor, endpoint: tutorEndpoint, model: tutorModel, ...next }
+    const checked = validateTutorEndpoint(candidate.endpoint)
+    if (!checked.ok) {
+      setTutorMessage(checked.error ?? '端点不合法。')
+      return false
+    }
+    const endpoint = checked.url?.toString() ?? tutorEndpoint.trim()
+    const model = candidate.model.trim() || tutor.model
+    updateSettings({ tutor: { ...candidate, endpoint, model } })
+    setTutorEndpoint(endpoint)
+    setTutorModel(model)
+    setTutorMessage('已保存，只在本机生效。')
+    return true
+  }
+
+  const toggleTutor = () => {
+    if (tutor.enabled) {
+      updateSettings({ tutor: { ...tutor, enabled: false } })
+      setTutorMessage('已关闭本地 AI 讲解。')
+      return
+    }
+    saveTutor({ enabled: true })
+  }
+
+  const testTutor = async () => {
+    if (tutorTesting) return
+    const checked = validateTutorEndpoint(tutorEndpoint)
+    if (!checked.ok) {
+      setTutorMessage(checked.error ?? '端点不合法。')
+      return
+    }
+    setTutorTesting(true)
+    setTutorMessage('')
+    const result = await testTutorConnection({
+      ...tutor,
+      enabled: true,
+      endpoint: tutorEndpoint,
+      model: tutorModel,
+    })
+    setTutorMessage(
+      result.ok
+        ? `连接成功，模型回复：${result.text.slice(0, 40)}`
+        : `连接失败：${result.error}`,
+    )
+    setTutorTesting(false)
+  }
 
   const onResetProgress = async () => {
     if (!window.confirm('确定重置全部学习数据？该操作不可撤销。')) return
@@ -227,6 +294,87 @@ export function SettingsPage() {
           >
             <span />
           </button>
+        </div>
+      </section>
+
+      <section className="settings-group tutor-settings">
+        <div className="settings-group-head">
+          <h2 className="serif">本地 AI 讲解</h2>
+          <span>可选 · 默认关闭</span>
+        </div>
+        <div className="settings-row">
+          <div>
+            <strong>开启「问小星」</strong>
+            <p>
+              在答题解析区出现讲解入口。开启后只把当前题的题干、选项、答案和解析发到本机模型，
+              不发题库、历史记录或备份。
+            </p>
+          </div>
+          <button
+            role="switch"
+            aria-checked={tutor.enabled}
+            className={`switch${tutor.enabled ? ' on' : ''}`}
+            onClick={toggleTutor}
+          >
+            <span />
+          </button>
+        </div>
+        <div className="tutor-settings-form">
+          <div className="tutor-settings-intro">
+            <Sparkles />
+            <div>
+              <strong>题小星不自带模型</strong>
+              <p>
+                先在电脑或手机上启动 Ollama / llama.cpp 的 OpenAI 兼容服务，再填下面的地址。
+                地址只允许 127.0.0.1、localhost 或 ::1；填公网地址会被拒绝。
+              </p>
+            </div>
+          </div>
+          <label className="tutor-field">
+            <span>接口地址</span>
+            <input
+              type="url"
+              value={tutorEndpoint}
+              onChange={(event) => setTutorEndpoint(event.target.value)}
+              placeholder="http://127.0.0.1:11434/v1/chat/completions"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+            />
+          </label>
+          <label className="tutor-field">
+            <span>模型名</span>
+            <input
+              type="text"
+              value={tutorModel}
+              onChange={(event) => setTutorModel(event.target.value)}
+              placeholder="qwen2.5:3b"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+            />
+          </label>
+          <div className="tutor-settings-actions">
+            <button className="button button-primary button-sm" onClick={() => saveTutor()}>
+              保存设置
+            </button>
+            <button
+              className="button button-ghost button-sm"
+              onClick={() => void testTutor()}
+              disabled={tutorTesting}
+            >
+              {tutorTesting ? '测试中…' : '测试连接'}
+            </button>
+            {tutorMessage ? (
+              <span className="settings-inline-note" role="status">
+                {tutorMessage}
+              </span>
+            ) : null}
+          </div>
+          <p className="tutor-settings-boundary">
+            模型不可用时会自动退回题库解析；讲解不会改判分、不会写入学习记录。
+            Android 端连接 http://127.0.0.1 需要允许明文回环，已在应用内配置。
+          </p>
         </div>
       </section>
 

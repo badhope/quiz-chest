@@ -9,6 +9,7 @@ import type {
   PendingSession,
   WrongEntry,
 } from '../data/records'
+import { DEFAULT_TUTOR_SETTINGS, normalizeTutorSettings } from '../lib/tutor/config'
 
 // 数据层接口。页面只认这个文件，底下换 SQLite / IndexedDB / 内存都不改调用方。
 // 写方法失败必须 throw；吞掉写入错误比慢更糟，用户会以为已经保存了。
@@ -65,6 +66,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   autoNext: false,
   showSampleBanks: true,
   allowRemoteImages: false,
+  tutor: { ...DEFAULT_TUTOR_SETTINGS },
 }
 
 export function emptySnapshot(): DataSnapshot {
@@ -106,7 +108,11 @@ export interface RawSnapshot {
 
 export function normalizeSnapshot(raw: RawSnapshot): DataSnapshot {
   return {
-    settings: { ...DEFAULT_SETTINGS, ...raw.settings },
+    settings: {
+      ...DEFAULT_SETTINGS,
+      ...raw.settings,
+      tutor: normalizeTutorSettings(raw.settings?.tutor),
+    },
     favorites: raw.favorites ?? [],
     wrongBook: toWrongBook(raw.wrongBook ?? []),
     history: raw.history ?? [],

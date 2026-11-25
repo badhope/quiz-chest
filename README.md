@@ -16,15 +16,25 @@ Android APK and SHA-256 checksums are on [Releases](https://github.com/badhope/t
 
 ## What “AI” means here
 
-This build does **not** ship a language model and does not send questions to a cloud API.
+This build does **not** ship model weights and does not send questions to a cloud API.
+“AI” is two separate things:
 
-The “小星建议” box on the home screen is a local study-coach engine: it reads practice
-history, due wrong questions and today’s volume, then suggests what to do next. It lives in
-`src/lib/coach.ts`, runs offline, and can explain every recommendation.
+- **小星建议 (local study coach)**: deterministic rules in `src/lib/coach.ts`. It reads
+  practice history, due wrong questions and today’s volume, then suggests what to do next.
+  It runs offline and can explain every recommendation.
+- **问小星 (optional local tutor)**: an explanation panel in the answer view. When enabled,
+  it sends only the current question, options, answer and explanation to an Ollama /
+  llama.cpp server on `127.0.0.1`. It is off by default, rejects non-loopback endpoints and
+  falls back to the bundled explanation when the model is unavailable. Grading, wrong-book
+  archiving and FSRS scheduling never go through the model.
 
-If you later attach a local model (Ollama, llama.cpp server, or an on-device Android model),
-keep it as an explanation layer. Grading, wrong-book archiving and FSRS scheduling must stay
-deterministic. See [docs/LOCAL_AI.md](docs/LOCAL_AI.md).
+You start the model yourself; no weights are bundled in the APK. Boundaries, CORS, Android
+loopback and known limits are documented in [docs/LOCAL_AI.md](docs/LOCAL_AI.md).
+
+<p align="center">
+  <img src="docs/screenshots/mobile-tutor.webp" alt="Local tutor panel" width="390">
+  <br><sub><b>问小星</b> — bundled explanation first, local-model follow-up (UI sample)</sub>
+</p>
 
 ## Built-in question banks
 
@@ -41,6 +51,7 @@ These are bundled practice questions, not a hosted bank for sale. You can hide t
 | **A complete practice loop** | Single choice, multiple choice and true/false. Instant feedback in practice mode; countdown and auto-submit in exam mode. |
 | **Mistakes do not vanish after one correct answer** | Wrong answers enter the wrong-book; FSRS schedules the next review. Due questions come first. |
 | **Local study coach** | The home screen says what to do today: weak domain, due mistakes, or keep the current pace. |
+| **Optional local tutor** | Connect Ollama / llama.cpp; only the current question is sent. Off by default, with fallback to the bundled explanation. |
 | **Edit and roll back** | Edit stems, options, answers and explanations in place. Every save archives the previous version; the last 20 revisions are kept. |
 | **Share without a cloud** | Export a password-protected `.tixing.enc.json`, or start a one-time LAN download from the desktop app. No account, no relay. |
 | **Stays fast on big banks** | Inverted search index plus progressive card rendering, so a few thousand cards do not hit the DOM at once. |

@@ -1,6 +1,6 @@
 import type { Question } from '../../data/types'
 import { isCorrect, LETTERS, typeLabel, type SessionMode } from '../../lib/quiz'
-import { ArrowLeft, ArrowRight, Bookmark, ChevronDown, CircleCheck, CircleX } from '../ui/icons'
+import { ArrowLeft, ArrowRight, Bookmark, ChevronDown, CircleCheck, CircleX, Sparkles } from '../ui/icons'
 import { Badge } from '../ui/primitives'
 import { RemoteImage } from '../ui/RemoteImage'
 
@@ -20,6 +20,7 @@ export interface QuestionCardProps {
   onNext: () => void
   onSubmit: () => void
   onRequestSubmit: () => void
+  onAskTutor: () => void
 }
 
 /**
@@ -42,6 +43,7 @@ export function QuestionCard({
   onNext,
   onSubmit,
   onRequestSubmit,
+  onAskTutor,
 }: QuestionCardProps) {
   const answeredCorrectly = isCorrect(question, selection)
   const showAnswer = isChecked && mode !== 'exam'
@@ -129,6 +131,17 @@ export function QuestionCard({
                 {question.answer.map((value) => LETTERS[value]).join('、')}
               </strong>
             </span>
+            <button
+              className="tutor-ask tutor-ask-head"
+              onClick={onAskTutor}
+              aria-label="问小星：让本机模型讲讲这道题"
+            >
+              <Sparkles />
+              <span>
+                <strong>问小星</strong>
+                讲讲这道题
+              </span>
+            </button>
           </header>
           <div className="analysis-body">
             <h3>解析</h3>

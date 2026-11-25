@@ -87,6 +87,14 @@ export interface DailyStat {
   correct: number
 }
 
+export interface TutorSettings {
+  /** 默认关闭；只有用户明确开启后，答题页才会出现「问小星」。 */
+  enabled: boolean
+  /** 只接受 127.0.0.1 / localhost / ::1，避免把题目发给公网服务。 */
+  endpoint: string
+  model: string
+}
+
 export interface AppSettings {
   theme: 'light' | 'dark'
   fontScale: 'normal' | 'large'
@@ -95,6 +103,7 @@ export interface AppSettings {
   // 外链图默认关：应用对外说数据不出本机，但 http 图片会把 IP/Referer 送出去。
   // 用户要在设置里自己打开；data:image 不受影响。
   allowRemoteImages: boolean
+  tutor?: TutorSettings
 }
 
 // 未完成会话只留一份，开始新练习会覆盖旧的。手机切后台随时可能被系统杀，
