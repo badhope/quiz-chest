@@ -154,6 +154,14 @@ const config: CapacitorConfig = {
     allowMixedContent: false,
     backgroundColor: '#f4f0e7',
   },
+  plugins: {
+    // Capacitor 8 内置插件：刘海/手势区尺寸以 --safe-area-inset-* 交给页面。
+    SystemBars: {
+      style: 'LIGHT',
+      insetsHandling: 'css',
+      initialViewportFitValueHint: 'cover',
+    },
+  },
 }
 
 export default config
@@ -169,13 +177,73 @@ cd android
 
 日常改动后的同步流程：`pnpm build:native && npx cap sync android`。
 
-移动端注意事项：
+### 手机端适配（2.0.2 收口）
 
-1. 顶部状态栏与底部手势区：已在 `src/styles/layout.css`、`practice.css` 使用 `env(safe-area-inset-bottom)` 预留安全区。
-2. Android 返回键默认会退出应用。需要「返回上一页」时安装 `@capacitor/app`，监听 `backButton` 事件并调用 `history.back()`。
-3. Android 应用在 `android/app/src/main/AndroidManifest.xml` 保持 `android:allowBackup="false"`，并用 `android/app/src/main/res/xml/backup_rules.xml` 覆盖旧版备份规则；Android 12+ 通过 `android/app/src/main/res/xml/data_extraction_rules.xml` 对 `cloud-backup` 与 `device-transfer` 均排除 `domain="root"`。题库可通过题库包导出/导入迁移；该题库包不包含错题、成绩和收藏等学习状态。
-4. 若后续接后端，需要在 `capacitor.config.ts` 的 `server.allowNavigation` 里放行 API 域名，或改用 `@capacitor/http`。
-5. 状态栏配色可用 `@capacitor/status-bar` 跟随主题切换。
+这一层不是“把桌面页面缩小”，而是按真实触控和原生壳行为单独处理：
+
+1. **窄屏布局**：`src/styles/mobile.css` 在 900 / 560 / 380px 和横屏
+   `max-height:520px` 下重排。320×568、390×844 巡检时 `documentElement.scrollWidth`
+   等于视口宽度；题库页只有 `.tree-nav` 按设计横向滚动。主按钮、答题卡格子和底栏
+   保持至少 44px 热区。
+2. **安全区**：`tokens.css` 定义 `--safe-top/right/bottom/left`，
+   `var(--safe-area-inset-*, env(safe-area-inset-*, 0px))`；`SystemBars` 用 `css`
+   模式注入原生变量，旧 WebView 的 `env()` 缺陷由插件兜底。顶栏、侧栏、底部导航、
+   存储提示、练习顶栏、搜索/分享/交卷弹层都接同一组变量。
+3. **系统栏**：`src/lib/platform.ts` 的 `syncSystemChrome(theme)` 在主题切换时同步
+   `theme-color` 和 `SystemBars` 明暗图标；不额外安装 `@capacitor/status-bar`。
+   `styles.xml` 使用透明状态栏/导航栏、`shortEdges` 刘海模式，关闭系统栏对比度
+   蒙层和 Android 10+ 的 `forceDarkAllowed`，避免系统深色把 WebView 自动反色。
+4. **软键盘**：`AndroidManifest.xml` 的 Activity 使用
+   `android:windowSoftInputMode="adjustResize"`，`index.html` viewport 带
+   `interactive-widget=resizes-content`；固定定位的搜索/分享面板在键盘压矮视口后
+   仍留在屏内。输入框统一至少 16px，避免 iOS/WebView 聚焦自动放大。
+5. **Android 返回键**：`src/hooks/useAndroidBackButton.ts` 只在 Android 原生壳监听
+   `backButton`。`AppShell` 的优先级是：搜索弹层 → 侧栏 → 任意 Radix Dialog（发
+   Escape）→ 答题卡抽屉 → 练习退出确认 → WebView 历史 → `App.exitApp()`。
+6. **文件导入导出**：导入 input 接受 `.xlsx/.csv/.json/.tixing.json` 常见 MIME，
+   读取后清空 `value`，同一路径修正后可以重选。导出统一走
+   `src/lib/download.ts`：浏览器用 blob + `a[download]`；Android 原生壳动态加载
+   `@capacitor/filesystem` 写 `Directory.Cache/exports/`，再调 `@capacitor/share`
+   打开系统保存/分享面板，并把失败原因返回给设置页或题库详情页。
+7. **PWA**：manifest 的 `orientation` 为 `any`，允许横屏/分屏重排；shortcuts 指向
+   `/catalog`、`/review?tab=wrong`、`/records?tab=stats`。
+
+验证分两层：`pnpm test:e2e` 的 28 项浏览器测试（含 11 项手机专项）覆盖
+320/390 视口、44px 热区、答题卡遮罩、交卷框定位、搜索缩视口、模拟刘海、导入
+MIME 与手机导出；`pnpm build:apk:release` + `pnpm verify:apk` 负责 Android 编译、
+资源和签名。真机上的系统分享面板、硬件返回键、状态栏图标仍需要在目标机型上抽测，
+浏览器 E2E 不能替代这一层。
+
+2.0.2 验证记录：
+
+| 检查项 | 结果 |
+| --- | --- |
+| 全量单测 | 35 文件 / 218 项通过；statements 50.83% / branches 40.14% / functions 42.24% / lines 51.9% |
+| Web / PWA E2E | 28 项通过（17 项主链路 + 11 项手机专项） |
+| APK 资源 E2E | 4 项通过（像素 5 视口，加载 APK 内 `assets/public`） |
+| Rust | `cargo test` 14 项通过 |
+| 依赖审计 | 0 条（运行时 0、仅构建期 0） |
+| APK | 3,770,747 bytes；SHA-256 `ac0f7f279841f24578696026ff1f3744cf7234cf6458a3504da9e9c0c570e687` |
+| AAB | 3,624,040 bytes；SHA-256 `494ce3d94e2e50cb87bac0b0830efe9eed58a6795b913059ecadd4a32c491f96` |
+| 真机 | 无 KVM、无 adb 设备，未安装到真实手机；系统分享面板/返回键/状态栏图标未做设备实测 |
+
+移动截图用 `pnpm capture:mobile` 重新生成到临时目录，源图为 780×1688
+（390×844 @2x），再转成 `docs/screenshots/mobile-*.webp`。
+
+> 已知限制：`window.print()` 在 Android WebView 中不保证打开系统打印面板，
+> 「打印试卷」目前按桌面浏览器能力设计；手机端可以用题库包/CSV 导出后到桌面打印。
+
+### 数据备份策略
+
+`android/app/src/main/AndroidManifest.xml` 保持 `android:allowBackup="false"`，并用
+`android/app/src/main/res/xml/backup_rules.xml` 覆盖旧版备份规则；Android 12+ 通过
+`android/app/src/main/res/xml/data_extraction_rules.xml` 对 `cloud-backup` 与
+`device-transfer` 均排除 `domain="root"`。题库可通过题库包导出/导入迁移；完整备份
+（JSON）才包含错题、成绩和收藏等学习状态。
+
+若后续接后端，需要在 `capacitor.config.ts` 的 `server.allowNavigation` 里放行 API
+域名，或改用 `@capacitor/http`。
+
 
 ## 五、iOS（可选，同一套 Capacitor 工程）
 

@@ -5,12 +5,31 @@ import { invoke } from '@tauri-apps/api/core'
 import type { ImportedBank } from '../../store/useAppStore'
 import { encryptBankPackage, generateSharePassword } from '../../lib/securePackage'
 import { downloadBlob } from '../../lib/download'
+import { isNativeMobile } from '../../lib/platform'
 import { Check, Copy, Download, Share2, Wifi, X } from '../ui/icons'
 
 type EncryptedBankPayload = Awaited<ReturnType<typeof encryptBankPackage>>
 
 function isDesktop(): boolean {
   return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
+}
+
+/** 旧版 WebView / 未授予剪贴板权限时的兜底复制。 */
+function copyWithTextarea(text: string): void {
+  const area = document.createElement('textarea')
+  area.value = text
+  area.setAttribute('readonly', '')
+  area.style.position = 'fixed'
+  area.style.top = '0'
+  area.style.left = '-9999px'
+  area.style.opacity = '0'
+  document.body.appendChild(area)
+  area.focus()
+  area.select()
+  area.setSelectionRange(0, text.length)
+  const copied = document.execCommand('copy')
+  area.remove()
+  if (!copied) throw new Error('copy failed')
 }
 
 async function startLanShare(payload: string, fileName: string): Promise<{ url: string }> {
@@ -48,6 +67,8 @@ export function ShareBankDialog({
   const [shareUrl, setShareUrl] = useState('')
   const [sharing, setSharing] = useState(false)
   const [shareError, setShareError] = useState('')
+  const [downloading, setDownloading] = useState(false)
+  const [downloadNotice, setDownloadNotice] = useState('')
   const desktop = isDesktop()
 
   useEffect(() => {
@@ -95,20 +116,39 @@ export function ShareBankDialog({
 
   const copyPassword = async () => {
     try {
-      if (!navigator.clipboard) throw new Error('clipboard unavailable')
+      if (!navigator.clipboard?.writeText) throw new Error('clipboard unavailable')
       await navigator.clipboard.writeText(password)
       setCopied(true)
     } catch {
-      setCopied(false)
+      try {
+        copyWithTextarea(password)
+        setCopied(true)
+      } catch {
+        setCopied(false)
+        setShareError('复制失败，请长按口令手动复制。')
+      }
     }
   }
 
-  const download = () => {
-    if (!payload) return
-    downloadBlob(
+  const download = async () => {
+    if (!payload || downloading) return
+    setDownloading(true)
+    setDownloadNotice('')
+    setShareError('')
+    const result = await downloadBlob(
       payload.fileName,
       new Blob([payload.payload], { type: 'application/json;charset=utf-8' }),
     )
+    if (result.ok) {
+      setDownloadNotice(
+        result.channel === 'native-share'
+          ? '已生成加密题库包，请在系统面板中选择保存位置或发送方式。'
+          : '加密题库包已开始下载。',
+      )
+    } else {
+      setShareError(`导出失败：${result.error}。可重试。`)
+    }
+    setDownloading(false)
   }
 
   const startShare = async () => {
@@ -177,8 +217,12 @@ export function ShareBankDialog({
           ) : payload ? (
             <>
               <div className="share-actions">
-                <button className="button button-primary" onClick={download}>
-                  <Download /> 下载加密题库包
+                <button
+                  className="button button-primary"
+                  onClick={() => void download()}
+                  disabled={downloading}
+                >
+                  <Download /> {downloading ? '生成中…' : '下载加密题库包'}
                 </button>
                 {desktop ? (
                   <button className="button button-ghost" onClick={() => void startShare()} disabled={sharing}>
@@ -186,10 +230,19 @@ export function ShareBankDialog({
                   </button>
                 ) : (
                   <span className="share-platform-note">
-                    <Share2 /> 局域网直传仅在桌面端可用；手机端可先下载，再通过系统分享发送。
+                    <Share2 />{' '}
+                    {isNativeMobile()
+                      ? '手机端会打开系统分享面板，可直接保存到文件或发送给好友。'
+                      : '局域网直传仅在桌面端可用；手机浏览器可下载后再通过系统分享发送。'}
                   </span>
                 )}
               </div>
+
+              {downloadNotice ? (
+                <p className="share-download-note" role="status">
+                  {downloadNotice}
+                </p>
+              ) : null}
 
               {shareError ? (
                 <p className="import-error" role="alert">

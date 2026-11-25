@@ -6,6 +6,88 @@
 版本号唯一来源是 `package.json`，由 `node scripts/sync-version.mjs set <version>`
 传播到 Tauri、Cargo 与 Android 构建清单。发布流程见 [docs/RELEASING.md](docs/RELEASING.md)。
 
+## [2.0.2] - 2026-11-25
+
+手机端冲突修复与 Android 环境适配版。重点不是把桌面截图缩小，而是把 320px 窄屏、
+刘海安全区、软键盘、系统返回键和 WebView 文件导出逐项改成真实可用，并补了手机专项
+E2E。
+
+### Added
+
+- `src/styles/mobile.css`：900 / 560 / 380px 与横屏 `max-height:520px` 的移动适配层，
+  统一 44px 触控热区、安全区、底栏、练习顶栏/操作栏、搜索/交卷/分享弹层与导入设置布局
+- `src/hooks/useAndroidBackButton.ts`：Android 原生返回键监听；优先关搜索、侧栏、
+  对话框、答题卡、练习退出确认，最后才走 WebView 历史和 `App.exitApp()`
+- `src/lib/platform.ts`：`isNativeMobile()` 与 `syncSystemChrome(theme)`，同步
+  `theme-color` 和 Capacitor `SystemBars` 明暗图标
+- `@capacitor/filesystem@8`、`@capacitor/share@8`：原生壳导出改为写缓存后打开系统
+  保存/分享面板
+- `e2e/mobile.spec.ts`：11 项手机专项测试，覆盖 320/390 窄屏、触控尺寸、答题卡遮罩、
+  交卷框定位、搜索缩视口、模拟刘海、导入 MIME 与手机导出
+- `src/lib/download.native.test.ts`：2 项原生导出单测，验证缓存路径、系统分享参数和
+  失败返回
+- `scripts/capture-mobile-screenshots.mjs` 与 `pnpm capture:mobile`：390×844 触控视口
+  截图脚本
+
+### Changed
+
+- `index.html` viewport 增加 `viewport-fit=cover`、`interactive-widget=resizes-content`
+  与 Apple Web App meta
+- `capacitor.config.ts` 接入 Capacitor 8 内置 `SystemBars`：`style: LIGHT`、
+  `insetsHandling: css`、`initialViewportFitValueHint: cover`
+- `AndroidManifest.xml` 的 Activity 增加 `android:windowSoftInputMode="adjustResize"`；
+  `styles.xml` 使用透明状态栏/导航栏、`shortEdges` 刘海模式、splash 后主题，关闭
+  系统栏对比度蒙层和 `forceDarkAllowed`，避免 WebView 被系统自动反色
+- 导出链路统一到 `src/lib/download.ts`：浏览器走 blob + `a[download]`；原生壳走
+  `Filesystem.writeFile(Directory.Cache/exports)` + `Share.share`，并把结果返回给
+  设置页、题库详情和分享弹层
+- 导入 input 接受 Android 常见的 `.xlsx/.csv/.json` MIME；读取后清空 `value`，修正
+  文件后可以重新选择同一路径
+- PWA manifest `orientation` 改为 `any`，shortcuts 修正到
+  `/catalog`、`/review?tab=wrong`、`/records?tab=stats`
+- 移动底栏归属修正：`/collection`、`/edit`、`/compose`、`/print` 归「题库」；
+  `/goals`、`/goal` 归「策略」；`/result` 归「档案」；「设置」只匹配 `/settings`
+- 版本升到 `2.0.2`，Android `versionName=2.0.2`、`versionCode=2000002`
+
+### Fixed
+
+- 交卷确认框实际不在屏幕内：`pages.css` 的 `position: fixed` 被后导入的
+  `practice.css` 相对定位反压；改为完整的 fixed 居中、移动端按安全区限宽限高
+- 搜索弹层在手机端被桌面固定定位规则打散，底部越出 568px 视口；移动端改为
+  `top/bottom + 安全区` 的固定面板，页脚留在面板底部
+- 320px 答题顶栏副标题换行挤压标题、sticky 进度条被顶栏遮住；小屏隐藏副标题、
+  标题单行省略、进度条改回文档流
+- 答题操作按钮在首屏看不到；移动端改为横向 sticky 底栏，两枚按钮各占一半并预留
+  底部安全区
+- 答题卡抽屉没有遮罩、背景可误触；新增全屏遮罩、打开时锁 body 滚动、格子按
+  44px 自适应
+- 320px 题库工具条被压成两列；搜索框和导入按钮改为纵向铺满
+- 导入 textarea 等 class 选择器仍为 11.5px，聚焦会触发 iOS/WebView 放大；统一显式
+  覆盖为 `max(16px, 1em)`
+- 题库总览标题在 390px 下只剩一个「库」字独占一行；窄屏按语义断成两行
+- `panel-in` / `share-in` 动画的 `transform` 覆盖弹层自身定位；改为独立
+  `translate` / `scale` 属性
+- Android WebView 中 `a[download]` 可能静默失败；原生壳不再依赖它
+- 剪贴板 API 不可用时口令复制失败；增加 textarea + `execCommand('copy')` 兜底
+
+### Verification
+
+- 全量质量门禁逐项通过（与 `pnpm check` 同口径）：版本五项、typecheck、lint、
+  35 个测试文件 / 218 项、Web build、`cargo test` 14 项、依赖审计 0 条
+- 单测覆盖率：statements 50.83%、branches 40.14%、functions 42.24%、lines 51.9%，
+  均高于 40 / 32 / 40 / 32 的项目阈值
+- `pnpm test:e2e`：28 项通过（原 17 项 + 手机专项 11 项）
+- `pnpm test:e2e:apk`：4 项通过，直接加载 2.0.2 APK 内的 `assets/public` 资源
+- Android APK/AAB 使用 JDK 21 + SDK 36 实际编译；`verify-apk`、`apksigner`、
+  `jarsigner` 全部通过
+
+### Known
+
+- 当前宿主没有硬件虚拟化，未做 Android 模拟器/真机安装。系统分享面板、硬件返回键、
+  状态栏图标和 `SystemBars` CSS inset 的最终表现仍需目标机型抽测
+- `window.print()` 在 Android WebView 中不保证打开系统打印面板；打印试卷仍按桌面
+  浏览器能力设计
+
 ## [2.0.1] - 2026-11-24
 
 内置题库补齐版。2.0.0 的 32 个分类里有 13 个是 0 题空壳，这次把每个题库都填到至少

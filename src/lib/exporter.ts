@@ -3,7 +3,7 @@ import * as v from 'valibot'
 import { BankContentSchema } from '../data/schemas'
 import type { ImportBankInput } from './importer'
 import { dateKey } from './datetime'
-import { downloadBlob } from './download'
+import { downloadBlob, type DownloadResult } from './download'
 
 export const BANK_PACKAGE_FORMAT = 'tixing-bank'
 export const BANK_PACKAGE_VERSION = 2
@@ -56,9 +56,9 @@ export function exportFileName(bank: ImportedBank): string {
   return `${slug || 'bank'}-${dateKey(bank.importedAt)}.tixing.json`
 }
 
-export function downloadBankPackage(bank: ImportedBank): void {
+export function downloadBankPackage(bank: ImportedBank): Promise<DownloadResult> {
   const payload = JSON.stringify(buildExportPackage(bank), null, 2)
-  downloadBlob(exportFileName(bank), new Blob([payload], { type: 'application/json;charset=utf-8' }))
+  return downloadBlob(exportFileName(bank), new Blob([payload], { type: 'application/json;charset=utf-8' }))
 }
 
 // v1 包缺 description/tags/icon/level/durationMin，按默认值补齐再走 valibot。

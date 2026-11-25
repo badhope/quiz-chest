@@ -30,7 +30,8 @@ export default defineConfig(({ mode }) => {
           theme_color: '#f4f0e7',
           background_color: '#f4f0e7',
           display: 'standalone',
-          orientation: 'portrait-primary',
+          // 不再锁死竖屏：手机横屏与平板分屏也应按真实视口重排。
+          orientation: 'any',
           start_url: '/',
           scope: '/',
           icons: [
@@ -45,8 +46,8 @@ export default defineConfig(({ mode }) => {
           ],
           shortcuts: [
             { name: '题库总览', url: '/catalog' },
-            { name: '错题本', url: '/wrong' },
-            { name: '学习统计', url: '/stats' },
+            { name: '错题本', url: '/review?tab=wrong' },
+            { name: '学习统计', url: '/records?tab=stats' },
           ],
         },
         workbox: {

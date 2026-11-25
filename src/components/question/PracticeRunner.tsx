@@ -79,6 +79,16 @@ export function PracticeRunner(props: PracticeRunnerProps) {
     return () => window.removeEventListener('keydown', onKey)
   }, [current, select, goNext, submitQuestion, isChecked, selection.length, mode, isLast])
 
+  useEffect(() => {
+    if (!outlineOpen) return undefined
+    if (!window.matchMedia('(max-width: 560px)').matches) return undefined
+    const previous = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previous
+    }
+  }, [outlineOpen])
+
   if (session.total === 0 || !current) {
     return (
       <div className="practice-missing">
@@ -145,6 +155,15 @@ export function PracticeRunner(props: PracticeRunnerProps) {
           {session.index + 1} / {session.total}
         </span>
       </div>
+
+      {outlineOpen ? (
+        <button
+          type="button"
+          className="practice-outline-scrim"
+          aria-label="关闭答题卡"
+          onClick={() => setOutlineOpen(false)}
+        />
+      ) : null}
 
       <main className="practice-main">
         <QuestionCard

@@ -1,7 +1,7 @@
 import type { HistoryEntry, WrongEntry } from '../store/useAppStore'
 import { formatDateTime } from './datetime'
 import { sessionModeLabel } from './quiz'
-import { downloadBlob } from './download'
+import { downloadBlob, type DownloadResult } from './download'
 
 export function toCsv(headers: string[], rows: Array<Array<string | number>>): string {
   const escape = (value: string | number): string => {
@@ -19,9 +19,9 @@ export function toCsv(headers: string[], rows: Array<Array<string | number>>): s
   return `${lines.join('\r\n')}\r\n`
 }
 
-export function downloadCsv(fileName: string, csv: string): void {
+export function downloadCsv(fileName: string, csv: string): Promise<DownloadResult> {
   // UTF-8 BOM 让 Excel 正确识别中文
-  downloadBlob(fileName, new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }))
+  return downloadBlob(fileName, new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }))
 }
 
 export function historyToCsv(history: HistoryEntry[]): string {

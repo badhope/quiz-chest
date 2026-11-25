@@ -71,7 +71,10 @@ export function CatalogPage() {
       <header className="tree-head">
         <div>
           <span className="eyebrow">题库总览 · {library.length} 个题库 · {totalQuestions} 道题</span>
-          <h1 className="page-title serif">先选领域，再选学段，最后挑题库</h1>
+          <h1 className="page-title serif">
+            <span className="title-line">先选领域，再选学段，</span>
+            <span className="title-line">最后挑题库</span>
+          </h1>
         </div>
         <div className="tree-head-actions">
           <label className="tree-search">

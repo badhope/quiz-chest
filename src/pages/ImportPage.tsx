@@ -444,15 +444,19 @@ export function ImportPage() {
           }}
         >
           <Upload />
-          <strong>点击选择，或把 .xlsx / .csv / .json 文件拖到这里</strong>
+          <strong>点击选择文件，支持 .xlsx / .csv / .json；桌面端也可以直接拖入</strong>
           <span>Excel 与 CSV 用同一套列名；单次最多 2000 题，超过 6 个选项请用 JSON 格式。加密包会自动要求输入口令。</span>
         </div>
         <input
           ref={fileRef}
           type="file"
-          accept=".json,.csv,.xlsx,.tixing.json,text/csv,application/json"
+          accept=".json,.csv,.xlsx,.tixing.json,application/json,text/csv,text/comma-separated-values,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/octet-stream"
           className="visually-hidden"
-          onChange={(event) => onFile(event.target.files?.[0] ?? undefined)}
+          onChange={(event) => {
+            onFile(event.target.files?.[0] ?? undefined)
+            // 清空值，修正文件后还能重新选择同一个路径。
+            event.target.value = ''
+          }}
         />
         {error ? (
           <p className="import-error" role="alert">

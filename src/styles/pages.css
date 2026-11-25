@@ -2370,11 +2370,14 @@
 @keyframes panel-in {
   from {
     opacity: 0;
-    transform: translateY(-6px) scale(0.99);
+    /* 用独立的 translate/scale，避免覆盖弹层自身的 translate(-50%, -50%) 定位。 */
+    translate: 0 -6px;
+    scale: 0.99;
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    translate: 0 0;
+    scale: 1;
   }
 }
 
@@ -4018,11 +4021,13 @@
 @keyframes share-in {
   from {
     opacity: 0;
-    transform: translate(-50%, -48%);
+    translate: 0 8px;
+    scale: 0.99;
   }
   to {
     opacity: 1;
-    transform: translate(-50%, -50%);
+    translate: 0 0;
+    scale: 1;
   }
 }
 

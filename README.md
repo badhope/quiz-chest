@@ -8,6 +8,8 @@ no telemetry.
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
+Android APK and SHA-256 checksums are on [Releases](https://github.com/badhope/ti-xing-offline-ai-practice/releases/latest).
+
 <p align="center">
   <img src="docs/screenshots/home.webp" alt="TiXing home screen" width="900">
 </p>
@@ -57,6 +59,31 @@ These are bundled practice questions, not a hosted bank for sale. You can hide t
 <td width="50%"><img src="docs/screenshots/settings.webp" alt="Settings and backup"><br><sub><b>Settings</b> — backup, restore and preferences</sub></td>
 </tr>
 </table>
+
+## On a phone
+
+The same build runs in a 320 px browser and in the Android shell. The layouts below are captured at 390×844 with touch input, not scaled-down desktop screenshots.
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/mobile-home.webp" alt="Mobile learning desk"><br><sub><b>Learning desk</b> — one path per screen, six-item bottom bar</sub></td>
+<td width="50%"><img src="docs/screenshots/mobile-catalog.webp" alt="Mobile catalogue"><br><sub><b>Catalogue</b> — full-width search and import, scrollable stage chips</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/screenshots/mobile-practice.webp" alt="Mobile practice"><br><sub><b>Practice</b> — single-line header, sticky answer bar</sub></td>
+<td width="50%"><img src="docs/screenshots/mobile-settings.webp" alt="Mobile settings"><br><sub><b>Settings</b> — stacked rows, native share for backup</sub></td>
+</tr>
+</table>
+
+Mobile-specific handling is not just CSS:
+
+- **320–430 px** layouts keep 44 px touch targets, avoid whole-page horizontal overflow, and move answer actions into a sticky bottom bar.
+- **Notch and gesture area** use Capacitor `SystemBars` CSS insets with an `env(safe-area-inset-*)` fallback; the top bar, bottom nav, sheets and dialogs all reserve the same safe area.
+- **Soft keyboard** uses `adjustResize` plus `interactive-widget=resizes-content`; fixed search sheets stay inside the shrunken viewport and inputs use a 16 px minimum to avoid iOS/WebView zoom.
+- **Android back** is handled inside the app: close search/sidebar/dialog/answer sheet or confirm leaving a practice before touching WebView history and `App.exitApp()`.
+- **File export** on Android writes to the app cache and opens the system share/save sheet through `@capacitor/filesystem` and `@capacitor/share`; a WebView `a[download]` is not assumed to work.
+
+Refresh the phone screenshots with `pnpm preview` running, then `pnpm capture:mobile` (390×844 @2x PNGs in a temp directory).
 
 ## Quick start
 

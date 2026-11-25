@@ -143,7 +143,14 @@ export function MobileNav() {
       to: '/catalog',
       label: '题库',
       icon: LayoutGrid,
-      match: pathname.startsWith('/catalog') || pathname.startsWith('/domain') || pathname.startsWith('/import'),
+      match:
+        pathname.startsWith('/catalog') ||
+        pathname.startsWith('/domain') ||
+        pathname.startsWith('/import') ||
+        pathname.startsWith('/collection') ||
+        pathname.startsWith('/edit') ||
+        pathname.startsWith('/compose') ||
+        pathname.startsWith('/print'),
     },
     {
       to: '/review?tab=wrong',
@@ -155,19 +162,27 @@ export function MobileNav() {
       to: '/records?tab=stats',
       label: '档案',
       icon: BarChart3,
-      match: pathname.startsWith('/records') || pathname.startsWith('/stats') || pathname.startsWith('/history'),
+      match:
+        pathname.startsWith('/records') ||
+        pathname.startsWith('/stats') ||
+        pathname.startsWith('/history') ||
+        pathname.startsWith('/result'),
     },
     {
       to: '/strategy/daily',
       label: '策略',
       icon: Sparkles,
-      match: pathname.startsWith('/strategy') || pathname.startsWith('/practice-plan'),
+      match:
+        pathname.startsWith('/strategy') ||
+        pathname.startsWith('/practice-plan') ||
+        pathname.startsWith('/goals') ||
+        pathname.startsWith('/goal'),
     },
     {
       to: '/settings',
       label: NAV_LABELS.settings,
       icon: Settings,
-      match: pathname.startsWith('/settings') || pathname.startsWith('/goals') || pathname.startsWith('/compose'),
+      match: pathname.startsWith('/settings'),
     },
   ]
   return (
