@@ -11,7 +11,7 @@ use tauri::{AppHandle, Manager, State};
 /// 由前端在启动页展示并提供重试与恢复入口。
 pub struct Db(pub Mutex<Option<Connection>>, pub Mutex<Option<String>>);
 
-const SCHEMA_VERSION: i64 = 4;
+const SCHEMA_VERSION: i64 = 5;
 
 /// 每个题库保留的历史版本数上限。与前端 src/services/snapshotPolicy.ts 保持一致；
 /// 两端都强制，任何一端漏掉都不会导致无限增长。
@@ -118,6 +118,9 @@ pub struct HistoryRecord {
   pub duration_sec: i64,
   pub finished_at: i64,
   pub date_key: String,
+  /// 模考结算原文。结构由前端定义，Rust 只透传，避免每加一个统计字段就改表结构。
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub exam: Option<serde_json::Value>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -286,6 +289,7 @@ fn migrate(connection: &mut Connection) -> Result<(), String> {
       2 => schema_v2(&tx)?,
       3 => schema_v3(&tx)?,
       4 => schema_v4(&tx)?,
+      5 => schema_v5(&tx)?,
       other => return Err(format!("缺少 schema v{other} 的迁移步骤")),
     }
     tx.execute(
@@ -468,6 +472,30 @@ fn schema_v4(tx: &Transaction) -> Result<(), String> {
   Ok(())
 }
 
+/// v5：练习记录保存模考结算。
+///
+/// 只加一列，普通练习写入空串；老记录读出来是 None，前端按普通练习展示。
+fn schema_v5(tx: &Transaction) -> Result<(), String> {
+  let mut statement = tx
+    .prepare("PRAGMA table_info(history)")
+    .map_err(|error| format!("读取 history 表结构失败: {error}"))?;
+  let rows = statement
+    .query_map([], |row| row.get::<_, String>(1))
+    .map_err(|error| format!("读取 history 列名失败: {error}"))?;
+  let mut has_exam = false;
+  for column in rows {
+    if column.map_err(|error| format!("读取 history 列名失败: {error}"))? == "exam_json" {
+      has_exam = true;
+      break;
+    }
+  }
+  if !has_exam {
+    tx.execute("ALTER TABLE history ADD COLUMN exam_json TEXT NOT NULL DEFAULT ''", [])
+      .map_err(|error| format!("添加 history.exam_json 失败: {error}"))?;
+  }
+  Ok(())
+}
+
 fn setting(connection: &Connection, key: &str) -> Result<Option<String>, String> {
   connection
     .query_row("SELECT value FROM settings WHERE key = ?1", params![key], |row| row.get(0))
@@ -618,7 +646,7 @@ fn load_snapshot(connection: &Connection) -> Result<Snapshot, String> {
     let mut statement = connection
       .prepare(
         "SELECT id, mode, collection_id, collection_title, domain_id, answered, correct, wrong,
-                skipped, total, accuracy, duration_sec, finished_at, date_key
+                skipped, total, accuracy, duration_sec, finished_at, date_key, exam_json
          FROM history ORDER BY finished_at DESC LIMIT ?1",
       )
       .map_err(|error| format!("读取练习记录失败: {error}"))?;
@@ -639,6 +667,7 @@ fn load_snapshot(connection: &Connection) -> Result<Snapshot, String> {
           duration_sec: row.get(11)?,
           finished_at: row.get(12)?,
           date_key: row.get(13)?,
+          exam: parse_optional_json(row.get(14)?),
         })
       })
       .map_err(|error| format!("读取练习记录失败: {error}"))?;
@@ -907,11 +936,12 @@ fn save_settings_tx(tx: &Transaction, settings: &SettingsRecord) -> Result<(), S
 fn insert_history_tx(tx: &Transaction, entry: &HistoryRecord) -> Result<(), String> {
   tx.execute(
     "INSERT INTO history(id, mode, collection_id, collection_title, domain_id, answered, correct,
-                         wrong, skipped, total, accuracy, duration_sec, finished_at, date_key)
-     VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)
+                         wrong, skipped, total, accuracy, duration_sec, finished_at, date_key, exam_json)
+     VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)
      ON CONFLICT(id) DO UPDATE SET
        answered = excluded.answered, correct = excluded.correct, wrong = excluded.wrong,
-       skipped = excluded.skipped, accuracy = excluded.accuracy, duration_sec = excluded.duration_sec",
+       skipped = excluded.skipped, accuracy = excluded.accuracy, duration_sec = excluded.duration_sec,
+       exam_json = excluded.exam_json",
     params![
       entry.id,
       entry.mode,
@@ -926,7 +956,12 @@ fn insert_history_tx(tx: &Transaction, entry: &HistoryRecord) -> Result<(), Stri
       entry.accuracy,
       entry.duration_sec,
       entry.finished_at,
-      entry.date_key
+      entry.date_key,
+      entry
+        .exam
+        .as_ref()
+        .and_then(|value| serde_json::to_string(value).ok())
+        .unwrap_or_default()
     ],
   )
   .map(|_| ())
@@ -1321,6 +1356,13 @@ mod tests {
         duration_sec: 61,
         finished_at: 1000,
         date_key: "2026-11-06".into(),
+        exam: Some(serde_json::json!({
+          "score": 1,
+          "fullScore": 2,
+          "passScore": 2,
+          "passed": false,
+          "types": []
+        })),
       }],
       daily: vec![DailyRecord { date: "2026-11-06".into(), answered: 2, correct: 1 }],
       last_collection_id: Some("bank".into()),
@@ -1397,6 +1439,7 @@ mod tests {
     assert_eq!(loaded.favorites, vec!["bank-1-1".to_string()]);
     assert_eq!(loaded.wrong_book[0].wrong_count, 3);
     assert_eq!(loaded.history[0].accuracy, 50.0);
+    assert_eq!(loaded.history[0].exam.as_ref().unwrap()["score"], 1);
     assert_eq!(loaded.daily[0].answered, 2);
     assert!(!loaded.settings.show_sample_banks);
     assert_eq!(loaded.papers[0].collection_ids, vec!["bank".to_string()]);
@@ -1428,6 +1471,7 @@ mod tests {
       duration_sec: 120,
       finished_at: 1000,
       date_key: "2026-11-06".into(),
+      exam: None,
     };
     let tx = connection.transaction().unwrap();
     add_history_tx(&tx, &entry).unwrap();
@@ -1646,6 +1690,14 @@ mod tests {
         [],
       )
       .unwrap();
+    connection
+      .execute(
+        "INSERT INTO history(id, mode, collection_id, collection_title, domain_id, answered, correct,
+                             wrong, skipped, total, accuracy, duration_sec, finished_at, date_key)
+         VALUES('old', 'practice', 'kept', '已有题库', NULL, 1, 1, 0, 0, 1, 100, 10, 1, '2026-01-01')",
+        [],
+      )
+      .unwrap();
 
     migrate(&mut connection).unwrap();
     migrate(&mut connection).unwrap();
@@ -1658,6 +1710,11 @@ mod tests {
     // v2 新增的列对老数据给出安全默认值：无图、无选项图。
     assert_eq!(banks[0].questions[0].image, None);
     assert!(banks[0].questions[0].option_images.is_empty());
+    // v5 的模考列同理：老记录读出来是空串，前端按普通练习处理。
+    let exam_json: String = connection
+      .query_row("SELECT exam_json FROM history WHERE id = 'old'", [], |row| row.get(0))
+      .unwrap();
+    assert_eq!(exam_json, "");
   }
 
   #[test]

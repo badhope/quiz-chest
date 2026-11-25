@@ -39,7 +39,7 @@ Android 安装包与 SHA-256 见 [Releases](https://github.com/badhope/ti-xing-o
 | --- | --- |
 | **导入格式够宽容** | Excel（`.xlsx`）、JSON、CSV、Word（`.docx`）、TXT、Markdown 与 `.tixing.json` 题库包；CSV 的 BOM、未加引号的 `B,D`、被逗号切开的 data URI 都做了兼容。文本模板按题号解析，单选、多选、判断、填空、简答都能进来，缺答案会逐条提示。 |
 | **三条找题路径** | 跟目标路线走、按领域逐层钻取，或让策略按薄弱项配题。 |
-| **完整练习闭环** | 单选、多选、判断、填空、简答；顺序练习即时批改，考试模式倒计时并自动交卷，背题模式先看答案再翻页。填空按预设答案判分，简答按关键词全命中判分——结果只说明词有没有写到，不冒充语义评分。 |
+| **完整练习闭环** | 单选、多选、判断、填空、简答；顺序练习即时批改，考试模式倒计时并自动交卷，交卷后按题型赋分、给出及格线和题型拆分，背题模式先看答案再翻页。填空按预设答案判分，简答按关键词全命中判分——结果只说明词有没有写到，不冒充语义评分。 |
 | **错题不会答对一次就消失** | 答错自动进错题本，FSRS 安排下次复习，未来 7 天到期量一眼可见；可标「概念没懂 / 方法不会 / 粗心看错 / 时间不够」并写一句笔记。 |
 | **小星建议** | 首页直接告诉你今天先干什么：补薄弱领域、清到期错题，或保持节奏。 |
 | **问小星（可选）** | 接本机 Ollama / llama.cpp，只发当前题；默认关闭，超时或失败自动退回题库解析。 |
@@ -70,6 +70,9 @@ Android 安装包与 SHA-256 见 [Releases](https://github.com/badhope/ti-xing-o
 <td width="50%"><img src="docs/screenshots/collection.webp" alt="题库详情"><br><sub><b>题库详情</b> — 题型构成、背题与练习入口</sub></td>
 <td width="50%"><img src="docs/screenshots/practice-text.webp" alt="填空与简答"><br><sub><b>填空 / 简答</b> — 文本作答、关键词命中与参考答案</sub></td>
 </tr>
+<tr>
+<td colspan="2"><img src="docs/screenshots/exam-result.webp" alt="模考结算"><br><sub><b>模考结算</b> — 分数、及格线、按题型赋分与题型拆分</sub></td>
+</tr>
 </table>
 
 ## 手机上
@@ -91,7 +94,7 @@ Android 安装包与 SHA-256 见 [Releases](https://github.com/badhope/ti-xing-o
 </tr>
 <tr>
 <td width="50%"><img src="docs/screenshots/mobile-practice-text.webp" alt="手机填空简答"><br><sub><b>文本题</b> — 关键词命中、参考答案与解析一屏读完</sub></td>
-<td width="50%"><img src="docs/screenshots/mobile-collection.webp" alt="手机题库详情"><br><sub><b>题库详情</b> — 题型构成、背题与练习入口同屏</sub></td>
+<td width="50%"><img src="docs/screenshots/mobile-exam-result.webp" alt="手机模考结算"><br><sub><b>模考结算</b> — 分数、及格线与题型拆分同屏</sub></td>
 </tr>
 </table>
 

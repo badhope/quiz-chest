@@ -69,6 +69,23 @@ export const WrongSchema = v.object({
   note: v.optional(v.string()),
 })
 
+export const ExamTypeResultSchema = v.object({
+  type: v.picklist(['single', 'multiple', 'judge', 'fill', 'short']),
+  correct: v.number(),
+  answered: v.number(),
+  total: v.number(),
+  score: v.number(),
+  fullScore: v.number(),
+})
+
+export const ExamResultSchema = v.object({
+  score: v.number(),
+  fullScore: v.number(),
+  passScore: v.number(),
+  passed: v.boolean(),
+  types: v.array(ExamTypeResultSchema),
+})
+
 export const HistorySchema = v.object({
   id: v.string(),
   mode: v.picklist(['practice', 'exam', 'review']),
@@ -84,6 +101,7 @@ export const HistorySchema = v.object({
   durationSec: v.number(),
   finishedAt: v.number(),
   dateKey: v.string(),
+  exam: v.optional(ExamResultSchema),
 })
 
 export const DailySchema = v.object({

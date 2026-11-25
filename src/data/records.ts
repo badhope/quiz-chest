@@ -1,4 +1,4 @@
-import type { DomainId, QuestionSeed } from './types'
+import type { DomainId, QuestionSeed, QuestionType } from './types'
 
 // FSRS 卡片状态。全部用数字和时间戳，别塞 Date：这结构要过 JSON、
 // SQLite、IndexedDB 三层，Date 跨层会变字符串，形状就对不上。
@@ -62,6 +62,26 @@ export interface WrongEntry {
   note?: string
 }
 
+export interface ExamTypeResult {
+  type: QuestionType
+  /** 这一题型答对的题数。 */
+  correct: number
+  /** 这一题型实际作答的题数，用于区分「答错」与「没做」。 */
+  answered: number
+  total: number
+  score: number
+  fullScore: number
+}
+
+/** 模考结算。只存结果，不存逐题得分；题目本身随时可由题库重建。 */
+export interface ExamResult {
+  score: number
+  fullScore: number
+  passScore: number
+  passed: boolean
+  types: ExamTypeResult[]
+}
+
 export interface HistoryEntry {
   id: string
   mode: RecordMode
@@ -77,6 +97,8 @@ export interface HistoryEntry {
   durationSec: number
   finishedAt: number
   dateKey: string
+  /** 仅模拟考试有值；旧记录没有该字段时按普通练习展示。 */
+  exam?: ExamResult
 }
 
 export interface PaperRecord {

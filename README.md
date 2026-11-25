@@ -48,7 +48,7 @@ These are bundled practice questions, not a hosted bank for sale. You can hide t
 | --- | --- |
 | **Tolerant import** | Excel (`.xlsx`), JSON, CSV, Word (`.docx`), TXT, Markdown and `.tixing.json` packages. CSV handles BOMs, unquoted `B,D` answers and data URIs split by commas; text imports follow a numbered template and handle single choice, multiple choice, true/false, fill-in and short answer, reporting skipped rows. |
 | **Three ways to find questions** | Follow a goal track, drill down by domain, or let the strategy pick from weak areas. |
-| **A complete practice loop** | Single choice, multiple choice, true/false, fill-in and short answer. Instant feedback in practice mode; countdown and auto-submit in exam mode; study mode reveals answers first without polluting accuracy. Fill-in answers are matched against configured alternatives; short answers require every grading keyword to appear, and the UI says so instead of pretending to be a semantic grader. |
+| **A complete practice loop** | Single choice, multiple choice, true/false, fill-in and short answer. Instant feedback in practice mode; countdown and auto-submit in exam mode, with a score, pass line and per-type breakdown after submission; study mode reveals answers first without polluting accuracy. Fill-in answers are matched against configured alternatives; short answers require every grading keyword to appear, and the UI says so instead of pretending to be a semantic grader. |
 | **Mistakes do not vanish after one correct answer** | Wrong answers enter the wrong-book; FSRS schedules the next review, with a seven-day due forecast. Tag why you missed it (concept, method, carelessness, time) and keep a short note. |
 | **Local study coach** | The home screen says what to do today: weak domain, due mistakes, or keep the current pace. |
 | **Optional local tutor** | Connect Ollama / llama.cpp; only the current question is sent. Off by default, with fallback to the bundled explanation. |
@@ -79,6 +79,9 @@ The competitor matrix and the boundaries of what TiXing deliberately does not bu
 <td width="50%"><img src="docs/screenshots/collection.webp" alt="Question bank detail"><br><sub><b>Bank detail</b> — type mix, study and practice entry points</sub></td>
 <td width="50%"><img src="docs/screenshots/practice-text.webp" alt="Fill-in and short answer"><br><sub><b>Fill-in / short answer</b> — text input, keyword hit and reference answer</sub></td>
 </tr>
+<tr>
+<td colspan="2"><img src="docs/screenshots/exam-result.webp" alt="Exam result"><br><sub><b>Exam result</b> — score, pass line and per-type breakdown</sub></td>
+</tr>
 </table>
 
 ## On a phone
@@ -100,7 +103,7 @@ The same build runs in a 320 px browser and in the Android shell. The layouts be
 </tr>
 <tr>
 <td width="50%"><img src="docs/screenshots/mobile-practice-text.webp" alt="Mobile text question"><br><sub><b>Text question</b> — keyword hit, reference answer and explanation on one screen</sub></td>
-<td width="50%"><img src="docs/screenshots/mobile-collection.webp" alt="Mobile bank detail"><br><sub><b>Bank detail</b> — type mix, study and practice entry points on one screen</sub></td>
+<td width="50%"><img src="docs/screenshots/mobile-exam-result.webp" alt="Mobile exam result"><br><sub><b>Exam result</b> — score, pass line and type breakdown on one screen</sub></td>
 </tr>
 </table>
 

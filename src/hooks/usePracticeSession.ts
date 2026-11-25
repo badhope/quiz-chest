@@ -4,6 +4,7 @@ import type { Question } from '../data/types'
 import { useAppStore } from '../store/useAppStore'
 import { dateKey } from '../lib/datetime'
 import { isAnswered, isCorrect, type SessionMode } from '../lib/quiz'
+import { scoreExam } from '../lib/exam'
 import { useCountdown, useTimer } from './useTimer'
 
 const EMPTY_SELECTION: number[] = []
@@ -265,8 +266,11 @@ export function usePracticeSession(options: PracticeSessionOptions): PracticeSes
       }
     }
 
+    const finishedAt = Date.now()
+    const entryId = `h_${finishedAt}`
+    const exam = mode === 'exam' ? scoreExam(sessionQuestions, answers, textAnswers) : undefined
     addHistory({
-      id: `h_${Date.now()}`,
+      id: entryId,
       mode,
       collectionId: historyCollectionId,
       collectionTitle: historyTitle,
@@ -278,8 +282,9 @@ export function usePracticeSession(options: PracticeSessionOptions): PracticeSes
       total: sessionQuestions.length,
       accuracy: answered === 0 ? 0 : Math.round((correct / answered) * 100),
       durationSec,
-      finishedAt: Date.now(),
-      dateKey: dateKey(Date.now()),
+      finishedAt,
+      dateKey: dateKey(finishedAt),
+      ...(exam ? { exam } : {}),
     })
 
     if (!historyCollectionId.startsWith('plan:')) {
@@ -298,6 +303,7 @@ export function usePracticeSession(options: PracticeSessionOptions): PracticeSes
       duration: String(durationSec),
       title: historyTitle,
       back: backTo,
+      record: entryId,
     })
     navigate(`/result/${encodeURIComponent(historyCollectionId)}?${params.toString()}`)
   }, [

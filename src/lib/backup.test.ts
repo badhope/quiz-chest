@@ -40,6 +40,16 @@ function samplePayload(): BackupPayload {
         durationSec: 120,
         finishedAt: 1000,
         dateKey: '2026-11-02',
+        exam: {
+          score: 5,
+          fullScore: 8,
+          passScore: 5,
+          passed: true,
+          types: [
+            { type: 'single', correct: 1, answered: 1, total: 1, score: 2, fullScore: 2 },
+            { type: 'multiple', correct: 1, answered: 1, total: 1, score: 3, fullScore: 3 },
+          ],
+        },
       },
     ],
     daily: { '2026-11-02': { date: '2026-11-02', answered: 5, correct: 4 } },
@@ -81,6 +91,7 @@ describe('backup', () => {
     expect(restored.payload?.data.settings).toEqual(settings)
     expect(restored.payload?.data.banks).toHaveLength(1)
     expect(restored.payload?.data.history[0].accuracy).toBe(80)
+    expect(restored.payload?.data.history[0].exam).toMatchObject({ score: 5, passScore: 5, passed: true })
     expect(restored.payload?.data.wrongBook.q1.reason).toBe('careless')
     expect(restored.payload?.data.wrongBook.q1.note).toContain('11 个月')
     expect(restored.payload?.data.wrongBook.q1.lastText).toBe('北京')
