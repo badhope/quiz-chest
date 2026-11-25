@@ -38,9 +38,9 @@ loopback and known limits are documented in [docs/LOCAL_AI.md](docs/LOCAL_AI.md)
 
 ## Built-in question banks
 
-The app ships with **32 collections and 463 questions** across seven domains: K12, university, professional certificates, languages, coding, public fundamentals and general knowledge. Every collection has at least 12 questions, so the app is usable immediately without importing anything.
+The app ships with **32 collections and 641 questions** across seven domains: K12, university, professional certificates, languages, coding, public fundamentals and general knowledge. Every collection has at least 20 questions, so the app is usable immediately without importing anything.
 
-These are bundled practice questions, not a hosted bank for sale. You can hide them in Settings, or strip them from the bundle at build time with `VITE_BARE_CONTENT=1`; white-label and corporate builds then contain no sample stems at all.
+These are bundled practice questions, not a hosted bank for sale. You can hide them in Settings, or strip them from the bundle at build time with `VITE_BARE_CONTENT=1`; white-label and corporate builds then contain no bundled stems at all.
 
 ## What it does
 
@@ -185,7 +185,7 @@ These are from the actual migration, not a generic checklist:
 
 ```
 src/
-├─ data/        taxonomy, sample banks, question seeds, record types
+├─ data/        taxonomy, built-in banks, question seeds, record types
 ├─ services/    data layer: SQLite / IndexedDB / memory drivers
 ├─ lib/         grading, stats, import/export, strategy, papers, coach
 ├─ hooks/       session state, timers, brand, service worker, data-layer status

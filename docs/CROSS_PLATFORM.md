@@ -224,6 +224,20 @@ MIME 与手机导出；`pnpm build:apk:release` + `pnpm verify:apk` 负责 Andro
 资源和签名。真机上的系统分享面板、硬件返回键、状态栏图标仍需要在目标机型上抽测，
 浏览器 E2E 不能替代这一层。
 
+2.0.4 验证记录：
+
+| 检查项 | 结果 |
+| --- | --- |
+| 全量单测 | 36 文件 / 237 项通过；statements 50.04% / branches 40.73% / functions 41.86% / lines 51.13% |
+| 题库完整性 | 32 个题库 / 641 道题；每库至少 20 题，同库与跨库规范化题干均无重复，题型不少于两种 |
+| Web / PWA E2E | 31 项通过（17 项主链路 + 11 项手机专项 + 3 项本地 AI 专项） |
+| APK 资源 E2E | 4 项通过；首页断言“32 个题库 · 641 道题”，并覆盖 IndexedDB 持久化、错题与交卷 |
+| Lint / typecheck / Web build | 通过；PWA precache 29 条（1543.44 KiB） |
+| Rust | 未重跑；本机缺少 GTK/WebKit 开发库链接 symlink，沿用 2.0.3 的环境限制记录 |
+| APK | 3,795,807 bytes；SHA-256 `3e6991340f2f69af3116b8e2292a0f4cac4b18e60c16b42e262277f6356763e4`；versionCode 2000004 |
+| AAB | 3,649,201 bytes；SHA-256 `021719a4d131dff2d0b5ce87c0f0b8ac88e0c6b41fbbef3bb6fa577e59562d6d`；签名校验通过 |
+| 真机 | 无 KVM、无 adb 设备；截图与 E2E 均来自浏览器，不是真机截图，系统返回键、分享面板与状态栏仍未设备实测 |
+
 2.0.3 验证记录：
 
 | 检查项 | 结果 |
@@ -286,7 +300,7 @@ npx cap open ios
 | 变体 | 开启方式 | 效果 |
 | --- | --- | --- |
 | 白标 | `VITE_BRAND_NAME` / `VITE_BRAND_EN` / `VITE_BRAND_MARK` / `VITE_BRAND_ACCENT` / `VITE_BRAND_FOOTER` | 替换产品名、英文名、标志字、主色与页脚文案（见 `src/lib/brand.ts`） |
-| 裸内容 | `VITE_BARE_CONTENT=1` | 内置示例题库在**构建期**被摇掉，产物里不存在任何示例题干 |
+| 裸内容 | `VITE_BARE_CONTENT=1` | 内置题库在**构建期**被摇掉，产物里不存在任何内置题干 |
 
 ```bash
 VITE_BARE_CONTENT=1 VITE_BRAND_NAME="某某内训" pnpm build
@@ -294,7 +308,7 @@ VITE_BARE_CONTENT=1 VITE_BRAND_NAME="某某内训" pnpm build
 
 裸内容构建的验证方式不是看界面，而是看产物：`grep 匀速直线运动 dist/assets/*.js`
 应无匹配。实测主 bundle 从 450,935 字节降到 395,315 字节（约 −54 KB）。
-设置页在裸内容构建下不再展示「显示示例题库」开关，改为说明当前为无内置内容构建。
+设置页在裸内容构建下不再展示「显示内置题库」开关，改为说明当前为无内置内容构建。
 分类树（领域 / 学段）保留，导入的题库仍需按它归类。
 
 ## 七、数据层与后端演进
@@ -393,7 +407,7 @@ APK 资源完整性检查已成为构建步骤：`pnpm build:apk` 会在 Gradle 
 | Android（release APK） | `tixing-2.0.1-release.apk` (3,665,720 bytes) | Linux + JDK 21 + Android SDK 36 实际编译；`aapt dump badging` 包名 `com.tixing.offline.ai`、`versionName=2.0.1`、`versionCode=2000001`；`verify-apk` 通过（459 条目、4 个引用资源、14 个 JS、1 个 CSS）；`apksigner` 通过，证书 DN `CN=TiXing`，SHA-256 `98e19402…999e`；SHA-256 `a5ecd23b…a810` |
 | Android（release AAB） | `tixing-2.0.1-release.aab` (3,519,637 bytes) | `bundleRelease` + `jarsigner -verify` 通过；证书 DN 与 APK 一致；SHA-256 `586e1400…34bf` |
 | Web / 桌面测试 | `dist/`、`src-tauri/` | `pnpm check` 通过：版本五项、typecheck、lint、34 个测试文件 / 216 项、Web build、`cargo test` 14 项、依赖审计 0 条；`pnpm test:e2e` 17 项通过 |
-| 内置题库 | `src/data/questions/extra.ts` | 32 个题库全部有题，共 463 道；`quiz.test.ts` 校验每库至少 12 题、总数至少 460 道 |
+| 内置题库 | `src/data/questions/` | 32 个题库全部有题，共 641 道；`quiz.test.ts` 校验每库至少 20 题、总数至少 640 道，并检查同库题干不重复 |
 
 本轮只改题库与界面统计，不改题库包格式、数据库 schema 和包名。2.0.0 用户可覆盖升级。
 

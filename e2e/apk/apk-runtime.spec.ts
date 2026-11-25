@@ -16,6 +16,7 @@ APK 验证题库,下列哪些是偶数,1,2,3,4,B;D,能被 2 整除的是偶数,m
 test('APK 资源可启动：首页渲染，移动端底部导航可见', async ({ page }) => {
   await page.goto('/#/')
   await expect(page.getByRole('heading', { name: /不用先想清楚练什么/ })).toBeVisible()
+  await expect(page.getByText('32 个题库 · 641 道题')).toBeVisible()
   // Pixel 5 视口下使用底部导航；桌面侧栏是「移出屏幕待命」而非 display:none，
   // 所以断言它在视口左侧之外，而不是不可见。
   await expect(page.locator('.mobile-nav')).toBeVisible()

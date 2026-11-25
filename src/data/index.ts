@@ -9,6 +9,7 @@ import { languageSeeds } from './questions/language'
 import { codingSeeds } from './questions/coding'
 import { publicSeeds } from './questions/public'
 import { generalSeeds } from './questions/general'
+import { deepenSeeds } from './questions/deepen'
 
 // 延迟注入：避免 data → library → store 的模块级循环依赖。
 let importedLookup: {
@@ -32,7 +33,7 @@ function lookupImportedQuestion(id: string): Question | undefined {
 }
 
 /**
- * 示例题库可通过构建期开关整体剥离。
+ * 内置题库可通过构建期开关整体剥离。
  *
  * 为什么用构建期而不是运行时开关：运行时隐藏只是不显示，题库源码仍会打进
  * 主 bundle（约 84 KB 源码）。企业内训、白标分发这类场景要的是「包里根本
@@ -43,11 +44,25 @@ function lookupImportedQuestion(id: string): Question | undefined {
  */
 const BARE_CONTENT = import.meta.env.VITE_BARE_CONTENT === '1'
 
+function stemKey(stem: string): string {
+  return stem
+    .toLowerCase()
+    .replace(/[\s，。！？；：、“”‘’（）()《》【】[\],.!?;:'"]/g, '')
+}
+
 function mergeSeeds(...sources: Record<string, QuestionSeed[]>[]): Record<string, QuestionSeed[]> {
   const merged: Record<string, QuestionSeed[]> = {}
+  const seen: Record<string, Set<string>> = {}
   for (const source of sources) {
     for (const [id, questions] of Object.entries(source)) {
-      merged[id] = [...(merged[id] ?? []), ...questions]
+      const keys = (seen[id] ??= new Set<string>())
+      merged[id] ??= []
+      for (const question of questions) {
+        const key = stemKey(question.stem)
+        if (keys.has(key)) continue
+        keys.add(key)
+        merged[id].push(question)
+      }
     }
   }
   return merged
@@ -66,6 +81,7 @@ const seeds: Record<string, QuestionSeed[]> = BARE_CONTENT
         ...generalSeeds,
       },
       extraSeeds,
+      deepenSeeds,
     )
 
 /** 裸内容构建下不产出任何内置题库；分类树保留，用于给导入的题库归类。 */
@@ -76,10 +92,10 @@ export const builtinQuestionBank: CollectionWithQuestions[] = BARE_CONTENT
       questions: makeQuestions(collection.id, seeds[collection.id] ?? []),
     }))
 
-/** 供界面判断当前是否为裸内容构建（不展示示例相关文案）。 */
+/** 供界面判断当前是否为裸内容构建（不展示内置题库文案）。 */
 export const isBareContentBuild = BARE_CONTENT
 
-// 兼容旧引用：示例题库即内置题库。运行期统一从 src/lib/library.ts 取合并视图。
+// 兼容旧引用：内置题库。运行期统一从 src/lib/library.ts 取合并视图。
 export const questionBank = builtinQuestionBank
 
 const byId = new Map(builtinQuestionBank.map((item) => [item.id, item]))

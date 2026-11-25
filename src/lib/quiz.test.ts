@@ -12,6 +12,11 @@ import { lastNDays, streakFromDates } from './datetime'
 import { searchCatalog } from './search'
 import type { Question } from '../data/types'
 
+const normalizeStem = (stem: string) =>
+  stem
+    .toLowerCase()
+    .replace(/[\s，。！？；：、“”‘’（）()《》【】[\],.!?;:'"]/g, '')
+
 describe('question bank integrity', () => {
   it('has seven domains and 32 collections', () => {
     expect(domains).toHaveLength(7)
@@ -28,11 +33,13 @@ describe('question bank integrity', () => {
   })
 
   it('has questions for every collection with valid answer indexes', () => {
-    expect(totalQuestions).toBeGreaterThanOrEqual(460)
+    expect(totalQuestions).toBeGreaterThanOrEqual(640)
     for (const collection of questionBank) {
-      expect(collection.questions.length, collection.id).toBeGreaterThanOrEqual(12)
+      expect(collection.questions.length, collection.id).toBeGreaterThanOrEqual(20)
+      expect(new Set(collection.questions.map((item) => item.type)).size, collection.id).toBeGreaterThan(1)
       for (const question of collection.questions) {
         expect(question.options.length, question.id).toBeGreaterThanOrEqual(2)
+        expect(new Set(question.options).size, question.id).toBe(question.options.length)
         expect(question.answer.length, question.id).toBeGreaterThan(0)
         for (const index of question.answer) {
           expect(Number.isInteger(index), question.id).toBe(true)
@@ -43,6 +50,25 @@ describe('question bank integrity', () => {
           expect(question.answer, question.id).toHaveLength(1)
         }
         expect(question.explanation.length, question.id).toBeGreaterThan(10)
+        expect(question.tags.length, question.id).toBeGreaterThan(0)
+      }
+    }
+  })
+
+  it('does not repeat stems inside a collection', () => {
+    for (const collection of questionBank) {
+      const keys = collection.questions.map((question) => normalizeStem(question.stem))
+      expect(new Set(keys).size, collection.id).toBe(keys.length)
+    }
+  })
+
+  it('does not repeat the same stem across bundled collections', () => {
+    const seen = new Map<string, string>()
+    for (const collection of questionBank) {
+      for (const question of collection.questions) {
+        const key = normalizeStem(question.stem)
+        expect(seen.get(key), `${collection.id}: ${question.stem}`).toBeUndefined()
+        seen.set(key, collection.id)
       }
     }
   })
@@ -173,7 +199,7 @@ describe('catalog search', () => {
 })
 
 describe('裸内容构建开关', () => {
-  it('默认构建（未设置 VITE_BARE_CONTENT）保留示例题库', async () => {
+  it('默认构建（未设置 VITE_BARE_CONTENT）保留内置题库', async () => {
     const mod = await import('../data')
     expect(mod.isBareContentBuild).toBe(false)
     expect(mod.questionBank.length).toBeGreaterThan(0)

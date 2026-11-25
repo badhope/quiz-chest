@@ -118,7 +118,7 @@ export function EditPage() {
         className="edit-page"
         icon={<Layers />}
         title="找不到这个题库"
-        description="内置示例题库不支持编辑，只有你导入的题库可以修改。"
+        description="内置题库不支持编辑，只有你导入的题库可以修改。"
         to="/catalog"
         linkLabel="返回我的题库"
       />
