@@ -1,7 +1,7 @@
 {
   "name": "ti-xing-offline-ai-practice",
   "private": true,
-  "version": "2.0.1",
+  "version": "2.0.2",
   "type": "module",
   "description": "题小星 · TiXing — 本地优先的自有题库练习应用",
   "scripts": {
@@ -14,6 +14,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:apk": "playwright test --config playwright.apk.config.ts",
+    "capture:mobile": "node scripts/capture-mobile-screenshots.mjs",
     "check": "node scripts/check-all.mjs",
     "build:native": "tsc -b && vite build --mode native",
     "build:apk": "pnpm build:native && cap sync android && node scripts/build-apk.mjs",
@@ -30,6 +31,8 @@
     "@capacitor/android": "^8.5.3",
     "@capacitor/app": "^8.1.2",
     "@capacitor/core": "^8.5.3",
+    "@capacitor/filesystem": "^8.1.5",
+    "@capacitor/share": "^8.0.3",
     "@radix-ui/react-dialog": "^1.3.1",
     "@radix-ui/react-tabs": "^1.2.1",
     "@tauri-apps/api": "2.12.4",

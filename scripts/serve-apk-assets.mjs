@@ -19,14 +19,14 @@ import { mkdtempSync, readFileSync, readdirSync, rmSync, existsSync, statSync } 
 import { join, extname } from 'node:path'
 import { tmpdir } from 'node:os'
 
-/** 未指定路径时，取 artifacts/ 里最新的 debug APK（与构建产物对齐）。 */
+/** 未指定路径时，取 artifacts/ 里最新的 APK（debug/release 都可以）。 */
 function resolveApk() {
-  const given = process.argv[2]
+  const given = process.env.TIXING_APK_PATH ?? process.argv[2]
   if (given) return given
   const dir = join(process.cwd(), 'artifacts')
   if (!existsSync(dir)) return null
   const candidates = readdirSync(dir)
-    .filter((name) => name.endsWith('-debug.apk'))
+    .filter((name) => name.endsWith('.apk'))
     .map((name) => join(dir, name))
     .filter((path) => statSync(path).isFile())
     .sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs)

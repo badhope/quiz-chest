@@ -1,7 +1,7 @@
 import * as v from 'valibot'
 import type { AppSettings, DailyStat, HistoryEntry, ImportedBank, PaperRecord, WrongEntry } from '../store/useAppStore'
 import { dateStamp } from './datetime'
-import { downloadBlob } from './download'
+import { downloadBlob, type DownloadResult } from './download'
 import {
   DailySchema,
   HistorySchema,
@@ -143,9 +143,9 @@ export function parseBackup(raw: string): BackupParseResult {
   return { payload: result.output as unknown as BackupPayload, error: '' }
 }
 
-/** 下载备份文件。与 CSV 导出一致，走 Blob + 临时链接。 */
-export function downloadBackup(payload: BackupPayload): void {
-  downloadBlob(
+/** 下载备份文件。与 CSV 导出一致，走统一的下载/原生分享入口。 */
+export function downloadBackup(payload: BackupPayload): Promise<DownloadResult> {
+  return downloadBlob(
     backupFileName(),
     new Blob([serializeBackup(payload)], { type: 'application/json;charset=utf-8' }),
   )

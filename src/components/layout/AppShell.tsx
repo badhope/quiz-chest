@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { Sidebar, MobileNav } from './Sidebar'
 import { StorageBanner } from './StorageBanner'
 import { SearchDialog } from '../search/SearchDialog'
 import { useAppStore } from '../../store/useAppStore'
 import { useBrand } from '../../hooks/useBrand'
+import { useAndroidBackButton } from '../../hooks/useAndroidBackButton'
 import { applyBrand } from '../../lib/brand'
+import { syncSystemChrome } from '../../lib/platform'
 import { domains } from '../../data/taxonomy'
 import { ErrorBoundary } from '../ErrorBoundary'
 import { Menu, Moon, Search, Sun, X } from '../ui/icons'
@@ -49,6 +51,46 @@ export function AppShell() {
   const fontScale = useAppStore((state) => state.settings.fontScale)
   const toggleTheme = useAppStore((state) => state.toggleTheme)
   const brand = useBrand()
+  const overlayState = useRef({ navOpen, searchOpen })
+  useEffect(() => {
+    overlayState.current = { navOpen, searchOpen }
+  }, [navOpen, searchOpen])
+
+  useAndroidBackButton(() => {
+    if (overlayState.current.searchOpen) {
+      setSearchOpen(false)
+      return true
+    }
+    if (overlayState.current.navOpen) {
+      setNavOpen(false)
+      return true
+    }
+
+    // Radix Dialog 自己监听 document 的 Escape，不需要为每个弹层再写一套关闭逻辑。
+    if (document.querySelector('[role="dialog"]')) {
+      document.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Escape',
+          code: 'Escape',
+          bubbles: true,
+          cancelable: true,
+        }),
+      )
+      return true
+    }
+
+    const practice = document.querySelector('.practice-shell')
+    if (practice) {
+      if (practice.classList.contains('outline-open')) {
+        document.querySelector<HTMLButtonElement>('.practice-outline-toggle')?.click()
+        return true
+      }
+      // 和顶栏返回按钮共用「退出练习」确认框，避免硬件返回绕过确认。
+      document.querySelector<HTMLButtonElement>('[aria-label="退出练习"]')?.click()
+      return true
+    }
+    return false
+  })
 
   useEffect(() => {
     applyBrand(brand)
@@ -61,6 +103,7 @@ export function AppShell() {
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
+    syncSystemChrome(theme)
   }, [theme])
 
   useEffect(() => {
@@ -121,7 +164,11 @@ export function AppShell() {
             <span className="topbar-page">{resolveTitle(location.pathname)}</span>
           </div>
           <div className="topbar-spacer" />
-          <button className="search-trigger" onClick={() => setSearchOpen(true)}>
+          <button
+            className="search-trigger"
+            onClick={() => setSearchOpen(true)}
+            aria-label="搜索题库、考点、题目"
+          >
             <Search />
             <span>搜索题库、考点、题目</span>
             <kbd className="search-key">⌘K</kbd>

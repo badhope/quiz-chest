@@ -47,8 +47,14 @@ export function SearchDialog({ onClose }: { onClose: () => void }) {
             ref={inputRef}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="搜索题库、考点、题干关键词…"
+            placeholder="搜索题库、考点或题目"
             aria-label="搜索题库"
+            type="search"
+            inputMode="search"
+            enterKeyHint="search"
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
             onKeyDown={(event) => {
               if (event.key === 'Enter' && results.collections[0]) {
                 go(`/collection/${results.collections[0].id}`)
@@ -153,12 +159,15 @@ export function SearchDialog({ onClose }: { onClose: () => void }) {
           )}
         </div>
         <div className="search-foot">
-          <span>
+          <span className="search-foot-desktop">
             {searching ? '索引中… ' : null}
             <kbd>Enter</kbd> 打开首个结果
           </span>
-          <span>
+          <span className="search-foot-desktop">
             <kbd>Esc</kbd> 关闭
+          </span>
+          <span className="search-foot-mobile">
+            {searching ? '索引中…' : '点结果打开'} · 点右上角关闭
           </span>
         </div>
         </Dialog.Content>

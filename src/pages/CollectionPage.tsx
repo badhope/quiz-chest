@@ -43,6 +43,8 @@ export function CollectionPage() {
   const banks = useAppStore((state) => state.banks)
   const removeBank = useAppStore((state) => state.removeBank)
   const [shareBank, setShareBank] = useState<ImportedBank | null>(null)
+  const [exporting, setExporting] = useState(false)
+  const [exportMessage, setExportMessage] = useState('')
 
   const records = useMemo(
     () => history.filter((entry) => entry.collectionId === collectionId),
@@ -184,12 +186,24 @@ export function CollectionPage() {
                 </button>
                 <button
                   className="button button-ghost"
-                  onClick={() => {
+                  disabled={exporting}
+                  onClick={async () => {
                     const bank = banks.find((item) => item.id === collection.id)
-                    if (bank) downloadBankPackage(bank)
+                    if (!bank) return
+                    setExporting(true)
+                    setExportMessage('')
+                    const result = await downloadBankPackage(bank)
+                    setExportMessage(
+                      result.ok
+                        ? result.channel === 'native-share'
+                          ? '已生成题库包，请在系统面板中选择保存位置或发送方式。'
+                          : '题库包已开始下载。'
+                        : `导出失败：${result.error}。可重试。`,
+                    )
+                    setExporting(false)
                   }}
                 >
-                  <Download /> 导出备份
+                  <Download /> {exporting ? '导出中…' : '导出备份'}
                 </button>
                 <AsyncButton
                   className="button button-ghost library-delete"
@@ -200,6 +214,11 @@ export function CollectionPage() {
                   <Trash2 /> 删除题库
                 </AsyncButton>
               </>
+            ) : null}
+            {exportMessage ? (
+              <p className="collection-export-note" role="status">
+                {exportMessage}
+              </p>
             ) : null}
           </div>
         </div>

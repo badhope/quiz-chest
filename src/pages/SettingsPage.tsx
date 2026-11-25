@@ -47,6 +47,8 @@ export function SettingsPage() {
 
   const backupInputRef = useRef<HTMLInputElement>(null)
   const [backupMessage, setBackupMessage] = useState('')
+  const [exporting, setExporting] = useState(false)
+  const [csvMessage, setCsvMessage] = useState('')
   const [restoring, setRestoring] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [resetMessage, setResetMessage] = useState('')
@@ -67,7 +69,10 @@ export function SettingsPage() {
     }
   }
 
-  const onExportBackup = () => {
+  const onExportBackup = async () => {
+    if (exporting) return
+    setExporting(true)
+    setBackupMessage('')
     const payload = buildBackup({
       appVersion: APP_VERSION,
       settings,
@@ -78,8 +83,28 @@ export function SettingsPage() {
       banks,
       papers,
     })
-    downloadBackup(payload)
-    setBackupMessage(`已导出 ${backupFileName()}，请妥善保存。`)
+    const result = await downloadBackup(payload)
+    if (result.ok) {
+      setBackupMessage(
+        result.channel === 'native-share'
+          ? `已生成 ${backupFileName()}，请在系统面板中选择保存位置或发送方式。`
+          : `已导出 ${backupFileName()}，请妥善保存。`,
+      )
+    } else {
+      setBackupMessage(`导出失败：${result.error}。数据仍在本地，可重试。`)
+    }
+    setExporting(false)
+  }
+
+  const onExportCsv = async (fileName: string, csv: string) => {
+    const result = await downloadCsv(fileName, csv)
+    setCsvMessage(
+      result.ok
+        ? result.channel === 'native-share'
+          ? '已生成 CSV，请在系统面板中选择保存位置或发送方式。'
+          : `已开始下载 ${fileName}。`
+        : `导出失败：${result.error}。可重试。`,
+    )
   }
 
   const onRestoreBackup = (file: File | undefined) => {
@@ -299,12 +324,17 @@ export function SettingsPage() {
           <div>
             <strong>导出练习数据</strong>
             <p>成绩记录与错题清单导出为 CSV，可用 Excel 打开，跨设备留档。</p>
+            {csvMessage ? (
+              <p className="settings-inline-note" role="status">
+                {csvMessage}
+              </p>
+            ) : null}
           </div>
           <div className="settings-row-actions">
             <button
               className="button button-ghost button-sm"
               disabled={history.length === 0}
-              onClick={() => downloadCsv(`成绩记录-${dateStamp()}.csv`, historyToCsv(history))}
+              onClick={() => void onExportCsv(`成绩记录-${dateStamp()}.csv`, historyToCsv(history))}
             >
               <Download /> 成绩
             </button>
@@ -312,7 +342,7 @@ export function SettingsPage() {
               className="button button-ghost button-sm"
               disabled={Object.keys(wrongBook).length === 0}
               onClick={() =>
-                downloadCsv(
+                void onExportCsv(
                   `错题清单-${dateStamp()}.csv`,
                   wrongBookToCsv(
                     wrongBook,
@@ -330,6 +360,7 @@ export function SettingsPage() {
               <Download /> 错题
             </button>
           </div>
+          {/* 消息已放在左侧说明列，避免第三列把设置行挤成三段。 */}
         </div>
         <div className="settings-row">
           <div>
@@ -363,8 +394,12 @@ export function SettingsPage() {
             ) : null}
           </div>
           <div className="settings-row-actions">
-            <button className="button button-ghost button-sm" onClick={onExportBackup}>
-              <Download /> 导出备份
+            <button
+              className="button button-ghost button-sm"
+              onClick={() => void onExportBackup()}
+              disabled={exporting}
+            >
+              <Download /> {exporting ? '导出中…' : '导出备份'}
             </button>
             <button
               className="button button-ghost button-sm"
@@ -376,7 +411,7 @@ export function SettingsPage() {
             <input
               ref={backupInputRef}
               type="file"
-              accept=".json,application/json"
+              accept=".json,.tixing.json,application/json,application/octet-stream"
               className="visually-hidden"
               onChange={(event) => {
                 onRestoreBackup(event.target.files?.[0])

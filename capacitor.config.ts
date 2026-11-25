@@ -8,6 +8,15 @@ const config: CapacitorConfig = {
     allowMixedContent: false,
     backgroundColor: '#f4f0e7',
   },
+  plugins: {
+    // Capacitor 8 的系统栏插件：把刘海/手势区尺寸以 CSS 变量交给页面，
+    // 页面再用 --safe-top / --safe-bottom 统一预留，避免双重或缺失留白。
+    SystemBars: {
+      style: 'LIGHT',
+      insetsHandling: 'css',
+      initialViewportFitValueHint: 'cover',
+    },
+  },
 }
 
 export default config

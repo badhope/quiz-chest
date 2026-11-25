@@ -7,6 +7,8 @@
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
+Android 安装包与 SHA-256 见 [Releases](https://github.com/badhope/ti-xing-offline-ai-practice/releases/latest)。
+
 <p align="center">
   <img src="docs/screenshots/home.webp" alt="题小星首页" width="900">
 </p>
@@ -52,6 +54,31 @@
 <td width="50%"><img src="docs/screenshots/settings.webp" alt="设置与备份"><br><sub><b>设置与备份</b> — 完整备份、恢复与偏好设置</sub></td>
 </tr>
 </table>
+
+## 手机上
+
+同一份构建可以直接跑在 320px 浏览器和 Android 壳里。下面是 390×844、触控模式下的实拍，不是把桌面截图缩小。
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/mobile-home.webp" alt="手机学习台"><br><sub><b>学习台</b> — 一屏一条路径，六项底栏</sub></td>
+<td width="50%"><img src="docs/screenshots/mobile-catalog.webp" alt="手机题库总览"><br><sub><b>题库总览</b> — 搜索/导入铺满，学段条横向滚动</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/screenshots/mobile-practice.webp" alt="手机答题页"><br><sub><b>答题</b> — 顶栏单行，底部吸附操作条</sub></td>
+<td width="50%"><img src="docs/screenshots/mobile-settings.webp" alt="手机设置页"><br><sub><b>设置</b> — 设置行纵向排布，备份走系统分享</sub></td>
+</tr>
+</table>
+
+手机端不只是缩了一下 CSS：
+
+- **320–430px** 保持 44px 触控热区，整页不横向溢出，答题操作收进底部吸附条。
+- **刘海与手势区** 优先读 Capacitor `SystemBars` 注入的 CSS 变量，回退 `env(safe-area-inset-*)`；顶栏、底栏、弹层和抽屉共用同一套安全区。
+- **软键盘** 用 `adjustResize` 加 `interactive-widget=resizes-content`；搜索弹层在键盘压矮视口后仍在屏内，输入框最小 16px，避免 iOS/WebView 自动放大。
+- **Android 返回键** 在应用内按优先级处理：先关搜索、侧栏、对话框、答题卡，再确认是否退出练习，最后才走 WebView 历史和 `App.exitApp()`。
+- **文件导出** 在 Android 上写入应用缓存，再调系统分享/保存面板；不依赖 WebView 里可能静默失败的 `a[download]`。
+
+先跑 `pnpm preview`，再用 `pnpm capture:mobile` 重拍手机截图（390×844 @2x，PNG 先落在临时目录）。
 
 ## 快速开始
 

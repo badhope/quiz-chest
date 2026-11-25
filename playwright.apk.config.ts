@@ -20,6 +20,10 @@ export default defineConfig({
     baseURL: 'http://127.0.0.1:5183',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
+    // 与主 E2E 配置一致：容器/离线机器可用系统 Chromium。
+    launchOptions: process.env.PLAYWRIGHT_CHROMIUM_PATH
+      ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH }
+      : undefined,
     ...devices['Pixel 5'],
   },
   projects: [{ name: 'apk-pixel5', use: { ...devices['Pixel 5'] } }],
