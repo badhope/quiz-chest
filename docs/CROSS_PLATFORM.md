@@ -231,10 +231,10 @@ MIME 与手机导出；`pnpm build:apk:release` + `pnpm verify:apk` 负责 Andro
 | 全量单测 | 38 文件 / 253 项通过；statements 50.57% / branches 41.06% / functions 41.02% / lines 51.86% |
 | Web / PWA E2E | 37 项通过；含填空/简答从文本导入到作答与错题、编辑器保留文本题答案与关键词 |
 | APK 资源 E2E | 5 项通过；加载 APK 内 `assets/public`，新增 APK 内导入并作答填空题 |
-| Lint / typecheck / Web build | 通过；PWA precache 30 条（1576.76 KiB） |
+| Lint / typecheck / Web build | 通过；PWA precache 30 条（1576.89 KiB） |
 | Rust | 本机未跑通：缺 GTK/WebKit 开发库链接库（libgdk-3、libsoup-3.0 等）；CI 的 ubuntu 环境会执行 `cargo test` |
-| APK | 3,807,151 bytes；SHA-256 `fe26a49fa21007419eda27d5a3b08d758ecfdd1c4b445f507a249ec0cb29f8cc`；versionCode 2002000 |
-| AAB | 3,662,626 bytes；SHA-256 `043e1b5acf835c7a3d5fa55008958ffdc1961afea32604285fd4da7e242f7c39`；签名校验通过 |
+| APK | 3,807,207 bytes；SHA-256 `99cf43895349ef5ed4241b1092c311eaade0c3a9ab4c1298e329c4178592d0ce`；versionCode 2002000 |
+| AAB | 3,662,690 bytes；SHA-256 `d0d23c8aab8f59255a5210243f77e2bc4192f0578e405da9c37b45d734cebbf6`；签名校验通过 |
 | 真机 | 无 KVM、无 adb 设备；截图与 E2E 均来自浏览器，不是真机截图 |
 
 2.1.0 验证记录：

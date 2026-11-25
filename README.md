@@ -100,7 +100,7 @@ The same build runs in a 320 px browser and in the Android shell. The layouts be
 </tr>
 <tr>
 <td width="50%"><img src="docs/screenshots/mobile-practice-text.webp" alt="Mobile text question"><br><sub><b>Text question</b> — keyword hit, reference answer and explanation on one screen</sub></td>
-<td width="50%"><img src="docs/screenshots/mobile-tutor.webp" alt="Mobile tutor"><br><sub><b>Tutor</b> — local model in the explanation area</sub></td>
+<td width="50%"><img src="docs/screenshots/mobile-collection.webp" alt="Mobile bank detail"><br><sub><b>Bank detail</b> — type mix, study and practice entry points on one screen</sub></td>
 </tr>
 </table>
 

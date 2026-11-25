@@ -75,6 +75,7 @@ await expect(page.getByRole('heading', { name: '文本题演示' })).toBeVisible
 await page.getByRole('button', { name: /确认导入 2 题/ }).click()
 await page.getByRole('link', { name: /打开这个题库/ }).click()
 await page.waitForSelector('.collection-page')
+await shot('mobile-collection')
 const textHref = page.url().replace(base, '')
 await page.goto(`${base}${textHref.replace('/collection/', '/practice/')}?mode=practice`, { waitUntil: 'networkidle' })
 await page.waitForSelector('.question-card')

@@ -80,6 +80,10 @@ export function CollectionPage() {
     fill: collection.questions.filter((q) => q.type === 'fill').length,
     short: collection.questions.filter((q) => q.type === 'short').length,
   }
+  const typeSummary = (Object.entries(typeCount) as [keyof typeof typeCount, number][])
+    .filter(([, count]) => count > 0)
+    .map(([type]) => ({ single: '单选', multiple: '多选', judge: '判断', fill: '填空', short: '简答' })[type])
+    .join('、')
 
   return (
     <>
@@ -144,7 +148,7 @@ export function CollectionPage() {
               {lastRecord ? '继续巩固，刷新最好成绩' : '按自己的节奏，一题一题吃透'}
             </h2>
             <p>
-              单选、多选、判断共 {collection.questions.length} 题。可以先做一半，退出后进度会保留；
+              {typeSummary}共 {collection.questions.length} 题。可以先做一半，退出后进度会保留；
               提交后立即查看解析，错题自动进入错题本。
             </p>
           </div>

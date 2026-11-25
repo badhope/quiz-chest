@@ -91,7 +91,7 @@ Android 安装包与 SHA-256 见 [Releases](https://github.com/badhope/ti-xing-o
 </tr>
 <tr>
 <td width="50%"><img src="docs/screenshots/mobile-practice-text.webp" alt="手机填空简答"><br><sub><b>文本题</b> — 关键词命中、参考答案与解析一屏读完</sub></td>
-<td width="50%"><img src="docs/screenshots/mobile-tutor.webp" alt="手机问小星"><br><sub><b>问小星</b> — 本机模型讲题，入口只在解析区</sub></td>
+<td width="50%"><img src="docs/screenshots/mobile-collection.webp" alt="手机题库详情"><br><sub><b>题库详情</b> — 题型构成、背题与练习入口同屏</sub></td>
 </tr>
 </table>
 

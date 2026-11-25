@@ -27,6 +27,11 @@
 - CSV 表头仍保留 `stem`、`optionA`、`optionB`、`answer`、`explanation` 五个基础列；文本题把选项与 `answer` 留空，避免旧 CSV 和旧工具链被破坏
 - 题库详情与导入结果的题型统计按实际存在的题型显示，题库里没有填空/简答时不额外占位
 
+### Fixed
+
+- 题库详情的题型摘要原来写死「单选、多选、判断共 N 题」，文本题库会显示错题型；改为按实际题型拼接，如「填空、简答共 2 题」
+- 已提交的文本题输入框仍用弱化颜色，看起来像占位提示；改为保持正文色，并保留禁用态背景
+
 ### Known limits
 
 - 简答按关键词全命中判分，不理解否定、语序或同义表达；页面明确写的是关键词命中，不是老师评分
@@ -38,9 +43,9 @@
 - 全量单测 38 文件 / 253 项通过；statements 50.57% / branches 41.06% / functions 41.02% / lines 51.86%
 - Web / PWA E2E 37 项通过；新增两条文本题链路
 - APK 资源 E2E 5 项通过；新增一条「APK 内导入并作答填空题」
-- `pnpm lint`、`pnpm build` 通过；Web PWA precache 30 条 / 1576.76 KiB
-- APK 3,807,151 bytes；SHA-256 `fe26a49fa21007419eda27d5a3b08d758ecfdd1c4b445f507a249ec0cb29f8cc`；versionCode 2002000
-- AAB 3,662,626 bytes；SHA-256 `043e1b5acf835c7a3d5fa55008958ffdc1961afea32604285fd4da7e242f7c39`；签名校验通过
+- `pnpm lint`、`pnpm build` 通过；Web PWA precache 30 条 / 1576.89 KiB
+- APK 3,807,207 bytes；SHA-256 `99cf43895349ef5ed4241b1092c311eaade0c3a9ab4c1298e329c4178592d0ce`；versionCode 2002000
+- AAB 3,662,690 bytes；SHA-256 `d0d23c8aab8f59255a5210243f77e2bc4192f0578e405da9c37b45d734cebbf6`；签名校验通过
 - 无真机、无 KVM/adb；截图来自浏览器渲染，系统返回键、分享面板与状态栏仍未设备实测
 
 ## [2.1.0] - 2026-11-25

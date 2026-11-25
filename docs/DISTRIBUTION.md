@@ -18,8 +18,8 @@ Google Play、App Store 或国内应用商店的开发者账号，因此本仓�
 当前产物校验和：
 
 ```text
-fe26a49fa21007419eda27d5a3b08d758ecfdd1c4b445f507a249ec0cb29f8cc  tixing-2.2.0-release.apk（3,807,151 bytes）
-043e1b5acf835c7a3d5fa55008958ffdc1961afea32604285fd4da7e242f7c39  tixing-2.2.0-release.aab（3,662,626 bytes）
+99cf43895349ef5ed4241b1092c311eaade0c3a9ab4c1298e329c4178592d0ce  tixing-2.2.0-release.apk（3,807,207 bytes）
+d0d23c8aab8f59255a5210243f77e2bc4192f0578e405da9c37b45d734cebbf6  tixing-2.2.0-release.aab（3,662,690 bytes）
 ```
 
 AAB 只用于商店上传，不能直接侧载；手机安装用 APK。

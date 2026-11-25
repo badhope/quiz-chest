@@ -485,6 +485,7 @@ test('填空与简答从文本导入到作答、错题记录形成闭环', async
   expect(bank?.questions[1].keywords).toEqual(['光照', '叶绿体'])
 
   await openBank(page, 'E2E 文本题型')
+  await expect(page.getByText('填空、简答共 2 题')).toBeVisible()
   await page.getByRole('link', { name: /顺序练习/ }).click()
   await page.getByLabel('填写答案').fill('北京')
   await page.getByRole('button', { name: /确认答案/ }).click()
