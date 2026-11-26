@@ -14,6 +14,7 @@ import {
 import { looksLikeExportPackage, parseExportPackage } from '../lib/exporter'
 import { decryptBankPackage, isEncryptedBankPackage } from '../lib/securePackage'
 import { extractDocxText } from '../lib/docxText'
+import { extractPdfText, parsePdfImport } from '../lib/pdfText'
 import { parseTextImport, TEXT_IMPORT_TEMPLATE } from '../lib/textImport'
 import { downloadText } from '../lib/download'
 import { parseWorkbookFile } from '../services/xlsxImport'
@@ -58,6 +59,8 @@ export function ImportPage() {
   const [domainId, setDomainId] = useState('')
   const [trackName, setTrackName] = useState('')
   const [templateMessage, setTemplateMessage] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [busyLabel, setBusyLabel] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
   const runParse = (text: string, name: string, formatOverride?: 'text') => {
@@ -103,7 +106,7 @@ export function ImportPage() {
     }
     const format = formatOverride ?? detectFormat(name)
     if (!format || format === 'docx') {
-      setError('仅支持 .xlsx / .csv / .json / .docx / .txt / .md 文件或题小星题库包（.tixing.json）')
+      setError('仅支持 .xlsx / .csv / .json / .docx / .pdf / .txt / .md 文件或题小星题库包（.tixing.json）')
       return
     }
     if (text.trim().length === 0) {
@@ -121,52 +124,75 @@ export function ImportPage() {
     }
   }
 
-  const onFile = (file: File | undefined) => {
-    if (!file) return
+  const onFile = async (file: File | undefined) => {
+    if (!file || busy) return
     if (file.size > MAX_IMPORT_BYTES) {
       setError(`文件过大（${formatBytes(file.size)}），单次导入上限 ${formatBytes(MAX_IMPORT_BYTES)}。请拆分后分批导入。`)
       return
     }
-    // Excel / Word 与纯文本走不同的读取路径：xlsx、docx 都是 zip 容器，必须按 ArrayBuffer 解。
-    if (detectFormat(file.name) === 'docx') {
-      const reader = new FileReader()
-      reader.onload = () => {
-        try {
-          const text = extractDocxText(reader.result as ArrayBuffer)
-          setRawText(`（Word 文件：${file.name}）`)
-          runParse(text, file.name, 'text')
-        } catch (error) {
-          setError(`Word 解析失败：${error instanceof Error ? error.message : String(error)}`)
-        }
+    setError('')
+    setBusy(true)
+    setBusyLabel('正在读取文件…')
+    let format: ReturnType<typeof detectFormat> = null
+    try {
+      // Excel / Word / PDF 都不是纯文本：xlsx、docx 是 zip 容器，PDF 要按二进制读。
+      format = detectFormat(file.name)
+      if (format === 'docx') {
+        const buffer = await file.arrayBuffer()
+        const text = extractDocxText(buffer)
+        setRawText(`（Word 文件：${file.name}）`)
+        runParse(text, file.name, 'text')
+        return
       }
-      reader.onerror = () => setError('读取文件失败，请重试')
-      reader.readAsArrayBuffer(file)
-      return
-    }
-    if (detectFormat(file.name) === 'xlsx') {
-      const reader = new FileReader()
-      reader.onload = async () => {
-        try {
-          const parsed = await parseWorkbookFile(reader.result as ArrayBuffer)
-          setRawText(`（Excel 文件：${file.name}）`)
-          setResult(parsed)
-          if (parsed.bank) setStep('review')
-        } catch (error) {
-          setError(`Excel 解析失败：${error instanceof Error ? error.message : String(error)}`)
-        }
+      if (format === 'xlsx') {
+        const parsed = await parseWorkbookFile(await file.arrayBuffer())
+        setRawText(`（Excel 文件：${file.name}）`)
+        setResult(parsed)
+        if (parsed.bank) setStep('review')
+        return
       }
-      reader.onerror = () => setError('读取文件失败，请重试')
-      reader.readAsArrayBuffer(file)
-      return
-    }
-    const reader = new FileReader()
-    reader.onload = () => {
-      const text = String(reader.result ?? '')
+      if (format === 'pdf') {
+        const extraction = await extractPdfText(await file.arrayBuffer(), {
+          onProgress: (readPages, totalPages) => {
+            setBusyLabel(`正在读取 PDF：第 ${readPages} / ${totalPages} 页…`)
+          },
+        })
+        if (extraction.text.trim().length === 0) {
+          setError(
+            `这份 PDF 的 ${extraction.pageCount} 页都没有可提取的文字层，可能是扫描件。题小星暂不内置 OCR；请先用系统 OCR 或扫描工具转成文本，再粘贴或存为 TXT 导入。`,
+          )
+          return
+        }
+        setRawText(extraction.text)
+        const parsed = parsePdfImport(extraction, file.name)
+        setResult(parsed)
+        if (parsed.bank) {
+          setStep('review')
+        } else {
+          setError(parsed.issues[0]?.message ?? 'PDF 中没有识别到题目')
+        }
+        return
+      }
+      const text = await file.text()
       setRawText(text)
       runParse(text, file.name)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      if (/password/i.test(message)) {
+        setError('这份 PDF 有密码保护，先解除密码后再导入。')
+      } else if (format === 'pdf') {
+        setError(`PDF 解析失败：${message}`)
+      } else if (format === 'docx') {
+        setError(`Word 解析失败：${message}`)
+      } else if (format === 'xlsx') {
+        setError(`Excel 解析失败：${message}`)
+      } else {
+        setError('读取文件失败，请重试')
+      }
+    } finally {
+      setBusy(false)
+      setBusyLabel('')
     }
-    reader.onerror = () => setError('读取文件失败，请重试')
-    reader.readAsText(file, 'utf-8')
   }
 
   const unlock = async () => {
@@ -459,7 +485,7 @@ export function ImportPage() {
         title="把你自己的题目带进来"
         subtitle={
           <>
-            支持 JSON、CSV、Excel、Word、TXT、Markdown 与题小星题库包（含加密包），逐行校验后才会入库。数据只保存在本机数据库。
+            支持 JSON、CSV、Excel、Word、PDF（文字层）、TXT、Markdown 与题小星题库包（含加密包），逐行校验后才会入库。数据只保存在本机数据库。
             {existingCount > 0 ? ` 已有 ${existingCount} 个导入题库。` : ''}
           </>
         }
@@ -467,31 +493,35 @@ export function ImportPage() {
 
       <section className="import-drop">
         <div
-          className="import-drop-zone"
+          className={`import-drop-zone${busy ? ' is-busy' : ''}`}
           role="button"
-          tabIndex={0}
+          tabIndex={busy ? -1 : 0}
           aria-label="选择或拖入题库文件"
-          onClick={() => fileRef.current?.click()}
+          aria-disabled={busy}
+          onClick={() => {
+            if (!busy) fileRef.current?.click()
+          }}
           onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') fileRef.current?.click()
+            if (!busy && (event.key === 'Enter' || event.key === ' ')) fileRef.current?.click()
           }}
           onDragOver={(event) => event.preventDefault()}
           onDrop={(event) => {
             event.preventDefault()
-            onFile(event.dataTransfer.files?.[0])
+            void onFile(event.dataTransfer.files?.[0])
           }}
         >
           <Upload />
-          <strong>点击选择文件，支持 .xlsx / .csv / .json / .docx / .txt / .md；桌面端也可以直接拖入</strong>
-          <span>Excel 与 CSV 用同一套列名；Word/TXT/MD 按题号模板解析。单次最多 2000 题，超过 6 个选项请用 JSON 格式。加密包会自动要求输入口令。</span>
+          <strong>{busy ? busyLabel : '点击选择文件，支持 .xlsx / .csv / .json / .docx / .pdf / .txt / .md；桌面端也可以直接拖入'}</strong>
+          <span>Excel 与 CSV 用同一套列名；Word/TXT/MD/PDF 按题号模板解析。PDF 只读文字层，扫描件请先 OCR 成文本。单次最多 2000 题，超过 6 个选项请用 JSON 格式。加密包会自动要求输入口令。</span>
         </div>
         <input
           ref={fileRef}
           type="file"
-          accept=".json,.csv,.xlsx,.docx,.txt,.md,.markdown,.tixing.json,application/json,text/csv,text/plain,text/markdown,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/octet-stream"
+          accept=".json,.csv,.xlsx,.docx,.pdf,.txt,.md,.markdown,.tixing.json,application/json,text/csv,text/plain,text/markdown,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/octet-stream"
           className="visually-hidden"
+          disabled={busy}
           onChange={(event) => {
-            onFile(event.target.files?.[0] ?? undefined)
+            void onFile(event.target.files?.[0] ?? undefined)
             // 清空值，修正文件后还能重新选择同一个路径。
             event.target.value = ''
           }}
@@ -501,6 +531,12 @@ export function ImportPage() {
             <CircleX /> {error}
           </p>
         ) : null}
+      </section>
+
+      <section className="import-pdf-note">
+        <span className="eyebrow">PDF</span>
+        <strong>只读文字层，不做内置 OCR</strong>
+        <p>能复制出文字的 PDF 可以直接导入；扫描件没有文字层，硬识别只会得到空白或乱码。请先用系统 OCR 或扫描工具转成文本，再粘贴或存为 TXT。PDF 单次最多读 60 页。</p>
       </section>
 
       <section className="import-template">

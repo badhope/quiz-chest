@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { readStores as readStoresFromPage } from './helpers'
 import { buildXlsx } from './xlsxFixture'
+import { buildExamPdf, buildScannedPdf, CID_PDF_BASE64 } from './pdfFixture'
 import { strToU8, zipSync } from 'fflate'
 
 /**
@@ -289,6 +290,55 @@ test('Excel(.xlsx) 文件可直接导入', async ({ page }) => {
 
   const stores = await readStores(page)
   expect(stores.banks.map((bank) => bank.title)).toContain('Excel 上传卷')
+})
+
+test('PDF 文字层可直接导入并落库', async ({ page }) => {
+  const pdf = await buildExamPdf(page)
+  await page.goto('/import')
+  await page.setInputFiles('input[type="file"]', {
+    name: 'PDF 自测卷.pdf',
+    mimeType: 'application/pdf',
+    buffer: pdf,
+  })
+  await expect(page.getByRole('heading', { name: 'PDF 自测卷' })).toBeVisible()
+  await page.getByRole('button', { name: /确认导入 2 题/ }).click()
+  await expect(page.getByRole('heading', { name: /已导入 2 题/ })).toBeVisible()
+
+  const stores = await readStores(page)
+  const bank = stores.banks.find((item) => item.title === 'PDF 自测卷')
+  expect(bank?.subtitle).toBe('PDF 导入')
+  expect(bank?.questions).toHaveLength(2)
+  expect(bank?.questions.map((question) => question.type)).toEqual(['single', 'fill'])
+  expect(bank?.questions[0].stem).toBe('一年有多少个月？')
+  expect(bank?.questions[1].answerText).toEqual(['叶绿体', '叶绿体。'])
+})
+
+test('CID 编码的中文 PDF 依赖 CMaps 也能取字', async ({ page }) => {
+  await page.goto('/import')
+  await page.setInputFiles('input[type="file"]', {
+    name: 'CID中文卷.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from(CID_PDF_BASE64, 'base64'),
+  })
+  await expect(page.getByRole('heading', { name: 'CID中文卷' })).toBeVisible()
+  await page.getByRole('button', { name: /确认导入 1 题/ }).click()
+  await expect(page.getByRole('heading', { name: /已导入 1 题/ })).toBeVisible()
+  const stores = await readStores(page)
+  const bank = stores.banks.find((item) => item.title === 'CID中文卷')
+  expect(bank?.questions[0].type).toBe('fill')
+  expect(bank?.questions[0].stem).toContain('光合作用的场所是')
+})
+
+test('扫描版 PDF 没有文字层时明确拒绝，不冒充 OCR', async ({ page }) => {
+  const pdf = await buildScannedPdf(page)
+  await page.goto('/import')
+  await page.setInputFiles('input[type="file"]', {
+    name: '扫描件.pdf',
+    mimeType: 'application/pdf',
+    buffer: pdf,
+  })
+  await expect(page.getByRole('alert')).toContainText('都没有可提取的文字层')
+  await expect(page.getByRole('alert')).toContainText('暂不内置 OCR')
 })
 
 test('练习到一半离开，再进来能接着做（断点续做）', async ({ page }) => {

@@ -2,7 +2,7 @@
 
 一个不联网也能把题库跑起来的本地工作台。
 
-导入自己的 Excel、CSV、JSON，或按题号模板贴入 Word / TXT / Markdown，练题、背题、限时考试、错题复习、组卷打印、备份迁移，数据全部留在设备上。
+导入自己的 Excel、CSV、JSON、PDF 文字层，或按题号模板贴入 Word / TXT / Markdown，练题、背题、限时考试、错题复习、组卷打印、备份迁移，数据全部留在设备上。
 题小星不卖题库、不做账号、不接云端，首页那个「小星建议」也是本地算出来的。
 
 [English](README.md) · [简体中文](README.zh-CN.md)
@@ -37,7 +37,7 @@ Android 安装包与 SHA-256 见 [Releases](https://github.com/badhope/ti-xing-o
 
 | | |
 | --- | --- |
-| **导入格式够宽容** | Excel（`.xlsx`）、JSON、CSV、Word（`.docx`）、TXT、Markdown 与 `.tixing.json` 题库包；CSV 的 BOM、未加引号的 `B,D`、被逗号切开的 data URI 都做了兼容。文本模板按题号解析，单选、多选、判断、填空、简答都能进来，缺答案会逐条提示。 |
+| **导入格式够宽容** | Excel（`.xlsx`）、JSON、CSV、Word（`.docx`）、PDF 文字层、TXT、Markdown 与 `.tixing.json` 题库包；CSV 的 BOM、未加引号的 `B,D`、被逗号切开的 data URI 都做了兼容。文本模板按题号解析，单选、多选、判断、填空、简答都能进来，缺答案会逐条提示。 |
 | **三条找题路径** | 跟目标路线走、按领域逐层钻取，或让策略按薄弱项配题。 |
 | **完整练习闭环** | 单选、多选、判断、填空、简答；顺序练习即时批改，考试模式倒计时并自动交卷，交卷后按题型赋分、给出及格线和题型拆分，背题模式先看答案再翻页。填空按预设答案判分，简答按关键词全命中判分——结果只说明词有没有写到，不冒充语义评分。 |
 | **错题不会答对一次就消失** | 答错自动进错题本，FSRS 安排下次复习，未来 7 天到期量一眼可见；可标「概念没懂 / 方法不会 / 粗心看错 / 时间不够」并写一句笔记。 |
@@ -64,7 +64,10 @@ Android 安装包与 SHA-256 见 [Releases](https://github.com/badhope/ti-xing-o
 </tr>
 <tr>
 <td width="50%"><img src="docs/screenshots/study.webp" alt="背题模式"><br><sub><b>背题</b> — 先看答案，不判分、不写正确率</sub></td>
-<td width="50%"><img src="docs/screenshots/import.webp" alt="导入题库"><br><sub><b>导入</b> — Word/TXT/MD 模板或直接粘贴</sub></td>
+<td width="50%"><img src="docs/screenshots/import.webp" alt="导入题库"><br><sub><b>导入</b> — Word/TXT/MD/PDF 或直接粘贴</sub></td>
+</tr>
+<tr>
+<td colspan="2"><img src="docs/screenshots/pdf-import.webp" alt="PDF 导入预览"><br><sub><b>PDF 文字层</b> — 真实文件解析后，同样先过校验再入库</sub></td>
 </tr>
 <tr>
 <td width="50%"><img src="docs/screenshots/collection.webp" alt="题库详情"><br><sub><b>题库详情</b> — 题型构成、背题与练习入口</sub></td>
@@ -93,6 +96,9 @@ Android 安装包与 SHA-256 见 [Releases](https://github.com/badhope/ti-xing-o
 <td width="50%"><img src="docs/screenshots/mobile-import.webp" alt="手机导入页"><br><sub><b>导入</b> — 文件、模板、粘贴入口纵向排布</sub></td>
 </tr>
 <tr>
+<td colspan="2"><img src="docs/screenshots/mobile-pdf-import.webp" alt="手机 PDF 导入预览"><br><sub><b>PDF 预览</b> — 手机上解析、校验与归档同屏</sub></td>
+</tr>
+<tr>
 <td width="50%"><img src="docs/screenshots/mobile-practice-text.webp" alt="手机填空简答"><br><sub><b>文本题</b> — 关键词命中、参考答案与解析一屏读完</sub></td>
 <td width="50%"><img src="docs/screenshots/mobile-exam-result.webp" alt="手机模考结算"><br><sub><b>模考结算</b> — 分数、及格线与题型拆分同屏</sub></td>
 </tr>
@@ -106,7 +112,7 @@ Android 安装包与 SHA-256 见 [Releases](https://github.com/badhope/ti-xing-o
 - **Android 返回键** 在应用内按优先级处理：先关搜索、侧栏、对话框、答题卡，再确认是否退出练习，最后才走 WebView 历史和 `App.exitApp()`。
 - **文件导出** 在 Android 上写入应用缓存，再调系统分享/保存面板；不依赖 WebView 里可能静默失败的 `a[download]`。
 
-先跑 `pnpm preview`，再用 `pnpm capture:mobile` 重拍手机截图（390×844 @2x，PNG 先落在临时目录）。
+先跑 `pnpm preview`，再用 `pnpm capture:mobile` 重拍手机截图（390×844 @2x，PNG 先落在临时目录）。导入页和 PDF 预览不是手摆的 DOM：脚本会在 Chromium 里打印一份真实 PDF，走文件选择上传，再拍校验页。
 
 ## 快速开始
 
@@ -150,7 +156,7 @@ stem,optionA,optionB,optionC,optionD,answer,answerText,keywords,explanation,type
 光合作用需要哪些条件？,,,,,,光照和叶绿体,光照|叶绿体,光照供能，叶绿体完成反应,short,2,光合作用
 ```
 
-Word、TXT、Markdown 走另一套题号模板：`1. 题干`、`A. 选项`、`答案：B`、`解析：…`。导入页可以直接下载模板，也可以粘贴。`docx` 只读正文段落，不保留字体和表格样式；填空题写 `【填空题】` 和 `答案：…`，简答题写 `【简答题】`、`参考答案：…`、`关键词：…`。缺答案、选项不足或题干重复会逐条提示。
+Word、TXT、Markdown、PDF 的文字层走另一套题号模板：`1. 题干`、`A. 选项`、`答案：B`、`解析：…`。导入页可以直接下载模板，也可以粘贴。`docx` 只读正文段落，不保留字体和表格样式；`pdf` 只读文字层，扫描件请先用系统 OCR 转成文本；填空题写 `【填空题】` 和 `答案：…`，简答题写 `【简答题】`、`参考答案：…`、`关键词：…`。缺答案、选项不足或题干重复会逐条提示。
 
 完整字段说明见 [docs/IMPORT_FORMAT.md](docs/IMPORT_FORMAT.md)。
 

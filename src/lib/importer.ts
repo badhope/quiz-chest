@@ -475,7 +475,7 @@ export function parseImportSheet(headers: string[], rows: string[][]): ParseResu
   return parseRows(headers, rows)
 }
 
-export type ImportFormat = 'json' | 'csv' | 'xlsx' | 'docx' | 'text'
+export type ImportFormat = 'json' | 'csv' | 'xlsx' | 'docx' | 'pdf' | 'text'
 
 export function detectFormat(fileName: string): ImportFormat | null {
   const lower = fileName.toLowerCase()
@@ -483,6 +483,7 @@ export function detectFormat(fileName: string): ImportFormat | null {
   if (lower.endsWith('.csv')) return 'csv'
   if (lower.endsWith('.xlsx')) return 'xlsx'
   if (lower.endsWith('.docx')) return 'docx'
+  if (lower.endsWith('.pdf')) return 'pdf'
   if (lower.endsWith('.txt') || lower.endsWith('.md') || lower.endsWith('.markdown')) return 'text'
   return null
 }

@@ -6,6 +6,34 @@
 版本号唯一来源是 `package.json`，由 `node scripts/sync-version.mjs set <version>`
 传播到 Tauri、Cargo 与 Android 构建清单。发布流程见 [docs/RELEASING.md](docs/RELEASING.md)。
 
+## [2.4.0] - 2026-11-26
+
+把 PDF 的文字层接进现有的题号模板导入。能复制出文字的 PDF 直接选文件，按 `1. 题干 / A. 选项 / 答案：B / 解析：…` 解析；扫描件没有文字层，明确走系统 OCR 后粘贴，不在安装包里塞几十 MB 的语言模型。
+
+### Added
+
+- `src/lib/pdfText.ts`：`extractPdfText` 动态加载 `pdfjs-dist`，按页读取文字层；`pdfItemsToLines` 处理 PDF 文本碎片的坐标、换行与词间距
+- `parsePdfImport` 复用 `parseTextImport`，PDF 的页数截断、空页和字符截断进入预览提示；`detectFormat` 增加 `.pdf`
+- 导入页接受 `.pdf`，读取时显示页码进度；扫描件直接提示「没有可提取的文字层」并给出系统 OCR 的替代路径
+- 导入页增加 PDF 说明块：只读文字层、不做内置 OCR、单次最多 60 页
+- `scripts/copy-pdf-assets.mjs` 把 pdfjs 的 CMaps、标准字体与 worker 复制到 `public/pdfjs/`；worker 以 `.js` 提供，避开 Android 本地资源对 `.mjs` MIME 的不确定性
+- 单测新增 `pdfText.test.ts` 6 项；Web E2E 增加普通 PDF、CID 中文字体 PDF、扫描件三条；APK 资源 E2E 增加 PDF 导入
+
+### Changed
+
+- `ImportPage` 的文件读取改为 `File.arrayBuffer()` / `File.text()`，Excel、Word、PDF 共用一套异步错误处理，不再为每种格式各写一份 FileReader
+- PWA 预缓存加入 `bcmap` 与 `pfb`，离线时 CMaps 和标准字体也能从缓存读取
+- README、导入格式、竞品矩阵、跨平台验证与分发文档更新到 2.4.0
+
+### Validation
+
+- 全量单测 40 文件 / 264 项通过；statements 50.83% / branches 40.68% / functions 41.38% / lines 52.12%
+- Web E2E 41 项通过（含 PDF 文字层、CID 中文 PDF、扫描件拒绝）；APK 资源 E2E 7 项通过（含 PDF 导入）
+- `pnpm lint`、`pnpm typecheck`、`pnpm build` 通过；PWA precache 210 条 / 4713.84 KiB
+- PDF 运行时新增约 3.7 MB（CMaps 1.7 MB、标准字体 0.8 MB、worker 1.3 MB），release APK 从 2.3.0 的 3,808,939 bytes 增至 5,913,131 bytes（5.6 MB），debug 包 7,112,542 bytes（6.8 MB）；这是文字层解析的代价，不包含 OCR
+- release APK 5,913,131 bytes，SHA-256 `f0ad80f9bc89648fa4c1efed3023f29542cc0b332e596a90a67320bc01e3a803`；release AAB 5,786,356 bytes，SHA-256 `e4bb0368e19c774b89f090985394f00cf09a6edf69cf6dbe8e32903816864114`
+- 无真机、无 KVM/adb；APK E2E 仍是浏览器加载 APK 内资源，不是真机验证
+
 ## [2.3.0] - 2026-11-26
 
 把模拟考试从「倒计时 + 交卷」补成能结算的卷子。分数不靠正确率反推：单选 2 分、多选 3 分、判断 1 分、填空 2 分、简答 4 分，及格线为满分 60%，结果页给题型拆分。PDF/OCR 仍未做，留在路线图。

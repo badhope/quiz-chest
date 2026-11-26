@@ -136,5 +136,24 @@ await page.waitForSelector('.result-page')
 await page.waitForSelector('.exam-report')
 await shot('mobile-exam-result')
 
+
+// PDF 导入截图：用浏览器打印一份真实 PDF，再走文件上传，不用假的 DOM 预览。
+const pdfPage = await browser.newPage()
+await pdfPage.setContent(`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><style>
+body{margin:24mm;font-family:"Noto Sans CJK SC",sans-serif;font-size:12pt;line-height:1.65}
+h1{font-size:16pt;margin:0 0 8mm}p{margin:0}.q{margin:0 0 6mm}
+</style></head><body>
+<h1># PDF 导入演示</h1>
+<div class="q"><p>1. 一年有多少个月？</p><p>A. 10</p><p>B. 11</p><p>C. 12</p><p>D. 13</p><p>答案：C</p><p>解析：一年十二个月。</p></div>
+<div class="q"><p>2. 光合作用的场所是？【填空题】</p><p>答案：叶绿体|叶绿体。</p><p>解析：叶绿体含有叶绿素，是光合作用的场所。</p></div>
+</body></html>`, { waitUntil: 'load' })
+const pdfBuffer = await pdfPage.pdf({ format: 'A4', printBackground: true, margin: { top: '0', bottom: '0', left: '0', right: '0' } })
+await pdfPage.close()
+await page.goto(`${base}/import`, { waitUntil: 'networkidle' })
+await page.setInputFiles('input[type="file"]', { name: 'PDF 导入演示.pdf', mimeType: 'application/pdf', buffer: pdfBuffer })
+await page.getByRole('heading', { name: 'PDF 导入演示' }).waitFor()
+await page.waitForTimeout(300)
+await page.screenshot({ path: `${out}/mobile-pdf-import.png` })
+
 await browser.close()
 console.log('done', out, href)
