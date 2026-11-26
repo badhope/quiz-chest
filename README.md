@@ -11,7 +11,7 @@ no telemetry.
 Android APK and SHA-256 checksums are on [Releases](https://github.com/badhope/ti-xing-offline-ai-practice/releases/latest).
 
 <p align="center">
-  <img src="docs/screenshots/home.webp" alt="TiXing home screen" width="900">
+  <img src="docs/brand/banner-en.webp" alt="TiXing: your question bank, offline" width="900">
 </p>
 
 ## What “AI” means here
@@ -254,6 +254,7 @@ data-layer tests and dependency audit.
 
 - Version source: `package.json`, propagated by `scripts/sync-version.mjs`.
 - Changelog: [CHANGELOG.md](CHANGELOG.md)
+- Brand guide: [docs/BRAND.md](docs/BRAND.md)
 - Release process: [docs/RELEASING.md](docs/RELEASING.md)
 - Contributing: [CONTRIBUTING.md](CONTRIBUTING.md)
 - Security: [SECURITY.md](SECURITY.md)
