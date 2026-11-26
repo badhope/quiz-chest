@@ -10,7 +10,7 @@
 Android 安装包与 SHA-256 见 [Releases](https://github.com/badhope/ti-xing-offline-ai-practice/releases/latest)。
 
 <p align="center">
-  <img src="docs/screenshots/home.webp" alt="题小星首页" width="900">
+  <img src="docs/brand/banner.webp" alt="题小星：自有题库，离线也能练" width="900">
 </p>
 
 ## 「AI」到底在哪里
@@ -228,6 +228,7 @@ pnpm test:e2e:apk # Playwright 跑在 APK 真实资源上，Pixel 5 视口
 
 - 版本号：`package.json` 是唯一来源，`scripts/sync-version.mjs` 传播到 Tauri、Cargo 与 Android。
 - 变更历史：[CHANGELOG.md](CHANGELOG.md)
+- 品牌规范：[docs/BRAND.md](docs/BRAND.md)
 - 发布流程：[docs/RELEASING.md](docs/RELEASING.md)
 - 贡献指南：[CONTRIBUTING.md](CONTRIBUTING.md)
 - 安全策略：[SECURITY.md](SECURITY.md)
