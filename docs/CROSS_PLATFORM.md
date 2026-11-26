@@ -218,7 +218,7 @@ cd android
   集成 llama.cpp / MNN 的 AAR；当前没有内置推理 SDK。
 - 浏览器/桌面端仍由本机服务的 CORS 决定；应用不会代理，也不会把题目发到公网。
 
-验证分两层：`pnpm test:e2e` 的 37 项浏览器测试（含 11 项手机专项与 3 项本地 AI 专项）覆盖
+验证分两层：`pnpm test:e2e` 的 41 项浏览器测试（含 11 项手机专项、3 项本地 AI 专项与 3 项 PDF 专项）覆盖
 320/390 视口、44px 热区、答题卡遮罩、交卷框定位、搜索缩视口、模拟刘海、导入
 MIME 与手机导出；`pnpm build:apk:release` + `pnpm verify:apk` 负责 Android 编译、
 资源和签名。真机上的系统分享面板、硬件返回键、状态栏图标仍需要在目标机型上抽测，
@@ -386,6 +386,19 @@ pnpm test:e2e      # Playwright：真实 Chromium 驱动关键链路（约 25 �
 CI 里两步都会执行。
 
 Web、桌面与安卓共用前端质量门禁，但 Web 验证不能替代原生端验证。桌面与安卓还需分别构建并在对应环境检查路由、WebView、系统返回键、状态栏及数据持久化等行为。
+
+### v2.4.0 验证记录
+
+| 端 | 产物 | 已核验 |
+| --- | --- | --- |
+| Web / PWA | `dist/`（2.4.0） | 全量 Web E2E 41 项通过；PWA 预缓存 210 条 / 4713.84 KiB；`pnpm lint`、`pnpm typecheck`、`pnpm build` 通过 |
+| Android（release APK） | `tixing-2.4.0-release.apk` (5,913,131 bytes) | Linux + JDK 21 + Android SDK 36 实际编译；`versionName=2.4.0`、`versionCode=2004000`、`minSdk=24`；`verify-apk` 通过（658 条目、21 个 JS、1 个 CSS）；`apksigner` 通过，证书 DN `CN=TiXing`，SHA-256 `98e19402…999e`；SHA-256 `f0ad80f9…a803` |
+| Android（release AAB） | `tixing-2.4.0-release.aab` (5,786,356 bytes) | `bundleRelease` + `jarsigner -verify` 通过；证书 DN 与 APK 一致；SHA-256 `e4bb0368…4114` |
+| Android（debug） | `tixing-2.4.0-debug.apk` (7,112,542 bytes) | `verify-apk` 通过；完整 APK 资源 E2E 7 项通过（含 PDF 文字层导入） |
+
+PDF 运行时资源（CMaps、标准字体、worker）约 3.7 MB，APK 从 2.3.0 的 3.8 MB 增至 5.6 MB；扫描件 OCR 未内置，没有把十几 MB 语言包塞进安装包。
+
+仍无真机、无 KVM/adb；Android 运行时验证是把 release APK 的 `assets/public/` 解包后，由 Chromium 按原生壳的 hash 路由和 Pixel 5 视口加载，验证对象是 APK 本身，但不是真机兼容性测试。
 
 ### v1.8.0 验证记录
 

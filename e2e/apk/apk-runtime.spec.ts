@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { readStores } from '../helpers'
+import { buildExamPdf } from '../pdfFixture'
 
 /**
  * APK 运行时验证。
@@ -112,6 +113,24 @@ test('APK 资源内模拟考试按题型结算', async ({ page }) => {
   await expect(page.locator('.exam-type-row').filter({ hasText: '多选题' }).locator('.exam-type-score')).toHaveText('3 / 3')
   const stores = await readStores(page)
   expect(stores.history[0].exam).toMatchObject({ score: 5, fullScore: 5, passScore: 3, passed: true })
+})
+
+test('APK 资源可导入 PDF 文字层', async ({ page }) => {
+  const pdf = await buildExamPdf(page)
+  await page.goto('/#/import')
+  await page.setInputFiles('input[type="file"]', {
+    name: 'APK 卷.pdf',
+    mimeType: 'application/pdf',
+    buffer: pdf,
+  })
+  await expect(page.getByRole('heading', { name: 'PDF 自测卷' })).toBeVisible()
+  await page.getByRole('button', { name: /确认导入 2 题/ }).click()
+  await expect(page.getByRole('heading', { name: /已导入 2 题/ })).toBeVisible()
+
+  const stores = await readStores(page)
+  const bank = stores.banks.find((item) => item.title === 'PDF 自测卷')
+  expect(bank?.questions).toHaveLength(2)
+  expect(bank?.questions.map((question) => question.type)).toEqual(['single', 'fill'])
 })
 
 test('设置页显示 IndexedDB 驱动', async ({ page }) => {

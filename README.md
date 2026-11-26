@@ -2,7 +2,7 @@
 
 A local-first question-bank workbench that runs without a network.
 
-Bring your own Excel, CSV, JSON, Word, TXT or Markdown files, then practise, study, run timed exams, review mistakes,
+Bring your own Excel, CSV, JSON, PDF-text, Word, TXT or Markdown files, then practise, study, run timed exams, review mistakes,
 build printable papers and move a full backup between devices. No account, no hosted bank,
 no telemetry.
 
@@ -46,7 +46,7 @@ These are bundled practice questions, not a hosted bank for sale. You can hide t
 
 | | |
 | --- | --- |
-| **Tolerant import** | Excel (`.xlsx`), JSON, CSV, Word (`.docx`), TXT, Markdown and `.tixing.json` packages. CSV handles BOMs, unquoted `B,D` answers and data URIs split by commas; text imports follow a numbered template and handle single choice, multiple choice, true/false, fill-in and short answer, reporting skipped rows. |
+| **Tolerant import** | Excel (`.xlsx`), JSON, CSV, Word (`.docx`), PDF text layer, TXT, Markdown and `.tixing.json` packages. CSV handles BOMs, unquoted `B,D` answers and data URIs split by commas; text imports follow a numbered template and handle single choice, multiple choice, true/false, fill-in and short answer, reporting skipped rows. |
 | **Three ways to find questions** | Follow a goal track, drill down by domain, or let the strategy pick from weak areas. |
 | **A complete practice loop** | Single choice, multiple choice, true/false, fill-in and short answer. Instant feedback in practice mode; countdown and auto-submit in exam mode, with a score, pass line and per-type breakdown after submission; study mode reveals answers first without polluting accuracy. Fill-in answers are matched against configured alternatives; short answers require every grading keyword to appear, and the UI says so instead of pretending to be a semantic grader. |
 | **Mistakes do not vanish after one correct answer** | Wrong answers enter the wrong-book; FSRS schedules the next review, with a seven-day due forecast. Tag why you missed it (concept, method, carelessness, time) and keep a short note. |
@@ -73,7 +73,10 @@ The competitor matrix and the boundaries of what TiXing deliberately does not bu
 </tr>
 <tr>
 <td width="50%"><img src="docs/screenshots/study.webp" alt="Study mode"><br><sub><b>Study</b> — read answers first, no scoring or accuracy side effects</sub></td>
-<td width="50%"><img src="docs/screenshots/import.webp" alt="Import screen"><br><sub><b>Import</b> — Word/TXT/MD template or paste directly</sub></td>
+<td width="50%"><img src="docs/screenshots/import.webp" alt="Import screen"><br><sub><b>Import</b> — Word/TXT/MD/PDF or paste directly</sub></td>
+</tr>
+<tr>
+<td colspan="2"><img src="docs/screenshots/pdf-import.webp" alt="PDF import preview"><br><sub><b>PDF text layer</b> — a real file parsed and checked before import</sub></td>
 </tr>
 <tr>
 <td width="50%"><img src="docs/screenshots/collection.webp" alt="Question bank detail"><br><sub><b>Bank detail</b> — type mix, study and practice entry points</sub></td>
@@ -102,6 +105,9 @@ The same build runs in a 320 px browser and in the Android shell. The layouts be
 <td width="50%"><img src="docs/screenshots/mobile-import.webp" alt="Mobile import"><br><sub><b>Import</b> — file, template and paste stacked</sub></td>
 </tr>
 <tr>
+<td colspan="2"><img src="docs/screenshots/mobile-pdf-import.webp" alt="Mobile PDF import preview"><br><sub><b>PDF preview</b> — parse, check and file on one phone screen</sub></td>
+</tr>
+<tr>
 <td width="50%"><img src="docs/screenshots/mobile-practice-text.webp" alt="Mobile text question"><br><sub><b>Text question</b> — keyword hit, reference answer and explanation on one screen</sub></td>
 <td width="50%"><img src="docs/screenshots/mobile-exam-result.webp" alt="Mobile exam result"><br><sub><b>Exam result</b> — score, pass line and type breakdown on one screen</sub></td>
 </tr>
@@ -115,7 +121,7 @@ Mobile-specific handling is not just CSS:
 - **Android back** is handled inside the app: close search/sidebar/dialog/answer sheet or confirm leaving a practice before touching WebView history and `App.exitApp()`.
 - **File export** on Android writes to the app cache and opens the system share/save sheet through `@capacitor/filesystem` and `@capacitor/share`; a WebView `a[download]` is not assumed to work.
 
-Refresh the phone screenshots with `pnpm preview` running, then `pnpm capture:mobile` (390×844 @2x PNGs in a temp directory).
+Refresh the phone screenshots with `pnpm preview` running, then `pnpm capture:mobile` (390×844 @2x PNGs in a temp directory). The import and PDF preview shots are not staged DOM: the script prints a real PDF in Chromium, uploads it through the file input, and captures the review screen.
 
 ## Quick start
 
@@ -153,7 +159,7 @@ title,stem,optionA,optionB,optionC,optionD,answer,explanation,type
 Accepted answers: `B`, `BC`, `B;D`, `B,D`, `B、D`, `B/D`, or 1-based indexes like `1,3`.
 Only `stem`, `optionA`, `optionB`, `answer` and `explanation` are required. For fill-in and short-answer rows, leave the option cells and `answer` blank, put the reference answer in `answerText`, and add `keywords` for short answers.
 
-Text and Word imports use the numbered template. Mark a question with `【填空题】` and `答案：…`, or `【简答题】` with `参考答案：…` and `关键词：…`. Short answers are graded by requiring every keyword to appear; this is not a semantic score.
+Text, Word and PDF-text imports use the numbered template. PDF import reads the text layer only; scanned pages must go through OCR first. Mark a question with `【填空题】` and `答案：…`, or `【简答题】` with `参考答案：…` and `关键词：…`. Short answers are graded by requiring every keyword to appear; this is not a semantic score.
 
 Full field reference: [docs/IMPORT_FORMAT.md](docs/IMPORT_FORMAT.md).
 

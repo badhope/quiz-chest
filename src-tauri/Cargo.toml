@@ -1,6 +1,6 @@
 [package]
 name = "tixing-desktop"
-version = "2.3.0"
+version = "2.4.0"
 description = "题小星 · TiXing desktop application"
 authors = ["TiXing"]
 license = "MIT"
